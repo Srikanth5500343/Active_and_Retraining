@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RackTrack — Deployment Guide</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #0f172a;
+    --ink-soft: #475569;
+    --ink-faint: #94a3b8;
+    --line: #e2e8f0;
+    --bg-soft: #f8fafc;
+    --bg-code: #f1f5f9;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --good: #15803d;
+    --good-soft: #dcfce7;
+    --warn: #b45309;
+    --warn-soft: #fef3c7;
+    --bad: #b91c1c;
+    --bad-soft: #fee2e2;
+    --shadow: 0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.04);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 15.5px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 56px 32px 96px; }
+
+  header.cover { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 36px; }
+  header.cover .eyebrow {
+    color: var(--accent); font-weight: 600; font-size: 13px;
+    letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  header.cover h1 {
+    font-size: 38px; font-weight: 700; letter-spacing: -0.02em;
+    margin: 0 0 10px; line-height: 1.15;
+  }
+  header.cover .lede { font-size: 17px; color: var(--ink-soft); max-width: 720px; margin: 0; }
+
+  h2 {
+    font-size: 24px; letter-spacing: -0.01em;
+    margin: 56px 0 16px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--line);
+  }
+  h2 .num {
+    display: inline-block; min-width: 32px;
+    color: var(--accent); font-weight: 600; margin-right: 6px;
+  }
+  h3 { font-size: 18px; margin: 28px 0 10px; }
+  h4 {
+    font-size: 13px; margin: 18px 0 6px;
+    color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em;
+  }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  strong { color: var(--ink); }
+
+  nav.toc {
+    background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px 22px; margin-bottom: 36px;
+  }
+  nav.toc h4 { margin: 0 0 8px; }
+  nav.toc ol { margin: 0; padding-left: 18px; }
+  nav.toc li { margin-bottom: 4px; }
+  nav.toc a { color: var(--ink); }
+  nav.toc a:hover { color: var(--accent); }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    margin: 14px 0 20px; background: #fff;
+    box-shadow: var(--shadow); border-radius: 10px;
+    overflow: hidden; font-size: 14.5px;
+  }
+  thead th {
+    background: var(--bg-soft); color: var(--ink-soft); font-weight: 600;
+    text-align: left; font-size: 12.5px; letter-spacing: .04em;
+    text-transform: uppercase; padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  tbody td { padding: 12px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+  tbody tr:first-child td { border-top: none; }
+  tbody tr:nth-child(even) { background: #fcfdff; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  code {
+    background: var(--bg-code); color: #1e3a8a;
+    padding: 1px 6px; border-radius: 4px; font-size: 0.92em;
+  }
+  pre {
+    background: var(--bg-code); color: var(--ink);
+    padding: 14px 18px; border-radius: 8px; overflow-x: auto;
+    font-size: 13.5px; line-height: 1.55;
+    border: 1px solid var(--line); margin: 8px 0 18px;
+  }
+  pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; line-height: 1.6;
+  }
+  .pill-good { background: var(--good-soft); color: var(--good); }
+  .pill-warn { background: var(--warn-soft); color: var(--warn); }
+  .pill-bad  { background: var(--bad-soft); color: var(--bad); }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 14px 18px; margin: 18px 0;
+    border-radius: 0 8px 8px 0; color: #1e3a8a;
+  }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); color: #78350f; }
+  .callout.bad  { border-color: var(--bad);  background: var(--bad-soft);  color: #7f1d1d; }
+  .callout.good { border-color: var(--good); background: var(--good-soft); color: #14532d; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout strong { color: inherit; }
+
+  .diagram {
+    background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px 20px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.45;
+    overflow-x: auto; white-space: pre; margin: 14px 0 22px;
+  }
+
+  .option {
+    background: #fff; border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: var(--shadow);
+    padding: 28px 32px; margin: 24px 0;
+  }
+  .option h2 { margin-top: 0; border-bottom: none; padding-bottom: 0; }
+  .option .badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 6px; margin-left: 8px;
+    vertical-align: middle; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .opt-cf .badge { background: #fed7aa; color: #9a3412; }
+  .opt-aws .badge { background: #c7d2fe; color: #3730a3; }
+
+  .pricetag {
+    display: inline-block; background: var(--bg-soft);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 14px; margin: 4px 0 16px;
+    font-family: ui-monospace, monospace; font-size: 14px;
+    color: var(--ink);
+  }
+  .pricetag b { color: var(--accent); font-weight: 700; }
+
+  footer.foot {
+    margin-top: 56px; padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-faint); font-size: 13px;
+  }
+
+  @media print {
+    body { font-size: 11pt; }
+    .wrap { max-width: 100%; padding: 24px 28px; }
+    a { color: inherit; text-decoration: none; }
+    table, .option { box-shadow: none; }
+    pre, .diagram { background: #fff; border: 1px solid #cbd5e1; }
+    h2 { break-before: page; }
+    nav.toc, header.cover { break-after: page; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="cover">
+  <div class="eyebrow">RackTrack · Deployment</div>
+  <h1>Two options to ship the APK</h1>
+  <p class="lede">
+    Your server is on 24/7 already. So the choice is simple — keep it
+    on your own machine and front it with Cloudflare, or move the heavy
+    parts to AWS. This is what each one means concretely, what it
+    costs, and what to do.
+  </p>
+</header>
+
+<nav class="toc">
+  <h4>Contents</h4>
+  <ol>
+    <li><a href="#stack">What's running</a></li>
+    <li><a href="#constraint">The one rule</a></li>
+    <li><a href="#apk">Building the APK</a></li>
+    <li><a href="#cloudflare">Option 1 — Cloudflare on your server</a></li>
+    <li><a href="#aws">Option 2 — AWS</a></li>
+    <li><a href="#compare">Side by side</a></li>
+    <li><a href="#checklist">Before you ship</a></li>
+  </ol>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="stack"><span class="num">1</span> What's running</h2>
+
+<p>The pieces, audited from your repo:</p>
+
+<table>
+  <thead><tr><th>Piece</th><th>What it does</th><th>Where it must live</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Node API</strong> <code>server/app.js</code></td>
+      <td>Auth, file upload, scan orchestration, PDF reports, SMTP, Slack/Teams, switch-creds-status, all <code>/api/*</code> routes</td>
+      <td>Anywhere</td>
+    </tr>
+    <tr>
+      <td><strong>Python ML pipeline</strong> <code>pipeline/runner.py</code></td>
+      <td>YOLO + EasyOCR scan of rack photos. ~400 MB of <code>.pt</code> models in <code>Models/</code>. CPU-only.</td>
+      <td>Anywhere with 4 GB+ RAM</td>
+    </tr>
+    <tr>
+      <td><strong>ServiceNow CMDB</strong> (your PDI <code>dev266363</code>)</td>
+      <td>CMDB ticket flow via <code>servicenow/cmdb_ticket.py</code></td>
+      <td><strong>ServiceNow's cloud</strong> — already remote, reachable from anywhere</td>
+    </tr>
+    <tr>
+      <td><strong>Netdisco docker stack</strong> <code>netdisco-docker/</code></td>
+      <td>postgres + backend + web container; SNMP polls your network</td>
+      <td><span class="pill pill-bad">Your office LAN</span> — must see the switches it polls</td>
+    </tr>
+    <tr>
+      <td><strong>TP-Link SSH probe</strong> <code>server/lib/ssh-creds.js</code> + <code>ssh2</code></td>
+      <td>Live "Available Ports" page, encrypted creds (AES-256-GCM)</td>
+      <td><span class="pill pill-bad">Your office LAN</span> — needs route to switch IP</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="constraint"><span class="num">2</span> The one rule</h2>
+
+<div class="callout bad">
+  <strong>Netdisco and the TP-Link SSH probe must run on your office LAN.</strong>
+  Cloud servers can't reach <code>192.168.x.x</code>. This is why both
+  options below keep <em>something</em> on-prem.
+</div>
+
+<p>Everything else (login, scan, ML pipeline, ServiceNow, PDFs, notifications) works fine from anywhere with internet.</p>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="apk"><span class="num">3</span> Building the APK</h2>
+
+<p>Same for both options. The only thing that changes is the URL you bake in.</p>
+
+<pre><code>cd client
+npm ci
+VITE_API_BASE=https://your-domain.com npm run build
+npx cap sync android
+cd android
+./gradlew assembleDebug          # unsigned, sideload
+# OR
+./gradlew assembleRelease        # signed, for Play Store</code></pre>
+
+<p>The APK only carries one config: <code>VITE_API_BASE</code>. No secrets, no keys, no server code. Build once with the right URL and the APK keeps working as long as that URL keeps working.</p>
+
+<p>Where to actually run the build:</p>
+<ul>
+  <li><strong>Locally</strong> — install JDK 17 + Android SDK 34, run the commands above.</li>
+  <li><strong>GitHub Actions</strong> — workflow that runs on push, uploads APK as an artifact. Free for private repos up to 2,000 min/mo.</li>
+</ul>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="option opt-cf">
+<h2 id="cloudflare"><span class="num">A</span> Cloudflare on your 24/7 server <span class="badge">Recommended for now</span></h2>
+
+<div class="pricetag">
+  Hardware: <b>$0</b> (you have it)
+  &nbsp;•&nbsp; Domain: <b>$12 / year</b>
+  &nbsp;•&nbsp; Cloudflare: <b>$0 / month</b>
+  &nbsp;•&nbsp; Power: <b>~$2 / month</b>
+</div>
+
+<h3>The picture</h3>
+
+<div class="diagram">┌─────────┐   HTTPS to your domain
+│  Phone  │ ──────────────────────────────┐
+│  (APK)  │                               │
+└─────────┘                               ▼
+                                ┌─────────────────────┐
+                                │ Cloudflare edge     │
+                                │ (free TLS + DNS)    │
+                                └──────────┬──────────┘
+                                           │  outbound tunnel
+                                           │  (no port-forwarding)
+                                           ▼
+            ┌──────────────────────────────────────────────────┐
+            │  YOUR 24/7 SERVER (the one you already have)     │
+            │  ─────────────────────────────────────────       │
+            │  cloudflared (named tunnel, runs as a service)   │
+            │  Node server :3001                               │
+            │  Python pipeline + Models/                       │
+            │  Docker: netdisco stack (web on :5000)           │
+            │  SSH probe → switches on the same LAN            │
+            │  Encrypted creds in server/.env  +  .env.key     │
+            └──────────────────────────────────────────────────┘</div>
+
+<h3>What you need to set up</h3>
+<ol>
+  <li><strong>Buy a domain</strong> (~$12/year). Cloudflare Registrar, Porkbun, Namecheap — pick one.</li>
+  <li><strong>Add the domain to a free Cloudflare account.</strong> Cloudflare gives you nameservers; set them at the registrar.</li>
+  <li><strong>Install <code>cloudflared</code> on your 24/7 server:</strong>
+    <pre><code># Linux
+curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i cloudflared.deb
+
+# Windows
+winget install --id Cloudflare.cloudflared</code></pre>
+  </li>
+  <li><strong>Authenticate, create a named tunnel, point DNS at it:</strong>
+    <pre><code>cloudflared tunnel login
+cloudflared tunnel create racktrack
+cloudflared tunnel route dns racktrack racktrack.yourdomain.com</code></pre>
+  </li>
+  <li><strong>Create <code>~/.cloudflared/config.yml</code>:</strong>
+    <pre><code>tunnel: racktrack
+credentials-file: /home/you/.cloudflared/&lt;UUID&gt;.json
+ingress:
+  - hostname: racktrack.yourdomain.com
+    service: http://localhost:3001
+  - service: http_status:404</code></pre>
+  </li>
+  <li><strong>Install as a service so it survives reboots:</strong>
+    <pre><code>sudo cloudflared service install
+sudo systemctl enable --now cloudflared</code></pre>
+  </li>
+  <li><strong>Build the APK with the new URL:</strong> <code>VITE_API_BASE=https://racktrack.yourdomain.com</code>.</li>
+</ol>
+
+<h3>Good things</h3>
+<ul>
+  <li><strong>Cheapest by a wide margin.</strong> ~$12/year in real spend.</li>
+  <li><strong>Stable URL.</strong> Survives restarts forever — unlike the <code>trycloudflare.com</code> URL you have today.</li>
+  <li><strong>Free TLS</strong>, free DNS, free DDoS protection from Cloudflare.</li>
+  <li><strong>No port-forwarding.</strong> The tunnel makes outbound connections to Cloudflare, so you don't open anything on your home/office router.</li>
+  <li><strong>Network View and Available Ports work natively</strong> — the server is on the same LAN as the switch and Netdisco, no VPN bridge needed.</li>
+  <li><strong>One machine, one place to log in.</strong> Easy mental model.</li>
+</ul>
+
+<h3>Limitations</h3>
+<ul>
+  <li><strong>Single point of failure.</strong> If your machine fails, dies, or your ISP drops, the app goes down. No automatic failover.</li>
+  <li><strong>Backups are your job.</strong> The SQLite auth DB at <code>server/data/</code>, the encrypted creds, and scan outputs all need a backup plan (rsync to a USB drive / cloud storage).</li>
+  <li><strong>~100 MB upload limit per HTTP request</strong> on free Cloudflare. Your scan photos are well under this — fine.</li>
+  <li><strong>No SLA.</strong> Cloudflare's free tier is very stable in practice but doesn't guarantee uptime.</li>
+  <li><strong>Bandwidth is your home/office uplink.</strong> If lots of techs scan at the same time, your upload speed becomes the bottleneck.</li>
+  <li><strong>Maintenance is on you.</strong> OS patches, Node/Python updates, Docker images, log rotation.</li>
+</ul>
+
+<h3>Cost breakdown</h3>
+<table>
+  <thead><tr><th>Item</th><th>Cost</th></tr></thead>
+  <tbody>
+    <tr><td>Domain</td><td class="num">$12 / year</td></tr>
+    <tr><td>Cloudflare (tunnel + DNS + TLS + DDoS)</td><td class="num">$0</td></tr>
+    <tr><td>Power for the always-on machine</td><td class="num">~$2 / month</td></tr>
+    <tr><td><strong>Year 1 total</strong></td><td class="num"><strong>~$36</strong></td></tr>
+    <tr><td><strong>Ongoing yearly</strong></td><td class="num"><strong>~$36</strong></td></tr>
+  </tbody>
+</table>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<div class="option opt-aws">
+<h2 id="aws"><span class="num">B</span> AWS <span class="badge">For when you grow</span></h2>
+
+<div class="pricetag">
+  EC2: <b>$18–36 / mo</b>
+  &nbsp;•&nbsp; Storage + DNS + secrets: <b>~$5 / mo</b>
+  &nbsp;•&nbsp; Domain: <b>$12 / year</b>
+  &nbsp;•&nbsp; Bridge box: still your 24/7 server
+</div>
+
+<h3>The picture</h3>
+
+<div class="diagram">┌─────────┐   HTTPS
+│  Phone  │ ───────────────┐
+│  (APK)  │                │
+└─────────┘                ▼
+                ┌─────────────────────────────────┐
+                │           AWS EC2               │
+                │  ────────────────────────────── │
+                │  Caddy → HTTPS  :443            │
+                │  Node server   :3001            │
+                │  Python pipeline + Models/      │
+                │  SQLite auth DB on EBS          │
+                │  S3 bucket for uploads/outputs  │
+                │  Tailscale (100.x.x.x)          │
+                └────────────────┬────────────────┘
+                                 │
+                                 │  Tailscale VPN (free)
+                                 │
+                ┌────────────────▼────────────────┐
+                │  YOUR 24/7 SERVER (now smaller) │
+                │  ────────────────────────────── │
+                │  Tailscale (100.x.x.x)          │
+                │  Docker: netdisco stack         │
+                │  SSH probe to switches          │
+                │  ────► 192.168.x.x  (LAN)       │
+                └─────────────────────────────────┘</div>
+
+<p>
+  The Node + Python work moves to AWS. Your existing 24/7 server sticks
+  around but only runs Netdisco + Tailscale, because of the LAN-reach rule.
+  Tailscale links the two so the EC2 can talk to Netdisco at
+  <code>http://&lt;tailscale-ip&gt;:5000</code> and SSH into your switches at
+  their normal LAN IPs.
+</p>
+
+<h3>What you need on AWS</h3>
+<table>
+  <thead><tr><th>Resource</th><th>Spec</th><th>~$ / month</th></tr></thead>
+  <tbody>
+    <tr><td>EC2 (Ubuntu 22.04)</td><td><code>t3.medium</code> 2 vCPU / 4 GB RAM</td><td class="num">$30 on-demand<br>$18 reserved (1 yr)</td></tr>
+    <tr><td>EBS gp3 disk</td><td>30 GB (OS + Models/ + sqlite + temp uploads)</td><td class="num">$2.50</td></tr>
+    <tr><td>S3 bucket</td><td>Scan photos + JSON outputs</td><td class="num">&lt;$1</td></tr>
+    <tr><td>Elastic IP</td><td>Stable public IP</td><td class="num">$0 (free while attached)</td></tr>
+    <tr><td>Route 53 zone</td><td>DNS for your domain</td><td class="num">$0.50</td></tr>
+    <tr><td>Domain</td><td>One <code>.com</code></td><td class="num">~$1 ($12/yr)</td></tr>
+    <tr><td>AWS Secrets Manager</td><td>Stores the AES master key (<code>SSH_CREDS_KEY</code>)</td><td class="num">$0.40</td></tr>
+    <tr><td>EBS snapshots</td><td>Daily, 7-day retention</td><td class="num">$1</td></tr>
+    <tr><td>Caddy on the EC2 (free TLS)</td><td>Auto-renewing Let's Encrypt</td><td class="num">$0</td></tr>
+    <tr><td>Tailscale (free tier)</td><td>VPN to your on-prem box</td><td class="num">$0</td></tr>
+    <tr><td colspan="2" style="text-align:right"><strong>Total / month</strong></td><td class="num"><strong>~$25–35</strong></td></tr>
+  </tbody>
+</table>
+
+<h3>Set-up steps (high level)</h3>
+<ol>
+  <li>Launch <code>t3.medium</code>, Ubuntu 22.04, 30 GB EBS, security group allowing SSH (your IP) + 80 + 443.</li>
+  <li>Buy a domain, add to Route 53, point an A record at the EC2's elastic IP.</li>
+  <li>On the EC2: install Node 20, Python 3.10, Docker, Chromium (for puppeteer), Caddy, Tailscale.</li>
+  <li><code>git clone</code> your repo. Pull the 400 MB Models/ from S3 (or commit via Git LFS).</li>
+  <li>Generate a fresh <code>server/.env.key</code> on the EC2 (don't reuse dev key). Re-run <code>node server/encrypt-creds.js set tp-link</code> with your switch creds.</li>
+  <li>Install Tailscale on EC2 and on your on-prem 24/7 server. Both join the same tailnet.</li>
+  <li>On the on-prem box, advertise the LAN subnet so EC2 can reach the switch directly:
+    <pre><code>sudo tailscale up --advertise-routes=192.168.0.0/24</code></pre>
+    Approve the route in the Tailscale admin console.</li>
+  <li>On the EC2, in <code>server/.env</code>: <code>NETDISCO_URL=http://&lt;onprem-tailscale-ip&gt;:5000</code>.</li>
+  <li>Caddyfile:
+    <pre><code>racktrack.yourdomain.com {
+    reverse_proxy 127.0.0.1:3001
+    encode gzip
+    request_body { max_size 50MB }
+}</code></pre>
+  </li>
+  <li>systemd unit for the Node server, auto-start on boot.</li>
+  <li>Build APK with <code>VITE_API_BASE=https://racktrack.yourdomain.com</code>.</li>
+</ol>
+
+<h3>Good things</h3>
+<ul>
+  <li><strong>Real uptime.</strong> EC2 stays up through your office power cuts and ISP issues.</li>
+  <li><strong>Independent of your office internet</strong> for everything except Network View / Ports.</li>
+  <li><strong>Easy to scale up.</strong> Bump to <code>t3.large</code> ($36/mo reserved) in 30 seconds if scans queue.</li>
+  <li><strong>S3 + EBS snapshots</strong> = backups handled.</li>
+  <li><strong>Secrets Manager</strong> is the right place for the AES master key.</li>
+  <li><strong>HTTPS via Caddy</strong> = no manual certificate management.</li>
+</ul>
+
+<h3>Limitations</h3>
+<ul>
+  <li><strong>Costs ~$25/mo</strong> minimum, indefinitely.</li>
+  <li><strong>Still need the on-prem box.</strong> AWS doesn't solve LAN reach. Netdisco + the switch SSH probe stay where they are.</li>
+  <li><strong>You manage the server.</strong> OS patches, security updates, log rotation, monitoring are on you.</li>
+  <li><strong>Two places to debug.</strong> When something breaks, "is it AWS, on-prem, or Tailscale?" becomes a triage question.</li>
+  <li><strong>RAM ceiling.</strong> 4 GB on <code>t3.medium</code> handles the ML pipeline fine for one or two parallel scans. If you have 5+ techs scanning simultaneously, jump to <code>t3.large</code>.</li>
+  <li><strong>Egress costs</strong> kick in past 100 GB/mo (free tier) at $0.09/GB.</li>
+  <li><strong>Models/ folder.</strong> 400 MB has to live somewhere — Git LFS (free up to 1 GB), or upload to S3 and pull at deploy time.</li>
+</ul>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="compare"><span class="num">4</span> Side by side</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>Cloudflare on your server</th>
+      <th>AWS</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Year-1 cost</td>
+      <td class="num">~$36</td>
+      <td class="num">~$390</td>
+    </tr>
+    <tr>
+      <td>Setup time</td>
+      <td>~1 hour</td>
+      <td>~half-day</td>
+    </tr>
+    <tr>
+      <td>Stable URL?</td>
+      <td><span class="pill pill-good">Yes</span></td>
+      <td><span class="pill pill-good">Yes</span></td>
+    </tr>
+    <tr>
+      <td>Free HTTPS?</td>
+      <td><span class="pill pill-good">Cloudflare TLS</span></td>
+      <td><span class="pill pill-good">Caddy + Let's Encrypt</span></td>
+    </tr>
+    <tr>
+      <td>Survives your machine going down?</td>
+      <td><span class="pill pill-bad">No</span></td>
+      <td><span class="pill pill-good">Yes</span> (except Network View / Ports)</td>
+    </tr>
+    <tr>
+      <td>Survives ISP outage?</td>
+      <td><span class="pill pill-bad">No</span></td>
+      <td><span class="pill pill-good">Yes</span> (except Network View / Ports)</td>
+    </tr>
+    <tr>
+      <td>Bandwidth ceiling</td>
+      <td>Your office uplink</td>
+      <td>AWS network (effectively unlimited)</td>
+    </tr>
+    <tr>
+      <td>Backup story</td>
+      <td>You write it</td>
+      <td>EBS snapshots + S3</td>
+    </tr>
+    <tr>
+      <td>Things that can break independently</td>
+      <td>1 machine</td>
+      <td>EC2, on-prem box, Tailscale</td>
+    </tr>
+    <tr>
+      <td>Network View / Ports works?</td>
+      <td><span class="pill pill-good">Yes, natively</span></td>
+      <td><span class="pill pill-good">Yes, via Tailscale</span></td>
+    </tr>
+    <tr>
+      <td>Best when</td>
+      <td>Personal / internal use, &lt;5 techs</td>
+      <td>Real workload, 5+ techs, you need uptime guarantees</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout good">
+  <strong>Recommendation:</strong> Start with <strong>Cloudflare on your
+  server</strong>. It's $36/year all-in, gives you a stable URL, and
+  uses the machine you already keep running. If it ever stops being
+  enough, your 24/7 server becomes the <em>bridge box</em> in the AWS
+  setup — same hardware, just a smaller role. No rework, no rewrites.
+</div>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<h2 id="checklist"><span class="num">5</span> Before you ship</h2>
+
+<p>Things in the repo that need to be fixed before <em>any</em> remote deployment:</p>
+
+<table>
+  <thead><tr><th>Item</th><th>Severity</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>server/netdisco_proxy.js</code> + <code>server/cmdb_ticket_proxy.js</code> are NOT in git</td>
+      <td><span class="pill pill-bad">Blocking</span></td>
+      <td><code>git add</code> + commit. Without them, Network View and CMDB ticket routes 404 on a fresh clone.</td>
+    </tr>
+    <tr>
+      <td><code>requirements.txt</code> deleted in your working tree</td>
+      <td><span class="pill pill-bad">Blocking</span></td>
+      <td>Recreate with <code>torch torchvision ultralytics opencv-python easyocr numpy Pillow requests python-dotenv</code>.</td>
+    </tr>
+    <tr>
+      <td><code>servicenow/.env.example</code> contains a real PDI password</td>
+      <td><span class="pill pill-warn">Security</span></td>
+      <td>Rotate the PDI password, replace value in the file with <code>changeme</code>. It's already in git history.</td>
+    </tr>
+    <tr>
+      <td><code>cloudflared.exe</code> is committed (63 MB)</td>
+      <td><span class="pill pill-warn">Bloat</span></td>
+      <td>Add to <code>.gitignore</code>, run <code>git rm --cached cloudflared.exe</code>. Use the system installer instead.</td>
+    </tr>
+    <tr>
+      <td>400 MB of <code>.pt</code> / <code>.pth</code> models in git</td>
+      <td><span class="pill pill-warn">Optional</span></td>
+      <td>Git LFS (free to 1 GB) or move to S3 / Cloudflare R2 and pull on deploy.</td>
+    </tr>
+    <tr>
+      <td>Currently <code>VITE_API_BASE</code> = quick tunnel URL</td>
+      <td><span class="pill pill-bad">Will rotate</span></td>
+      <td>Replace with your stable domain before the first APK build you distribute.</td>
+    </tr>
+    <tr>
+      <td>No release-signing config in <code>android/app/build.gradle</code></td>
+      <td><span class="pill pill-warn">For Play Store</span></td>
+      <td>Generate keystore with <code>keytool</code>, add a <code>signingConfigs</code> block. Skip if you'll only sideload.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Right before you flip the switch</h3>
+<ol>
+  <li>Generate a fresh <code>server/.env.key</code> on the production host (don't reuse dev).</li>
+  <li>Re-run <code>node server/encrypt-creds.js set tp-link</code> with your real switch creds — they're encrypted under the new key.</li>
+  <li>Set <code>NETDISCO_URL</code>, <code>NETDISCO_USER</code>, <code>NETDISCO_PASSWORD</code> in <code>server/.env</code>.</li>
+  <li>Set <code>SN_INSTANCE</code>, <code>SN_USER</code>, <code>SN_PASSWORD</code> for ServiceNow.</li>
+  <li>Verify <code>https://&lt;your-domain&gt;/api/health</code> returns 200.</li>
+  <li>Verify <code>https://&lt;your-domain&gt;/api/netdisco/health</code> returns OK.</li>
+  <li>Build APK with the right URL, sideload, run a full scan.</li>
+  <li>Distribute.</li>
+</ol>
+
+<footer class="foot">
+  Audited from <code>server/app.js</code>,
+  <code>server/netdisco_proxy.js</code>,
+  <code>server/cmdb_ticket_proxy.js</code>,
+  <code>pipeline/runner.py</code>,
+  <code>config.json</code>,
+  <code>netdisco-docker/compose.yaml</code>,
+  <code>client/capacitor.config.json</code>,
+  <code>client/android/app/build.gradle</code>,
+  <code>servicenow/.env.example</code>,
+  <code>.gitignore</code>.
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "models": {
+    "units": "Models/unit.pt",
+    "devices": "Models/best 32.pt",
+    "server": "Models/best 33.pt",
+    "port_count": "Models/port_count.pt",
+    "cable_classifier": "Models/best_model_efficientnet.pth"
+  },
+  "paths": {
+    "output_dir": "outputs",
+    "annotated_image": "outputs/device_unit_annotation.png",
+    "device_map_json": "outputs/device_unit_map.json",
+    "selected_device_image": "outputs/selected_device.png",
+    "port_result_image": "outputs/selected_device_ports.png"
+  },
+  "detection": {
+    "units_conf": 0.25,
+    "devices_conf": 0.2,
+    "server_conf": 0.25,
+    "iou_dedup": 0.5,
+    "ports_conf": 0.23,
+    "devices_conf_low": 0.08,
+    "server_conf_low": 0.08
+  }
+}

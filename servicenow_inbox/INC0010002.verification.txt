@@ -1,0 +1,19 @@
+RackTrack ingest verification — INC0010002
+Rack RK-00A187E2  scan 2026-04-24T09:06:30.289Z
+Verified at 2026-04-24T12:07:58.685211Z
+
+Ticket context: port 12 on SW-U10
+
+Cable chain from ticket:
+  [0] SW-U10:Gi1/0/12  (cmdb_ci_network_adapter)
+  [1] PP-U08:Port12  (cmdb_ci_port)
+  [2] SRV-U01:eth0  (cmdb_ci_network_adapter)
+
+Device-level physical verification:
+  ✓ [incident switch] SW-U10 @ U10 — expected Switch  confirmed (conf 0.806)
+  ✓ [mid] PP-U08 @ U08 — expected Patch Panel  confirmed (conf 0.775)
+  ✓ [far end] SRV-U01 @ U01 — expected Server  confirmed (conf 0.14) ⚠ low-conf
+
+Summary: 3/3 devices match  (0 drifts, 0 misses, 1 low-conf)
+
+CONCLUSION: Every CMDB-expected device on this cable path is physically present at the expected rack position. Incident is likely logical (port config, VLAN, far-end service) rather than physical.

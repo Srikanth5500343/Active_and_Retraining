@@ -1,0 +1,61 @@
+{
+  "source": "racktrack-ingest",
+  "incident": "INC0010002",
+  "rackId": "RK-00A187E2",
+  "scan_time": "2026-04-24T09:06:30.289Z",
+  "verified_at": "2026-04-24T12:07:58.685211Z",
+  "results": [
+    {
+      "name": "SW-U10",
+      "u": 10,
+      "expected_class": "Switch",
+      "status": "match",
+      "confidence": 0.806,
+      "low_confidence": false,
+      "detections_at_u": [
+        {
+          "class": "Switch",
+          "conf": 0.806
+        }
+      ],
+      "role": "incident switch"
+    },
+    {
+      "name": "PP-U08",
+      "u": 8,
+      "expected_class": "Patch Panel",
+      "status": "match",
+      "confidence": 0.775,
+      "low_confidence": false,
+      "detections_at_u": [
+        {
+          "class": "Patch Panel",
+          "conf": 0.775
+        }
+      ],
+      "role": "mid"
+    },
+    {
+      "name": "SRV-U01",
+      "u": 1,
+      "expected_class": "Server",
+      "status": "match",
+      "confidence": 0.14,
+      "low_confidence": true,
+      "detections_at_u": [
+        {
+          "class": "Server",
+          "conf": 0.14
+        }
+      ],
+      "role": "far end"
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "matches": 3,
+    "low_confidence": 1,
+    "drifts": 0,
+    "misses": 0
+  }
+}

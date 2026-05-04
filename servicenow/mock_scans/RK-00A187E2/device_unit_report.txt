@@ -1,0 +1,20 @@
+U#	Device Type
+U01 Server
+U02 Switch
+U03 Closed Unit
+U04 Switch
+U05 Closed Unit
+U06 Patch Panel
+U07 Switch
+U08 Patch Panel
+U09 Closed Unit
+U10 Switch
+U11 Closed Unit
+U12 Patch Panel
+U13 Patch Panel
+U14 Closed Unit
+U15 Switch
+U16 Closed Unit
+U17 Patch Panel
+U18 Closed Unit
+U18 Patch Panel

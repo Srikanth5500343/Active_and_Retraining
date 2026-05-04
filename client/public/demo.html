@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RackTrack — Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 40%, #1a2444 0%, #0f1629 40%, #080c18 100%);
+  }
+  .phone {
+    position: relative;
+    width: 396px; height: 854px;
+    border-radius: 50px;
+    background: #1a1a2e;
+    box-shadow:
+      0 0 0 3px #2a2a3e,
+      0 0 0 6px #111,
+      0 40px 80px rgba(0,0,0,0.6),
+      0 0 80px rgba(96,165,250,0.12),
+      0 0 160px rgba(34,211,238,0.06);
+    padding: 12px;
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 28px;
+    background: #1a1a2e;
+    border-radius: 0 0 18px 18px;
+    z-index: 10;
+  }
+  .phone::after {
+    content: '';
+    position: absolute;
+    top: 10px; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 12px;
+    background: #0a0a15;
+    border-radius: 50%;
+    border: 1px solid #222;
+    z-index: 11;
+  }
+  .btn-r { position: absolute; right: -8px; top: 160px; width: 5px; height: 60px; background: #2a2a3e; border-radius: 0 4px 4px 0; }
+  .btn-l1 { position: absolute; left: -8px; top: 140px; width: 5px; height: 40px; background: #2a2a3e; border-radius: 4px 0 0 4px; }
+  .btn-l2 { position: absolute; left: -8px; top: 195px; width: 5px; height: 40px; background: #2a2a3e; border-radius: 4px 0 0 4px; }
+  .screen {
+    width: 100%; height: 100%;
+    border-radius: 40px;
+    overflow: hidden;
+    background: #000;
+  }
+  .screen iframe {
+    width: 100%; height: 100%;
+    border: none;
+    border-radius: 40px;
+  }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="btn-r"></div>
+    <div class="btn-l1"></div>
+    <div class="btn-l2"></div>
+    <div class="screen">
+      <iframe src="/" allow="camera *; microphone *"></iframe>
+    </div>
+  </div>
+</body>
+</html>

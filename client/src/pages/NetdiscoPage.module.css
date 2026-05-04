@@ -1,0 +1,1008 @@
+/* Netdisco page — visually consistent with ResultsPage / TopologyPage.
+   Same dark navy + cyan/blue/violet palette, same card density, same chip
+   shapes. The page should feel like a peer view of the rest of the app. */
+
+.page {
+  display: flex; flex-direction: column;
+  min-height: 100dvh;
+  background: rgba(1, 8, 24, 0.42);
+  color: #e5e7eb;
+  position: relative;
+}
+
+.amb {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -5%,  rgba(30,80,230,0.16) 0%, rgba(59,130,246,0.08) 40%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 95% 95%,  rgba(124,58,237,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 5%  65%,  rgba(34,211,238,0.06) 0%, transparent 50%);
+}
+
+/* ── Header (matches ResultsPage exactly) ─────────────────────────────── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 12px;
+  background: linear-gradient(180deg, rgba(2,8,28,0.95), rgba(1,11,31,0.88));
+  backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px);
+  border-bottom: 1px solid rgba(34,211,238,0.10);
+  position: sticky; top: 0; z-index: 60;
+  flex-shrink: 0;
+}
+
+.headerCenter {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  flex: 1; min-width: 0;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #22d3ee 0%, #60a5fa 40%, #a78bfa 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  filter: drop-shadow(0 0 12px rgba(34,211,238,0.20));
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerMono {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: rgba(180, 210, 240, 0.4);
+  letter-spacing: 0.08em;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 420px) {
+  .header { padding: 12px 10px 10px; }
+  .headerTitle { font-size: .92rem; }
+  .headerMono  { font-size: .55rem; }
+}
+@media (max-width: 360px) {
+  .headerTitle { font-size: .82rem; }
+}
+
+.healthPill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(229, 231, 235, 0.7);
+  white-space: nowrap;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+@media (max-width: 420px) {
+  .healthPill { padding: 4px 8px; font-size: .55rem; gap: 4px; letter-spacing: .04em; }
+}
+
+.healthOk  { border-color: rgba(52,211,153,0.40); color: #34d399; background: rgba(52,211,153,0.06); }
+.healthBad { border-color: rgba(248,113,113,0.40); color: #fca5a5; background: rgba(248,113,113,0.06); }
+
+.healthDot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
+.main {
+  position: relative; z-index: 1;
+  flex: 1; overflow-y: auto;
+  max-width: 1100px; width: 100%; margin: 0 auto;
+  padding: 16px;
+  display: flex; flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Section card ─────────────────────────────────────────────────────── */
+.section {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 16px 16px;
+  backdrop-filter: blur(8px);
+}
+
+.sectionHead {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.sectionHead h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.85);
+}
+
+.headRight {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+
+.subtle {
+  color: rgba(180, 210, 240, 0.5);
+  font-size: 0.65rem;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.subhead {
+  margin: 14px 0 6px;
+  font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.55);
+}
+
+.linkBtn {
+  background: none; border: none;
+  color: rgba(180, 210, 240, 0.55);
+  font-size: 0.7rem; cursor: pointer;
+  padding: 2px 6px;
+  font-family: var(--mono);
+}
+.linkBtn:hover { color: #fca5a5; }
+
+.syncBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  padding: 0;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  color: #67e8f9;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.syncBtn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.16);
+  border-color: rgba(34, 211, 238, 0.55);
+}
+.syncBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.syncBtnSpin svg {
+  animation: ndSpin 900ms linear infinite;
+  transform-origin: 50% 50%;
+}
+
+@keyframes ndSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Device list (one card per scan device, expandable) ────────────────
+   Replaces the older match table. Each card mirrors ResultsPage.allCard
+   density: small, scannable, tap to expand. */
+.deviceList {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.deviceCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left: 3px solid rgba(96, 165, 250, 0.55);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: background 120ms, border-color 120ms;
+}
+
+.deviceCard:hover {
+  border-color: rgba(59, 130, 246, 0.30);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.deviceCardOpen {
+  border-left-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.04);
+}
+
+.deviceCardDim {
+  opacity: 0.55;
+  border-left-color: rgba(148, 163, 184, 0.35);
+}
+
+.deviceHead {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(110px, 0.85fr) minmax(140px, 1fr) auto auto;
+  gap: 12px; align-items: center;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+}
+
+.deviceHead:disabled { cursor: default; }
+
+.deviceTitle {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+
+.deviceName {
+  font-family: var(--mono);
+  font-size: 0.9rem; font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #93c5fd;
+}
+
+.deviceClass {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.45);
+}
+
+.deviceSub {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  flex-wrap: wrap;
+}
+
+.modelTag {
+  font-size: 0.74rem;
+  color: rgba(241, 245, 249, 0.85);
+  word-break: break-word;
+}
+
+.ipTag {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: rgba(180, 210, 240, 0.55);
+  letter-spacing: 0.04em;
+}
+
+.unmanaged {
+  font-size: 0.7rem;
+  color: rgba(148, 163, 184, 0.55);
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.chev {
+  color: rgba(34, 211, 238, 0.7);
+  font-size: 0.85rem;
+  user-select: none;
+  align-self: center;
+}
+
+/* ── Inline counts in the header (total / up / dn / live) ───────────── */
+.deviceCounts {
+  display: flex; align-items: baseline; gap: 10px;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.cnt {
+  display: inline-flex; align-items: baseline; gap: 3px;
+  font-family: var(--mono);
+  color: rgba(241, 245, 249, 0.85);
+}
+
+.cnt b {
+  font-size: 0.84rem; font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.cnt i {
+  font-style: normal;
+  font-size: 0.55rem; font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.45);
+}
+
+.cntUp   b { color: #34d399; }
+.cntDown b { color: rgba(203, 213, 245, 0.55); }
+.cntDown i { color: rgba(180, 210, 240, 0.30); }
+.cntLive b { color: #22d3ee; }
+
+.deviceBody {
+  padding: 4px 14px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* Legacy match table — kept in case anything else still references it. */
+.matchTable {
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.matchHead {
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr 1.6fr 0.9fr;
+  gap: 10px;
+  padding: 0 14px 6px;
+  font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.45);
+}
+
+.matchRow {
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr 1.6fr 0.9fr;
+  gap: 10px; align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left: 3px solid rgba(96, 165, 250, 0.55);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+
+.matchRow:hover {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.25);
+  border-left-color: #60a5fa;
+}
+
+.matchRowSel {
+  background: rgba(34, 211, 238, 0.05);
+  border-color: rgba(34, 211, 238, 0.40);
+  border-left-color: #22d3ee;
+}
+
+.matchScan, .matchNd, .matchStrategy {
+  display: flex; flex-direction: column;
+  gap: 2px; min-width: 0;
+}
+
+.matchScan strong {
+  font-family: var(--mono);
+  font-size: 0.82rem; font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #93c5fd;
+}
+
+.matchNd strong {
+  font-family: var(--mono);
+  font-size: 0.78rem; font-weight: 700;
+  color: #f1f5f9;
+  word-break: break-all;
+}
+
+.matchPorts {
+  display: flex; gap: 5px; align-items: center; flex-wrap: wrap;
+}
+
+/* Port pills — same shape as ResultsPage portPill family */
+.portCount {
+  font-family: var(--mono); font-size: 0.64rem; font-weight: 700;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.20);
+  border-radius: 100px;
+  padding: 2px 8px;
+}
+
+.connCount {
+  font-family: var(--mono); font-size: 0.64rem; font-weight: 700;
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.20);
+  border-radius: 100px;
+  padding: 2px 8px;
+}
+
+.tag {
+  display: inline-flex;
+  font-family: var(--mono);
+  padding: 3px 9px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border-radius: 4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag_mgmt_ip {
+  background: rgba(52, 211, 153, 0.10);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.30);
+}
+
+.tag_ocr_model {
+  background: rgba(167, 139, 250, 0.10);
+  color: #c4b5fd;
+  border: 1px solid rgba(167, 139, 250, 0.30);
+}
+
+/* ── Device detail card ───────────────────────────────────────────────── */
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 14px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.03);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+}
+
+.field {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+}
+
+.fieldKey {
+  font-size: 0.56rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.5);
+  font-family: var(--mono);
+}
+
+.fieldVal {
+  font-size: 0.78rem;
+  color: #f1f5f9;
+  word-break: break-word;
+}
+
+.portFilter {
+  display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;
+}
+
+.filterBtn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: rgba(180, 210, 240, 0.7);
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  font-family: var(--mono);
+}
+
+.filterBtn:hover {
+  color: #f1f5f9;
+  border-color: rgba(34, 211, 238, 0.40);
+}
+
+.filterBtnActive {
+  background: rgba(34, 211, 238, 0.10);
+  border-color: rgba(34, 211, 238, 0.50);
+  color: #67e8f9;
+}
+
+/* ── Port table ───────────────────────────────────────────────────────── */
+.portTable {
+  display: flex; flex-direction: column;
+  max-height: 460px; overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.portTable::-webkit-scrollbar { width: 4px; }
+.portTable::-webkit-scrollbar-thumb {
+  background: rgba(34,211,238,0.2);
+  border-radius: 2px;
+}
+
+/* Port table grid — 4 cols when no MACs are reported (the common case
+   for RackTrack-pushed devices), 5 cols when at least one port has an
+   active MAC sighting. */
+.portTable4 .portHead,
+.portTable4 .portRow {
+  grid-template-columns: 1fr 0.85fr 0.45fr 1.6fr;
+}
+
+.portTable5 .portHead,
+.portTable5 .portRow {
+  grid-template-columns: 1fr 0.85fr 0.45fr 1.5fr 0.5fr;
+}
+
+.portHead {
+  display: grid;
+  gap: 10px; align-items: center;
+  padding: 9px 14px;
+  position: sticky; top: 0;
+  background: rgba(2, 8, 28, 0.95);
+  font-size: 0.56rem; font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.50);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 1;
+}
+
+.portRow {
+  display: grid;
+  gap: 10px; align-items: center;
+  padding: 8px 14px;
+  font-size: 0.74rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.portState { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.portVlan  { font-family: var(--mono); font-size: 0.7rem; color: rgba(180,210,240,0.7); }
+.portNb    { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.portNb strong { font-family: var(--mono); font-size: 0.74rem; color: #f1f5f9; }
+
+.portRow:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.portRow:last-child { border-bottom: none; }
+
+.portName { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.portName strong {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: #f1f5f9;
+}
+
+.dotActive,
+.dotIdle {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+.dotActive {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.7);
+}
+
+.dotIdle {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+.macChip {
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: #67e8f9;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 100px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+.macChip:hover { background: rgba(34, 211, 238, 0.18); }
+
+/* ── MAC lookup ───────────────────────────────────────────────────────── */
+.macSection {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: -4px;     /* hugs the section above more tightly */
+}
+
+.macForm {
+  display: flex; gap: 8px; align-items: center;
+}
+
+.macLabel {
+  font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 240, 0.55);
+  padding-left: 4px;
+  white-space: nowrap;
+}
+
+.macInput {
+  flex: 1;
+  padding: 7px 12px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #f1f5f9;
+  outline: none;
+  letter-spacing: 0.04em;
+}
+
+.macInput:focus { border-color: rgba(34, 211, 238, 0.45); }
+
+.macBtn {
+  padding: 7px 14px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(34, 211, 238, 0.10);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  color: #67e8f9;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.macBtn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.20);
+  border-color: rgba(34, 211, 238, 0.55);
+}
+
+.macBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.macReport { display: flex; flex-direction: column; gap: 4px; }
+
+.currentLoc {
+  display: flex; gap: 12px; align-items: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.currentLabel {
+  font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #6ee7b7;
+}
+
+.currentLoc strong {
+  font-family: var(--mono);
+  font-size: 0.82rem; font-weight: 700;
+  color: #f1f5f9;
+}
+
+.miniTable { display: flex; flex-direction: column; gap: 2px; }
+
+.miniRow {
+  display: flex; gap: 12px; align-items: center;
+  padding: 7px 12px;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  flex-wrap: wrap;
+}
+
+.miniRow:nth-child(even) { background: rgba(255, 255, 255, 0.04); }
+
+.miniRow strong {
+  font-family: var(--mono);
+  color: #f1f5f9;
+}
+
+/* ── Empty / loading / error / warn states ────────────────────────────── */
+.loading {
+  padding: 14px;
+  font-size: 0.72rem;
+  color: rgba(180, 210, 240, 0.55);
+  text-align: center;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.empty {
+  padding: 18px;
+  font-size: 0.74rem;
+  color: rgba(180, 210, 240, 0.45);
+  text-align: center;
+  font-style: italic;
+}
+
+.error {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: #fca5a5;
+  font-size: 0.74rem;
+  margin-bottom: 8px;
+}
+
+.warn {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(96, 165, 250, 0.06);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  color: #93c5fd;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  margin-bottom: 8px;
+}
+
+.warn code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  color: #67e8f9;
+  font-size: 0.72rem;
+}
+
+.success {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(52, 211, 153, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  color: #6ee7b7;
+  font-size: 0.74rem;
+  margin-bottom: 8px;
+}
+
+/* ── Mobile responsiveness ────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .deviceHead {
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      "title sub  chev"
+      "counts counts counts";
+    gap: 8px 10px;
+  }
+  .deviceTitle  { grid-area: title; }
+  .deviceSub    { grid-area: sub; }
+  .chev         { grid-area: chev; }
+  .deviceCounts { grid-area: counts; justify-self: stretch; justify-content: space-between; }
+
+  .portTable4 .portHead,
+  .portTable4 .portRow,
+  .portTable5 .portHead,
+  .portTable5 .portRow {
+    grid-template-columns: 1fr 1fr;
+    font-size: 0.7rem;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT THEME OVERRIDES
+   ══════════════════════════════════════════════════════════════════════ */
+
+:global([data-theme='light']) .page {
+  background: transparent;
+  color: #1A1A2E;
+}
+:global([data-theme='light']) .amb {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(123, 117, 192, 0.18) 0%, rgba(91, 84, 176, 0.08) 40%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 95% 95%, rgba(75, 69, 160, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 5% 65%,  rgba(123, 117, 192, 0.08) 0%, transparent 50%);
+}
+:global([data-theme='light']) .header {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 247, 251, 0.88));
+  border-bottom: 1px solid #E8E6EF;
+}
+:global([data-theme='light']) .headerTitle {
+  background: linear-gradient(135deg, #4B45A0 0%, #5B54B0 50%, #7B75C0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: none;
+}
+:global([data-theme='light']) .headerMono { color: #4A4A5A; }
+:global([data-theme='light']) .healthPill {
+  background: #FFFFFF;
+  border: 1px solid #E8E6EF;
+  color: #4A4A5A;
+}
+:global([data-theme='light']) .healthOk {
+  border-color: rgba(34, 197, 94, 0.40);
+  color: #16A34A;
+  background: rgba(34, 197, 94, 0.06);
+}
+:global([data-theme='light']) .healthBad {
+  border-color: rgba(239, 68, 68, 0.40);
+  color: #DC2626;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+:global([data-theme='light']) .section {
+  background: #FFFFFF;
+  border: 1px solid #E8E6EF;
+  backdrop-filter: none;
+  box-shadow: 0 4px 14px rgba(75, 69, 160, 0.06);
+}
+:global([data-theme='light']) .sectionHead h3 { color: #4B45A0; }
+:global([data-theme='light']) .subtle  { color: #4A4A5A; }
+:global([data-theme='light']) .subhead { color: #5B54B0; }
+:global([data-theme='light']) .linkBtn { color: #4A4A5A; }
+:global([data-theme='light']) .linkBtn:hover { color: #DC2626; }
+:global([data-theme='light']) .syncBtn {
+  background: rgba(91, 84, 176, 0.08);
+  border: 1px solid rgba(91, 84, 176, 0.30);
+  color: #4B45A0;
+}
+:global([data-theme='light']) .syncBtn:hover:not(:disabled) {
+  background: rgba(91, 84, 176, 0.16);
+  border-color: rgba(91, 84, 176, 0.50);
+}
+
+:global([data-theme='light']) .deviceCard {
+  background: #FFFFFF;
+  border: 1px solid #E8E6EF;
+  border-left: 3px solid rgba(91, 84, 176, 0.55);
+}
+:global([data-theme='light']) .deviceCard:hover {
+  border-color: rgba(91, 84, 176, 0.30);
+  background: rgba(91, 84, 176, 0.04);
+}
+:global([data-theme='light']) .deviceCardOpen {
+  border-left-color: #5B54B0;
+  background: rgba(91, 84, 176, 0.04);
+}
+:global([data-theme='light']) .deviceCardDim {
+  border-left-color: #C8C4E4;
+}
+:global([data-theme='light']) .deviceName  { color: #4B45A0; }
+:global([data-theme='light']) .deviceClass { color: #4A4A5A; }
+:global([data-theme='light']) .modelTag    { color: #1A1A2E; }
+:global([data-theme='light']) .ipTag       { color: #4A4A5A; }
+:global([data-theme='light']) .unmanaged   { color: #4A4A5A; }
+:global([data-theme='light']) .chev        { color: #5B54B0; }
+:global([data-theme='light']) .cnt         { color: #1A1A2E; }
+:global([data-theme='light']) .cnt i       { color: #4A4A5A; }
+:global([data-theme='light']) .cntUp b     { color: #16A34A; }
+:global([data-theme='light']) .cntDown b   { color: #4A4A5A; }
+:global([data-theme='light']) .cntDown i   { color: #4A4A5A; }
+:global([data-theme='light']) .cntLive b   { color: #5B54B0; }
+
+:global([data-theme='light']) .deviceBody {
+  border-top: 1px solid #E8E6EF;
+  background: #F8F7FB;
+}
+
+/* Match table */
+:global([data-theme='light']) .matchHead { color: #5B54B0; }
+:global([data-theme='light']) .matchRow {
+  background: #FFFFFF;
+  border: 1px solid #E8E6EF;
+  border-left: 3px solid rgba(91, 84, 176, 0.55);
+}
+:global([data-theme='light']) .matchRow:hover {
+  background: rgba(91, 84, 176, 0.05);
+  border-color: rgba(91, 84, 176, 0.28);
+}
+:global([data-theme='light']) .matchRowSel {
+  background: rgba(91, 84, 176, 0.05);
+  border-color: rgba(91, 84, 176, 0.40);
+  border-left-color: #5B54B0;
+}
+:global([data-theme='light']) .matchScan strong { color: #4B45A0; }
+:global([data-theme='light']) .matchNd strong   { color: #1A1A2E; }
+
+:global([data-theme='light']) .portCount {
+  color: #16A34A;
+  background: rgba(34, 197, 94, 0.10);
+  border-color: rgba(34, 197, 94, 0.30);
+}
+:global([data-theme='light']) .connCount {
+  color: #4B45A0;
+  background: rgba(91, 84, 176, 0.10);
+  border-color: rgba(91, 84, 176, 0.30);
+}
+:global([data-theme='light']) .tag_mgmt_ip {
+  background: rgba(34, 197, 94, 0.10);
+  color: #16A34A;
+  border-color: rgba(34, 197, 94, 0.30);
+}
+:global([data-theme='light']) .tag_ocr_model {
+  background: rgba(91, 84, 176, 0.10);
+  color: #4B45A0;
+  border-color: rgba(91, 84, 176, 0.30);
+}
+
+:global([data-theme='light']) .detailGrid {
+  background: rgba(91, 84, 176, 0.04);
+  border-color: rgba(91, 84, 176, 0.20);
+}
+:global([data-theme='light']) .fieldKey { color: #5B54B0; }
+:global([data-theme='light']) .fieldVal { color: #1A1A2E; }
+
+:global([data-theme='light']) .filterBtn {
+  background: #FFFFFF;
+  border: 1px solid #C8C4E4;
+  color: #4A4A5A;
+}
+:global([data-theme='light']) .filterBtn:hover {
+  color: #4B45A0;
+  border-color: #7B75C0;
+}
+:global([data-theme='light']) .filterBtnActive {
+  background: rgba(91, 84, 176, 0.10);
+  border-color: rgba(91, 84, 176, 0.45);
+  color: #4B45A0;
+}
+
+:global([data-theme='light']) .portTable {
+  border: 1px solid #E8E6EF;
+}
+:global([data-theme='light']) .portHead {
+  background: #F8F7FB;
+  color: #5B54B0;
+  border-bottom: 1px solid #E8E6EF;
+}
+:global([data-theme='light']) .portRow {
+  border-bottom: 1px solid #E8E6EF;
+}
+:global([data-theme='light']) .portRow:nth-child(even) { background: #F8F7FB; }
+:global([data-theme='light']) .portName strong,
+:global([data-theme='light']) .portNb strong { color: #1A1A2E; }
+:global([data-theme='light']) .portVlan { color: #4A4A5A; }
+:global([data-theme='light']) .dotActive {
+  background: #22C55E;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.55);
+}
+:global([data-theme='light']) .dotIdle { background: #C8C4E4; }
+:global([data-theme='light']) .macChip {
+  background: rgba(91, 84, 176, 0.08);
+  border: 1px solid rgba(91, 84, 176, 0.28);
+  color: #4B45A0;
+}
+:global([data-theme='light']) .macChip:hover { background: rgba(91, 84, 176, 0.16); }
+
+/* MAC lookup */
+:global([data-theme='light']) .macSection {
+  background: #F8F7FB;
+  border: 1px solid #E8E6EF;
+}
+:global([data-theme='light']) .macLabel { color: #5B54B0; }
+:global([data-theme='light']) .macInput {
+  background: #FFFFFF;
+  border: 1px solid #C8C4E4;
+  color: #1A1A2E;
+}
+:global([data-theme='light']) .macInput:focus {
+  border-color: #7B75C0;
+}
+:global([data-theme='light']) .macBtn {
+  background: rgba(91, 84, 176, 0.10);
+  border-color: rgba(91, 84, 176, 0.40);
+  color: #4B45A0;
+}
+:global([data-theme='light']) .macBtn:hover:not(:disabled) {
+  background: rgba(91, 84, 176, 0.20);
+  border-color: rgba(91, 84, 176, 0.55);
+}
+
+:global([data-theme='light']) .currentLoc {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.30);
+}
+:global([data-theme='light']) .currentLabel { color: #16A34A; }
+:global([data-theme='light']) .currentLoc strong { color: #1A1A2E; }
+
+:global([data-theme='light']) .miniRow { background: #F8F7FB; }
+:global([data-theme='light']) .miniRow:nth-child(even) { background: #F0EFF5; }
+:global([data-theme='light']) .miniRow strong { color: #1A1A2E; }
+
+:global([data-theme='light']) .loading { color: #4A4A5A; }
+:global([data-theme='light']) .empty   { color: #4A4A5A; }
+:global([data-theme='light']) .error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.32);
+  color: #DC2626;
+}
+:global([data-theme='light']) .warn {
+  background: rgba(91, 84, 176, 0.06);
+  border-color: rgba(91, 84, 176, 0.28);
+  color: #4B45A0;
+}
+:global([data-theme='light']) .warn code {
+  background: #F8F7FB;
+  color: #4B45A0;
+}
+:global([data-theme='light']) .success {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.30);
+  color: #16A34A;
+}

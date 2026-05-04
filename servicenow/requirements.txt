@@ -1,0 +1,8 @@
+requests>=2.31.0
+python-dotenv>=1.0.0
+# Used by pipeline/teams_send.py and pipeline/outlook_send.py for Microsoft
+# Graph token acquisition (Teams DM + Outlook delivery channels).
+msal>=1.30.0
+# Used by netdisco-docker/seed_netdisco.py and push_rack_to_netdisco.py to
+# write rack inventory directly into Netdisco's Postgres on localhost:5432.
+psycopg2-binary>=2.9.9

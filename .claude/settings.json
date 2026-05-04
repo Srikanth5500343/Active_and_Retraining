@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth *)",
+      "Bash(py -3 --version)",
+      "Bash(py --version)",
+      "Bash(where python *)",
+      "Bash(where py *)",
+      "Bash(py test.py --src \"Z:/Racks Collected/833_collected_racks\" --dst \"Z:/Racks Collected/blur\" --threshold 100 --copy)",
+      "Bash(py test.py --src \"Z:/Racks Collected/833_collected_racks\" --dst \"Z:/Racks Collected/blur\")",
+      "Bash(py test.py --src \"Z:/Racks Collected/833_collected_racks\" --dst \"Z:/Racks Collected/blur_v2\" --copy --skip-yolo)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const s=require\\('sharp'\\); console.log\\('sharp version:', s.versions.sharp\\); console.log\\('libheif:', s.versions.heif||'n/a'\\); console.log\\('input heif supported:', s.format.heif && s.format.heif.input\\);\")",
+      "Bash(py h:/dark_mobile/.claude/extract_transcripts.py 317d5e28 400)",
+      "Bash(git -C h:/dark_mobile status pipeline/quality_check.py pipeline/detection.py pipeline/runner.py pipeline/worker.py pipeline/selection.py config.json)",
+      "Bash(git -C h:/dark_mobile diff HEAD pipeline/runner.py)",
+      "Bash(xargs grep *)",
+      "Bash(node -e ' *)",
+      "Bash(curl -sS -m 5 http://localhost:5000/ -o /dev/null -w 'HTTP %{http_code}\\\\n')",
+      "Bash(curl -sS -m 5 http://localhost:5000/login -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d '{\"username\":\"admin\",\"password\":\"admin\"}')",
+      "Bash(node -e \"new Function\\(require\\('fs'\\).readFileSync\\('server/netdisco_proxy.js','utf8'\\)\\); console.log\\('OK'\\)\")",
+      "Bash(python -c \"import ast,sys; ast.parse\\(open\\('netdisco-docker/push_rack_to_netdisco.py'\\).read\\(\\)\\); print\\('push_rack_to_netdisco.py OK'\\)\")",
+      "Bash(python -c \"import psycopg2; print\\('psycopg2 OK'\\)\")",
+      "Bash(python netdisco-docker/push_rack_to_netdisco.py --rack-id RK-00A187E2)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('netdisco-docker/push_rack_to_netdisco.py'\\).read\\(\\)\\); print\\('push_rack_to_netdisco.py OK'\\)\")"
+    ]
+  }
+}

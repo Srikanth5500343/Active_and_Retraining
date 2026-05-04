@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010003",
+  "sys_id": "2dbe148083640310319f5cc0deaad378",
+  "state": "New",
+  "priority": "4 - Low",
+  "urgency": "2 - Medium",
+  "category": "Network",
+  "opened_at": "2026-04-24 04:57:52",
+  "opened_by": "System Administrator",
+  "short_description": "Port 15 on SW-U10 not working \u2014 need physical verification",
+  "description": "Link down on SW-U10 port 15 (Gi1/0/15). Mgmt says admin=up oper=DOWN. Dispatch RackTrack verification on rack RK-00A187E2 to confirm physical presence and cable integrity.",
+  "target": {
+    "device": "SW-U10",
+    "port": 15,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.10",
+    "mac": "AA:BB:CC:10:10:10",
+    "model": "Catalyst 9300-48P",
+    "serial": "FCW2501A100",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U10:Gi1/0/15",
+    "interface_alias": "Gi1/0/15",
+    "port_short_description": "admin=up oper=up speed=1G duplex=full vlan=10 mode=access stp=forwarding",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 10
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=2dbe148083640310319f5cc0deaad378",
+  "polled_at": "2026-04-24T13:33:47Z"
+}

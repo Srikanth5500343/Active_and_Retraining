@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010010",
+  "sys_id": "fdb2784883e40310319f5cc0deaad37a",
+  "state": "New",
+  "priority": "4 - Low",
+  "urgency": "2 - Medium",
+  "category": "Network",
+  "opened_at": "2026-04-24 06:25:16",
+  "opened_by": "System Administrator",
+  "short_description": "Port 8 on SW-U10 err-disabled by bpdu-guard",
+  "description": "SW-U10 port 8 (Gi1/0/8) transitioned to err-disable state 14 minutes ago after bpdu-guard received a BPDU on a port configured as portfast. Most likely someone plugged a switch or hub into an access port. Port is admin-up, oper-down. Need to identify the offending device before clearing the err-disable.",
+  "target": {
+    "device": "SW-U10",
+    "port": 8,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.10",
+    "mac": "AA:BB:CC:10:10:10",
+    "model": "Catalyst 9300-48P",
+    "serial": "FCW2501A100",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U10:Gi1/0/8",
+    "interface_alias": "Gi1/0/8",
+    "port_short_description": "admin=up oper=up speed=1G duplex=full vlan=10 mode=access stp=forwarding",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 10
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=fdb2784883e40310319f5cc0deaad37a",
+  "polled_at": "2026-04-24T13:34:38Z"
+}

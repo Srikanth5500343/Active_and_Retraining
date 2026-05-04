@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010008",
+  "sys_id": "dcb2384883e40310319f5cc0deaad396",
+  "state": "New",
+  "priority": "3 - Moderate",
+  "urgency": "1 - High",
+  "category": "Network",
+  "opened_at": "2026-04-24 06:25:11",
+  "opened_by": "System Administrator",
+  "short_description": "Port 16 on SW-U10 MAC flap - unknown device, possible rogue",
+  "description": "Security monitoring flagged MAC flapping on SW-U10 port 16 (Gi1/0/16) between two MAC addresses (AA:BB:CC:DE:AD:01 and AA:BB:CC:DE:AD:02) over the last 30 minutes. Neither MAC matches inventory. Could be an unauthorized device or a misplaced patch. Physical verification needed to identify what is plugged in.",
+  "target": {
+    "device": "SW-U10",
+    "port": 16,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.10",
+    "mac": "AA:BB:CC:10:10:10",
+    "model": "Catalyst 9300-48P",
+    "serial": "FCW2501A100",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U10:Gi1/0/16",
+    "interface_alias": "Gi1/0/16",
+    "port_short_description": "admin=up oper=up speed=1G duplex=full vlan=10 mode=access stp=forwarding",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 10
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=dcb2384883e40310319f5cc0deaad396",
+  "polled_at": "2026-04-24T13:34:25Z"
+}

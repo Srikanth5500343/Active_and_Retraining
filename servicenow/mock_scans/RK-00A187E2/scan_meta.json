@@ -1,0 +1,15 @@
+{
+  "rackId": "RK-00A187E2",
+  "userId": 5,
+  "imageHash": "00a187e2e68dd1310d4b69538475c9d07dba39e88f66fbe6c1bb3e40da661294",
+  "imagePath": "H:\\dark_mobile\\outputs\\RK-00A187E2\\original_image.jpg",
+  "timestamp": "2026-04-24T09:06:30.289Z",
+  "quality": {
+    "rotation_deg": 0.75,
+    "horiz_avg_deg": -0.09,
+    "horiz_spread_deg": 0,
+    "horiz_line_count": 21
+  },
+  "qualityWarning": null,
+  "qualityWarningMsg": null
+}

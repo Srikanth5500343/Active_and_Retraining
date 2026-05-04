@@ -1,0 +1,47 @@
+{
+  "scan_image": "H:\\dark_mobile\\outputs\\RK-00A187E2\\original_image.jpg",
+  "device_index": 10,
+  "selected_device": {
+    "class_id": 10,
+    "class_name": "Switch",
+    "confidence": 0.8064892888069153,
+    "box": [
+      78,
+      552,
+      746,
+      628
+    ],
+    "center": [
+      412,
+      590
+    ],
+    "source": "general_model",
+    "units": [
+      "u10"
+    ]
+  },
+  "port_classification": {
+    "console": 0,
+    "main": 48,
+    "sfp": 4
+  },
+  "port_info": {
+    "port_number": 15,
+    "port_category": "main",
+    "status": "connected",
+    "class_name": "Connected_port",
+    "confidence": 0.5424279570579529,
+    "location": [
+      293,
+      563,
+      309,
+      583
+    ],
+    "cable_type": "RJ_45 White",
+    "cable_connector": "RJ-45",
+    "cable_color": "White",
+    "cable_confidence": 0.8550837635993958,
+    "port_type": null,
+    "port_type_confidence": null
+  }
+}

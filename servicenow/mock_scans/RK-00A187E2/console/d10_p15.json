@@ -1,0 +1,66 @@
+{
+  "scanId": "RK-00A187E2",
+  "device_index": 10,
+  "port": 15,
+  "interface": "1/0/15",
+  "host": "192.168.1.13",
+  "updated_at": "2026-04-24T09:08:50.473Z",
+  "entries": [
+    {
+      "name": "Manual",
+      "cmd": "show mac address-table interface gigabitEthernet 1/0/15",
+      "output": "MAC Address Table                    \n------------------------------------------------------------  \nMAC                VLAN    Port     Type            Aging    \n---                ----    ----     ----            -----    \ne8:cf:83:3d:e0:e7  1       Gi1/0/15 dynamic         aging    \n\nTotal MAC Addresses for this criterion: 1",
+      "error": null,
+      "startedAt": "2026-04-24T09:07:45.538Z",
+      "source": "manual"
+    },
+    {
+      "name": "Manual",
+      "cmd": "show interface status",
+      "output": "Port      Status      Speed     Duplex    FlowCtrl    Active-Medium   Description\n ----      ------      -----     ------    --------    -------------   -----------\n Gi1/0/1   LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/2   LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/3   LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/4   LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/5   LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/6   LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/7   LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/8   LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/9   LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/10  LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/11  LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/12  LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/13  LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/14  LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/15  LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/16  LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/17  LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/18  LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/19  LinkUp      1000M     Full      Disable     Copper          \n Gi1/0/20  LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/21  LinkDown    N/A       N/A       N/A         Copper          \n Gi1/0/22  LinkDown    N/A       N/A       N/A         Copper          \nPress any key to continue (Q to quit)\u0000",
+      "error": null,
+      "startedAt": "2026-04-24T09:07:50.234Z",
+      "source": "manual"
+    },
+    {
+      "name": "Manual",
+      "cmd": "show interface configuration",
+      "output": "Port      State       Speed     Duplex    FlowCtrl    Description\n ----      -----       -----     ------    --------    -----------\n Gi1/0/1   Enable      Auto      Auto      Disable     \n Gi1/0/2   Enable      Auto      Auto      Disable     \n Gi1/0/3   Enable      Auto      Auto      Disable     \n Gi1/0/4   Enable      Auto      Auto      Disable     \n Gi1/0/5   Enable      Auto      Auto      Disable     \n Gi1/0/6   Enable      Auto      Auto      Disable     \n Gi1/0/7   Enable      Auto      Auto      Disable     \n Gi1/0/8   Enable      Auto      Auto      Disable     \n Gi1/0/9   Enable      Auto      Auto      Disable     \n Gi1/0/10  Enable      Auto      Auto      Disable     \n Gi1/0/11  Enable      Auto      Auto      Disable     \n Gi1/0/12  Enable      Auto      Auto      Disable     \n Gi1/0/13  Enable      Auto      Auto      Disable     \n Gi1/0/14  Enable      Auto      Auto      Disable     \n Gi1/0/15  Enable      Auto      Auto      Disable     \n Gi1/0/16  Enable      Auto      Auto      Disable     \n Gi1/0/17  Enable      Auto      Auto      Disable     \n Gi1/0/18  Enable      Auto      Auto      Disable     \n Gi1/0/19  Enable      Auto      Auto      Disable     \n Gi1/0/20  Enable      Auto      Auto      Disable     \n Gi1/0/21  Enable      Auto      Auto      Disable     \n Gi1/0/22  Enable      Auto      Auto      Disable     \nPress any key to continue (Q to quit)\u0000",
+      "error": null,
+      "startedAt": "2026-04-24T09:08:12.500Z",
+      "source": "manual"
+    },
+    {
+      "name": "Manual",
+      "cmd": "show power inline",
+      "output": "System Power Limit: 250.0w\n System Power Consumption: 0.0w\n System Power Remain: 250.0w",
+      "error": null,
+      "startedAt": "2026-04-24T09:08:33.981Z",
+      "source": "manual"
+    },
+    {
+      "name": "Manual",
+      "cmd": "show spanning-tree interface gigabitEthernet 1/0/15",
+      "output": "Interface information is not available\n  Spanning tree is disabled",
+      "error": null,
+      "startedAt": "2026-04-24T09:08:39.956Z",
+      "source": "manual"
+    },
+    {
+      "name": "Manual",
+      "cmd": "show cable-diagnostics interface gigabitEthernet 1/0/15",
+      "output": "Port        Pair      Status      Length         Error          \nGi1/0/15    Pair-A    Normal      26 m           ---            \n            Pair-B    Normal      26 m           ---            \n            Pair-C    Normal      26 m           ---            \n            Pair-D    Normal      26 m           ---",
+      "error": null,
+      "startedAt": "2026-04-24T09:08:44.653Z",
+      "source": "manual"
+    },
+    {
+      "name": "Manual",
+      "cmd": "show system-info",
+      "output": "System Description   - JetStream 28-Port Gigabit Smart Switch with 24-Port PoE+\n System Name          - TL-SG2428P\n System Location      - Hong Kong\n Contact Information  - www.tp-link.com\n Hardware Version     - TL-SG2428P 5.0\n Software Version     - 5.0.2 Build 20220909 Rel.75392\n Bootloader Version   - TP-LINK  BOOTUTIL(v1.0.0)\n Mac Address          - 30-DE-4B-23-70-AC\n Serial Number        - 222B0K4000121\n System Time          - 2026-04-24 17:07:58\n Running Time         - 65 day - 22 hour - 40 min - 36 sec",
+      "error": null,
+      "startedAt": "2026-04-24T09:08:49.505Z",
+      "source": "manual"
+    }
+  ]
+}
