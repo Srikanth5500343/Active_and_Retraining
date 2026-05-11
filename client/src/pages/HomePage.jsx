@@ -32,7 +32,7 @@ const IcCamera = (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
    parent's --rot-y rotates them; each panel has a back/side face
    via pseudo-elements so depth is visible from any angle.
    ──────────────────────────────────────────────────────────────────── */
-function Rack3D({ active }) {
+function Rack3D({ active, port }) {
   return (
     <div className={styles.rack3d}>
       {/* Frame edges (top + side bars to suggest the rack chassis) */}
@@ -47,9 +47,16 @@ function Rack3D({ active }) {
           <div className={styles.uFace}>
             <div className={styles.uTag}>S-48</div>
             <div className={styles.uPorts}>
-              {Array.from({ length: 24 }).map((_, i) => (
-                <span key={i} className={styles.uPort} style={{ animationDelay: `${(i * 80) % 2400}ms` }} />
-              ))}
+              {Array.from({ length: 24 }).map((_, i) => {
+                const isTarget = active === 'S-48' && port === i + 1;
+                return (
+                  <span
+                    key={i}
+                    className={`${styles.uPort} ${isTarget ? styles.uPortTarget : ''}`}
+                    style={{ animationDelay: `${(i * 80) % 2400}ms` }}
+                  />
+                );
+              })}
             </div>
             <div className={styles.uLed} />
           </div>
@@ -115,9 +122,15 @@ function Rack3D({ active }) {
           <div className={styles.uFace}>
             <div className={styles.uTag}>PDU-A</div>
             <div className={styles.uOutlets}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <span key={i} className={styles.uOutlet} />
-              ))}
+              {Array.from({ length: 6 }).map((_, i) => {
+                const isTarget = active === 'PDU-A' && port === i + 1;
+                return (
+                  <span
+                    key={i}
+                    className={`${styles.uOutlet} ${isTarget ? styles.uOutletTarget : ''}`}
+                  />
+                );
+              })}
             </div>
             <div className={`${styles.uLed} ${styles.uLedAmber}`} />
           </div>
@@ -144,8 +157,8 @@ const RACKS = [
     ],
     incident: {
       number: 'INC0042', priority: 'P3',
-      device: 'U10-PDU01', port: 6,
-      summary: 'Outlet 6 · 87% load · breaker risk',
+      device: 'U01-SW01', port: 14,
+      summary: 'Port 14 link flapping · 4% packet loss',
       cmdb: { state: 'open', summary: { added_devices: 0, changed_devices: 1, added_ports: 0 }, opened: '2h ago' },
     },
   },
@@ -172,21 +185,19 @@ const RACKS = [
   },
 ];
 
-/* Sibling racks + their network status */
-const NET_NODES = [
-  { id: 'R-101', label: 'R-101 · Core',   status: 'ok',   ports: 48, links: 6 },
-  { id: 'R-102', label: 'R-102 · Edge A', status: 'ok',   ports: 24, links: 4 },
-  { id: 'R-103', label: 'R-103 · Edge B', status: 'warn', ports: 24, links: 3 },
-  { id: 'R-104', label: 'R-104 · DMZ',    status: 'down', ports: 12, links: 0 },
-];
-
-/* The 5 SCREENS that loop when you tap the rack:
+/* The SCREENS that loop when you tap the rack:
      home → controls → scan → network → alert → home → ...
    The 3 feature screens (scan/network/alert) are also reachable
    directly by tapping their tile in controls. */
-const SCREENS    = ['home', 'controls', 'scan', 'network', 'alert'];
-const FLOW       = ['scan', 'network', 'alert'];
-const FLOW_LABEL = { scan: 'AR Scan', network: 'Topology', alert: 'Maintenance' };
+const SCREENS    = ['home', 'controls', 'scan', 'alert'];
+const FLOW       = ['scan', 'alert'];
+/* Each non-home view is one step of a simple 3-step workflow that
+   the user walks through — see the problem, find the device, fix it. */
+const STEP_LABEL = {
+  controls: 'Step 1 · See the issue',
+  scan:     'Step 2 · Find the device',
+  alert:    'Step 3 · Locate the port',
+};
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -265,10 +276,9 @@ export default function HomePage() {
         </button>
       )}
 
-      {/* Mode label (active views) */}
+      {/* Mode label — the step number + plain-English purpose of the view */}
       <div className={styles.modeLabel}>
-        {view === 'controls' && (<><span className={styles.modeBold}>{rack.name}</span> <span className={styles.modeLight}>{rack.chassis}</span></>)}
-        {inFlow && (<span className={styles.modeBold}>{FLOW_LABEL[view]}</span>)}
+        {STEP_LABEL[view] && (<span className={styles.modeBold}>{STEP_LABEL[view]}</span>)}
       </div>
 
       {/* 5-screen indicator dots — show position in the loop.
@@ -283,8 +293,7 @@ export default function HomePage() {
 
 
       {/* ═══════════════════════════════════════════════════════════
-          HOME — uses the app's own theme (white in light, midnight in dark)
-          Header: [logo] Hey {name}      [theme toggle]
+          HOME — clean, compact, uniform layout with hero rack image
           ═══════════════════════════════════════════════════════════ */}
       <div className={styles.homeView}>
         <header className={styles.homeHead}>
@@ -300,34 +309,23 @@ export default function HomePage() {
           <ThemeToggle />
         </header>
 
-        {/* Rack hero card — real RackTrack label format.
-            The home view is the calm "scan entry point" — incident state
-            shows up later in the controls/alert views. We deliberately
-            don't render the red incident chip or the resolve cue here,
-            so the home stays a clean scan affordance. */}
-        <button type="button" className={styles.rackCard} onClick={goView('controls')}>
-          <div className={styles.rackCardHead}>
-            <div className={styles.rackCardName}>{rack.id}</div>
-          </div>
-
-          <div className={styles.rackCardSlot} aria-hidden="true">
-            {/* The 3D rack lives in the floating .rackStage layer */}
-          </div>
+        {/* Hero rack image — floating, no container, no labels.
+            Ripple rings sit beneath the rack to signal "tap me". */}
+        <button
+          type="button"
+          className={styles.rackHero}
+          onClick={goView('controls')}
+          aria-label={`Open ${rack.id}`}
+        >
+          <span className={styles.rackRipple} aria-hidden="true">
+            <span className={styles.rackRippleRing} />
+            <span className={styles.rackRippleRing} />
+            <span className={styles.rackRippleRing} />
+          </span>
+          <img src="/hero.png" alt="" className={styles.rackHeroImg} />
         </button>
 
-        {/* Sequential rack nav */}
-        <div className={styles.rackNav}>
-          <button type="button" className={styles.rackNavBtn} onClick={goPrev} aria-label="Previous rack"><ChevL /></button>
-          <div className={styles.rackNavDots}>
-            {RACKS.map((r, i) => (
-              <span key={r.id} className={`${styles.rackNavDot} ${i === idx ? styles.rackNavDotOn : ''}`} />
-            ))}
-          </div>
-          <button type="button" className={styles.rackNavBtn} onClick={goNext} aria-label="Next rack"><ChevR /></button>
-        </div>
-
-        {/* Primary CTA — always the clean scan entry on home. Incident
-            details (if any) surface in the controls/alert views, not here. */}
+        {/* Two uniform action cards — same shape, primary filled, secondary outlined */}
         <button
           type="button"
           className={styles.primaryCta}
@@ -335,8 +333,8 @@ export default function HomePage() {
         >
           <span className={styles.primaryCtaIcon}><IcCamera /></span>
           <span className={styles.primaryCtaText}>
-            <span className={styles.primaryCtaTitle}>Start a new scan</span>
-            <span className={styles.primaryCtaSub}>Point your camera at the rack</span>
+            <span className={styles.primaryCtaTitle}>Snap a rack</span>
+            <span className={styles.primaryCtaSub}>Identify every device in seconds</span>
           </span>
           <span className={styles.primaryCtaGo}><ArrowR /></span>
         </button>
@@ -353,93 +351,95 @@ export default function HomePage() {
           ═══════════════════════════════════════════════════════════ */}
       <div className={styles.controlsView}>
 
-        {/* Active incident hero — only when there's one open */}
+        {/* Step 1 panel — sophisticated, layered, single cohesive card.
+            Ambient glow inside, iOS-style rounded icon tile, big typographic
+            hierarchy, refined inline CTA. Restrained colour: severity reads
+            from the ribbon, the icon tint, and the chip — not the whole card. */}
         {rack.incident ? (
-          <div className={`${styles.incHero} ${styles[`incHero_${rack.incident.priority}`]}`}>
-            <div className={styles.incHeroHead}>
-              <span className={styles.incHeroPri}>{rack.incident.priority}</span>
-              <span className={styles.incHeroNum}>{rack.incident.number}</span>
-              <span className={styles.incHeroState}>
-                <span className={styles.incHeroStateDot} />
-                {rack.incident.cmdb.state === 'open' ? 'pending' : rack.incident.cmdb.state}
+          <div className={`${styles.issuePanel} ${styles[`issuePanel_${rack.incident.priority}`]}`}>
+            {/* Ambient glow inside the card */}
+            <span className={styles.issuePanelGlow} aria-hidden="true" />
+
+            {/* Top meta strip */}
+            <div className={styles.issuePanelMeta}>
+              <span className={styles.issuePanelRackChip}>
+                <span className={styles.issuePanelRackChipId}>{rack.id}</span>
+                <span className={styles.issuePanelRackChipDot} />
+                <span>{rack.role}</span>
+                <span className={styles.issuePanelRackChipDot} />
+                <span>{rack.dc}</span>
+              </span>
+              <span className={styles.issuePanelPri}>
+                <span className={styles.issuePanelPriDot} />
+                {rack.incident.priority} · {rack.incident.number}
               </span>
             </div>
-            <div className={styles.incHeroTarget}>
-              <span className={styles.incHeroTag}>{rack.incident.device}</span>
-              <span className={styles.incHeroSep}>:</span>
-              <span className={styles.incHeroPort}>port&nbsp;{rack.incident.port}</span>
+
+            {/* Hero row — icon tile + headline stack */}
+            <div className={styles.issuePanelHero}>
+              <div className={styles.issuePanelIcon}>
+                <span className={styles.issuePanelIconRing} aria-hidden="true" />
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 9v4"/><path d="M12 17h.01"/>
+                  <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                </svg>
+              </div>
+              <div className={styles.issuePanelHeroText}>
+                <span className={styles.issuePanelEyebrow}>Heads up</span>
+                <h2 className={styles.issuePanelTitle}>One of your devices needs attention</h2>
+                <div className={styles.issuePanelTarget}>
+                  <span className={styles.issuePanelTargetIcon}>
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/>
+                    </svg>
+                  </span>
+                  Port&nbsp;<b>{rack.incident.port}</b>&nbsp;on&nbsp;<span className={styles.issuePanelTag}>{rack.incident.device}</span>
+                </div>
+              </div>
             </div>
-            <div className={styles.incHeroDesc}>{rack.incident.summary}</div>
-            <button type="button" className={styles.incHeroAction} onClick={goView('scan')}>
-              <span className={styles.incHeroActionDot} />
-              Locate on rack
-              <ArrowR className={styles.incHeroActionGo} />
+
+            {/* Inline action */}
+            <button type="button" className={styles.issuePanelAction} onClick={goView('scan')}>
+              <span className={styles.issuePanelActionText}>Find it on the rack</span>
+              <span className={styles.issuePanelActionArrow}><ArrowR /></span>
             </button>
           </div>
         ) : (
-          <div className={`${styles.incHero} ${styles.incHero_clear}`}>
-            <div className={styles.incHeroHead}>
-              <span className={styles.incHeroStateClear}>
-                <span className={styles.incHeroStateDot} />
-                CLEAR
+          <div className={`${styles.issuePanel} ${styles.issuePanel_clear}`}>
+            <span className={styles.issuePanelGlow} aria-hidden="true" />
+            <div className={styles.issuePanelMeta}>
+              <span className={styles.issuePanelRackChip}>
+                <span className={styles.issuePanelRackChipId}>{rack.id}</span>
+                <span className={styles.issuePanelRackChipDot} />
+                <span>{rack.role}</span>
+                <span className={styles.issuePanelRackChipDot} />
+                <span>{rack.dc}</span>
+              </span>
+              <span className={`${styles.issuePanelPri} ${styles.issuePanelPri_ok}`}>
+                <span className={styles.issuePanelPriDot} />
+                Healthy
               </span>
             </div>
-            <div className={styles.incHeroTarget}>No active incidents</div>
-            <div className={styles.incHeroDesc}>{rack.id} is healthy · last scan synced</div>
-            <button type="button" className={styles.incHeroAction} onClick={goView('scan')}>
-              <span className={styles.incHeroActionDot} />
-              Run a scan anyway
-              <ArrowR className={styles.incHeroActionGo} />
+            <div className={styles.issuePanelHero}>
+              <div className={styles.issuePanelIcon}>
+                <span className={styles.issuePanelIconRing} aria-hidden="true" />
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </div>
+              <div className={styles.issuePanelHeroText}>
+                <span className={styles.issuePanelEyebrow}>All clear</span>
+                <h2 className={styles.issuePanelTitle}>Everything looks good</h2>
+                <div className={styles.issuePanelTarget}>No issues on this rack right now.</div>
+              </div>
+            </div>
+            <button type="button" className={styles.issuePanelAction} onClick={goView('scan')}>
+              <span className={styles.issuePanelActionText}>Scan anyway</span>
+              <span className={styles.issuePanelActionArrow}><ArrowR /></span>
             </button>
           </div>
         )}
 
-        {/* Tool row — 3 small chips, NOT 3 hero cards */}
-        <div className={styles.toolRow}>
-          <button type="button" className={styles.tool} onClick={goView('scan')}>
-            <span className={styles.toolIcon}>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-                <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-                <circle cx="12" cy="12" r="4"/>
-              </svg>
-            </span>
-            <span className={styles.toolLabel}>Scan</span>
-            <span className={styles.toolMeta}>camera</span>
-          </button>
-          <button type="button" className={styles.tool} onClick={goView('network')}>
-            <span className={styles.toolIcon}>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="5"  r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/>
-                <line x1="12" y1="7.5" x2="6.5"  y2="17"/><line x1="12" y1="7.5" x2="17.5" y2="17"/>
-                <line x1="7.5" y1="19" x2="16.5" y2="19"/>
-              </svg>
-            </span>
-            <span className={styles.toolLabel}>Topology</span>
-            <span className={styles.toolMeta}>4 racks</span>
-          </button>
-          <button type="button" className={styles.tool} onClick={goView('alert')}>
-            <span className={styles.toolIcon}>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="6"  width="18" height="4" rx="1"/>
-                <rect x="3" y="14" width="18" height="4" rx="1"/>
-                <circle cx="18" cy="8"  r="0.8" fill="currentColor"/>
-                <circle cx="18" cy="16" r="0.8" fill="currentColor"/>
-              </svg>
-            </span>
-            <span className={styles.toolLabel}>Devices</span>
-            <span className={styles.toolMeta}>{rack.devices.length}</span>
-          </button>
-        </div>
-
-        {/* Tiny rack identity strip below — context for which rack you're working on */}
-        <div className={styles.rackStrip}>
-          <span className={styles.rackStripId}>{rack.id}</span>
-          <span className={styles.rackStripDot} />
-          <span className={styles.rackStripRole}>{rack.role}</span>
-          <span className={styles.rackStripDot} />
-          <span className={styles.rackStripDc}>{rack.dc}</span>
-        </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════
@@ -454,11 +454,22 @@ export default function HomePage() {
         style={{ '--rot-y': `${rotY}deg` }}
       >
         <div className={styles.rackSpot} aria-hidden="true" />
-        <Rack3D active={view === 'alert' ? 'PDU-A' : null} />
-
-        {/* Alert pins — only in alert view */}
-        <span className={`${styles.alertPin} ${styles.alertPin1}`}><span>!</span></span>
-        <span className={`${styles.alertPin} ${styles.alertPin2}`}><span>!</span></span>
+        {(() => {
+          /* Map the real incident device tag to its visible rack unit. The
+             same unit is highlighted in both Step 2 (find the device) and
+             Step 3 (locate the port). The exact port glow only kicks in
+             on Step 3 so Step 2 stays a clean "this is the device" view. */
+          const DEVICE_UNIT = {
+            'U01-SW01': 'S-48',
+            'U02-SW02': 'S-24',
+            'U05-FW01': 'F-20',
+            'U10-PDU01': 'PDU-A',
+          };
+          const showHighlight = (view === 'scan' || view === 'alert') && rack.incident;
+          const activeUnit = showHighlight ? DEVICE_UNIT[rack.incident.device] || null : null;
+          const activePort = view === 'alert' ? rack.incident?.port : null;
+          return <Rack3D active={activeUnit} port={activePort} />;
+        })()}
 
         {/* Network mode overlay lives in the .netCanvas layer below — out of the rack stage */}
       </div>
@@ -472,97 +483,33 @@ export default function HomePage() {
       <div className={`${styles.bottomCard} ${styles.alertCard}`}>
         {rack.incident ? (
           <>
-            <div className={styles.cmdbHead}>
-              <div className={styles.cmdbBadge}>
-                <span className={styles.cmdbBadgeDot} />
-                ServiceNow CMDB
+            <div className={styles.portCard}>
+              {/* Big port-number badge — this is the answer to "where do I fix it" */}
+              <div className={styles.portBadge}>
+                <span className={styles.portBadgeLabel}>PORT</span>
+                <span className={styles.portBadgeNum}>{rack.incident.port}</span>
               </div>
-              <div className={styles.cmdbState}>{rack.incident.cmdb.state} · {rack.incident.cmdb.opened}</div>
+
+              <div className={styles.portInfo}>
+                <div className={styles.portInfoDevice}>{rack.incident.device}</div>
+                <div className={styles.portInfoHint}>
+                  This is the exact port to fix. It's highlighted on the rack above.
+                </div>
+              </div>
             </div>
-            <div className={styles.cmdbTitle}>
-              <span className={styles.cmdbTitleNum}>{rack.incident.number}</span>
-              <span className={styles.cmdbTitleSep}>·</span>
-              <span className={styles.cmdbTitlePri}>{rack.incident.priority}</span>
-            </div>
-            <div className={styles.cmdbSummary}>{rack.incident.summary}</div>
-            <div className={styles.cmdbChanges}>
-              <span><strong>+{rack.incident.cmdb.summary.added_devices}</strong> devices</span>
-              <span className={styles.cmdbChangesSep}>·</span>
-              <span><strong>~{rack.incident.cmdb.summary.changed_devices}</strong> changed</span>
-              <span className={styles.cmdbChangesSep}>·</span>
-              <span><strong>+{rack.incident.cmdb.summary.added_ports}</strong> ports</span>
-            </div>
-            <div className={styles.cmdbActions}>
-              <button type="button" className={styles.cmdbBtn} onClick={() => navigate('/scan')}>
-                Locate <ArrowR />
-              </button>
-              <button type="button" className={styles.cmdbBtnGhost}>Refresh</button>
-              <button type="button" className={styles.cmdbBtnGhost}>View on SN</button>
-            </div>
+
           </>
         ) : (
           <div className={styles.cmdbClear}>
             <span className={styles.cmdbClearDot} />
             <div>
-              <div className={styles.cmdbClearHead}>No open incidents</div>
-              <div className={styles.cmdbClearSub}>{rack.id} synced to CMDB · last scan ok</div>
+              <div className={styles.cmdbClearHead}>Nothing to fix right now</div>
+              <div className={styles.cmdbClearSub}>{rack.id} is healthy and synced with ServiceNow.</div>
             </div>
           </div>
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          NETWORK view — full-canvas graph spreading from the rack
-          (which sits on the LEFT edge) outward to the right.
-          NOT a list card.
-          ═══════════════════════════════════════════════════════════ */}
-      <div className={styles.netCanvas}>
-        <svg className={styles.netCanvasSvg} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          {NET_NODES.map((n, i) => {
-            const cx = 22;
-            const cy = 50;
-            const positions = [
-              { x: 70, y: 22 },
-              { x: 84, y: 50 },
-              { x: 70, y: 78 },
-              { x: 50, y: 92 },
-            ][i] || { x: 50, y: 50 };
-            const stroke =
-              n.status === 'down' ? 'rgba(239,68,68,0.85)' :
-              n.status === 'warn' ? 'rgba(245,158,11,0.85)' :
-              'rgba(99,102,241,0.65)';
-            return (
-              <line key={`canvasline-${n.id}`}
-                x1={cx} y1={cy} x2={positions.x} y2={positions.y}
-                stroke={stroke} strokeWidth="0.4"
-                strokeDasharray={n.status === 'down' ? '0.8 1.4' : '1.2 2.0'}
-                className={styles.netLine}
-                style={{ animationDelay: `${i * 0.10}s` }} />
-            );
-          })}
-        </svg>
-        {NET_NODES.map((n, i) => {
-          const positions = [
-            { x: 70, y: 22 },
-            { x: 84, y: 50 },
-            { x: 70, y: 78 },
-            { x: 50, y: 92 },
-          ][i] || { x: 50, y: 50 };
-          return (
-            <span key={`canvasnode-${n.id}`}
-              className={`${styles.netNode} ${styles[`netNode_${n.status}`]}`}
-              style={{ left: `${positions.x}%`, top: `${positions.y}%`, animationDelay: `${0.3 + i * 0.10}s` }}>
-              <span className={styles.netNodeDot} />
-              <span>{n.id}</span>
-            </span>
-          );
-        })}
-        <div className={styles.netStrip}>
-          <div><strong>{NET_NODES.length}</strong><span> racks</span></div>
-          <div><strong>{NET_NODES.reduce((a, n) => a + n.links, 0)}</strong><span> links</span></div>
-          <div className={styles.netStripWarn}><strong>1</strong><span> down</span></div>
-        </div>
-      </div>
 
       {/* ═══════════════════════════════════════════════════════════
           SCAN view — what RackTrack actually does on /scan:
@@ -576,8 +523,8 @@ export default function HomePage() {
           <span className={styles.scanHudBarFill} />
           <span className={styles.scanHudBarLabel}>
             {rack.incident
-              ? `LOCATING ${rack.incident.device} · PORT ${rack.incident.port}`
-              : `SCANNING · ${rack.devices.length} / ${rack.devices.length} identified`}
+              ? `Looking for ${rack.incident.device} in this rack`
+              : `Found ${rack.devices.length} devices in this rack`}
           </span>
         </div>
 
@@ -598,8 +545,8 @@ export default function HomePage() {
           );
         })}
 
-        <button type="button" className={styles.scanHudCta} onClick={() => navigate('/ar-scan')}>
-          Open AR scan <ArrowR />
+        <button type="button" className={styles.scanHudCta} onClick={goView('alert')}>
+          Find the port <ArrowR />
         </button>
       </div>
 

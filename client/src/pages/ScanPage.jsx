@@ -658,6 +658,16 @@ export default function ScanPage() {
   const [pendingResult, setPendingResult] = useState(null);
   const [ocrLabels, setOcrLabels] = useState(null);
 
+  // ── Rack-identity verification (ticket-mode only) ──
+  // When a ticket is selected, fetch the canonical rack metadata (site/row/
+  // position + expected labels) so we can tell the tech *which* physical rack
+  // to photograph. On upload, the server compares the uploaded image's OCR
+  // labels against this expected set; if they don't match we surface a
+  // rejection modal instead of proceeding to analyze.
+  const [expectedRack, setExpectedRack] = useState(null);     // payload from GET expected-rack
+  const [verifying,    setVerifying]    = useState(false);
+  const [verifyReject, setVerifyReject] = useState(null);     // 409 payload — detected / expected diff
+
   const STEPS = ['Preprocessing image…','Detecting rack boundaries…','Identifying components…','Mapping ports and cables…','Locating incident target…'];
 
   // On mount, pull the list of active tickets from servicenow_inbox via our Node API.
@@ -675,10 +685,30 @@ export default function ScanPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const analyze = async ({ override = false } = {}) => {
+  // When a ticket is selected, fetch the rack-identity record so we can show
+  // the tech the site/row/position + expected labels *before* they pick an
+  // image. Server's CMDB rack file (cmdb_racks/<rack>.json) backs this.
+  useEffect(() => {
+    setExpectedRack(null);
+    setVerifyReject(null);
+    if (!ticket?.incident_number) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authFetch(apiUrl(`/api/incidents/${encodeURIComponent(ticket.incident_number)}/expected-rack`));
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (!cancelled && data?.ok) setExpectedRack(data);
+      } catch { /* no CMDB rack record — skip identity check, fall through */ }
+    })();
+    return () => { cancelled = true; };
+  }, [ticket?.incident_number]);
+
+  const analyze = async ({ override = false, verifiedSkip = false } = {}) => {
     if (!file) return;
     setError(null);
     setQualityChoice(null);
+    setVerifyReject(null);
 
     if (!override) {
       const check = await validateMedia(file);
@@ -688,6 +718,39 @@ export default function ScanPage() {
         } else {
           setError(check.error);
         }
+        return;
+      }
+    }
+
+    // Rack-identity verification (ticket mode + CMDB rack record present).
+    // Skip when the caller already passed verification once (verifiedSkip)
+    // or when there's no CMDB rack record to compare against.
+    const ticketActive = !!ticket && ticket.target && ticket.target.device && ticket.target.port != null;
+    const shouldVerify = ticketActive && expectedRack?.rack?.rack_name && !verifiedSkip
+      && !((file?.type || '').startsWith('video/'));
+    let verifiedPassed = verifiedSkip;
+    if (shouldVerify) {
+      setVerifying(true);
+      try {
+        const vb = new FormData();
+        vb.append('image', file);
+        const vRes = await authFetch(
+          apiUrl(`/api/incidents/${encodeURIComponent(ticket.incident_number)}/verify-rack`),
+          { method: 'POST', body: vb },
+        );
+        const vData = await vRes.json().catch(() => ({}));
+        setVerifying(false);
+        if (vRes.status === 409 || vData.ok === false) {
+          setVerifyReject(vData);
+          return;
+        }
+        // ok:true covers both the label-match case and the soft-mode
+        // no-labels-detected fallback (server falls back to our
+        // synthesized pattern downstream). Either way, proceed silently.
+        verifiedPassed = true;
+      } catch (err) {
+        setVerifying(false);
+        setError(`Identity check failed: ${err.message}`);
         return;
       }
     }
@@ -721,6 +784,10 @@ export default function ScanPage() {
       const useTicketMode = ticketActive;
       if (useTicketMode) {
         body.append('incident_number', ticket.incident_number);
+        // Waive the server-side identity gate when we've already verified
+        // (or the user manually confirmed). The server still re-runs the
+        // check otherwise and rejects with 409 on mismatch.
+        if (verifiedPassed) body.append('verified', '1');
       }
       const endpoint = useMultiRack
         ? '/api/analyze-video'
@@ -732,6 +799,11 @@ export default function ScanPage() {
         if (data.retryable) {
           clearInterval(ticker); setLoading(false); setProgress(0);
           setQualityChoice({ error: data.error || 'Image quality issue.', kind: data.kind || 'quality' });
+          return;
+        }
+        if (res.status === 409 && data.error === 'rack_mismatch') {
+          clearInterval(ticker); setLoading(false); setProgress(0);
+          setVerifyReject(data);
           return;
         }
         throw new Error(data.error || 'Analysis failed. Try again.');
@@ -895,6 +967,60 @@ export default function ScanPage() {
             </button>
           ))}
         </div>
+
+        {/* Expected-rack banner — only shows in ticket mode when a CMDB rack
+            record exists for the ticket. Tells the tech which physical rack
+            to photograph; the server will verify the upload's OCR labels
+            against the expected list before running analyze. */}
+        {ticket && expectedRack?.rack?.rack_name && (
+          <div style={{
+            margin:'0 0 12px',
+            padding:'12px 14px',
+            borderRadius:10,
+            border:'1px solid rgba(59,130,246,0.45)',
+            background:'rgba(59,130,246,0.07)',
+            display:'flex',
+            flexDirection:'column',
+            gap:6,
+          }}>
+            <div style={{
+              fontSize:10,
+              fontWeight:700,
+              letterSpacing:'0.10em',
+              color:'#60a5fa',
+              textTransform:'uppercase',
+            }}>
+              Photograph this rack
+            </div>
+            <div style={{fontSize:14,fontWeight:600,color:'var(--text, #e5e7eb)'}}>
+              {expectedRack.rack.rack_name}
+            </div>
+            <div style={{fontSize:12,color:'var(--muted, #9ca3af)',display:'flex',flexWrap:'wrap',gap:8}}>
+              {expectedRack.rack.site     && <span>Site: <b style={{color:'#e5e7eb'}}>{expectedRack.rack.site}</b></span>}
+              {expectedRack.rack.row      && <span>Row: <b style={{color:'#e5e7eb'}}>{expectedRack.rack.row}</b></span>}
+              {expectedRack.rack.position && <span>Position: <b style={{color:'#e5e7eb'}}>{expectedRack.rack.position}</b></span>}
+              {expectedRack.rack.u_position && <span>Target U: <b style={{color:'#e5e7eb'}}>U{String(expectedRack.rack.u_position).padStart(2,'0')}</b></span>}
+            </div>
+            {Array.isArray(expectedRack.rack.expected_labels) && expectedRack.rack.expected_labels.length > 0 && (
+              <details style={{fontSize:11,color:'var(--muted, #9ca3af)'}}>
+                <summary style={{cursor:'pointer',userSelect:'none'}}>
+                  Expected labels ({expectedRack.rack.expected_labels.length})
+                </summary>
+                <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>
+                  {[...new Set(expectedRack.rack.expected_labels)].map(l => (
+                    <code key={l} style={{
+                      padding:'2px 6px',
+                      borderRadius:4,
+                      background:'rgba(255,255,255,0.06)',
+                      color:'#cbd5e1',
+                      fontSize:10,
+                    }}>{l}</code>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        )}
 
         {/* Media box */}
         <div className={styles.mediaBox}>
@@ -1139,6 +1265,7 @@ export default function ScanPage() {
       </div>
 
       {loading && <AnalyzingOverlay progress={progress} step={step}/>}
+      {verifying && <AnalyzingOverlay progress={50} step="Verifying rack identity…"/>}
       {showRearPrompt && pendingResult && (
         <RearImagePrompt
           rackId={pendingResult.result.rackId}
@@ -1146,6 +1273,105 @@ export default function ScanPage() {
           onSkip={handleRearImageSkip}
         />
       )}
+
+      {/* Rejection modal — fired when the uploaded image's OCR labels don't
+          match the ticket's expected rack. Shows detected vs expected and
+          asks the tech to upload the correct rack. The "no labels detected"
+          path falls through silently (server's soft mode accepts and the
+          synthesized U-prefix pattern is used downstream). */}
+      {verifyReject && (
+        <VerifyRejectModal
+          payload={verifyReject}
+          onRetake={() => { setVerifyReject(null); setFile(null); }}
+          onClose={()  => setVerifyReject(null)}
+        />
+      )}
     </div>
   );
 }
+
+// ── Verification modals ─────────────────────────────────────────
+// Both modals share the same dark/overlay style — kept inline so they're
+// trivially co-located with the verification logic in this page.
+
+function VerifyRejectModal({ payload, onRetake, onClose }) {
+  const detected = Array.isArray(payload?.detected) ? payload.detected : [];
+  const expected = Array.isArray(payload?.expected) ? payload.expected : [];
+  const expectedUnique = [...new Set(expected)];
+  return (
+    <div style={modalBackdrop} onClick={onClose}>
+      <div style={modalDialog} onClick={(e) => e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:'#ef4444',boxShadow:'0 0 8px rgba(239,68,68,0.8)'}} />
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.10em',color:'#ef4444',textTransform:'uppercase'}}>
+            Wrong rack
+          </div>
+        </div>
+        <h2 style={{margin:'0 0 8px',fontSize:18,fontWeight:600,color:'var(--text, #e5e7eb)'}}>
+          This isn't <b>{payload?.expected_rack_name || 'the expected rack'}</b>
+        </h2>
+        <p style={{margin:'0 0 16px',fontSize:13,color:'var(--muted, #9ca3af)',lineHeight:1.5}}>
+          {payload?.message || `The labels read from this image don't match the rack on the incident. Upload the correct rack photo to continue.`}
+        </p>
+
+        <div style={{display:'flex',gap:12,marginBottom:16}}>
+          <div style={diffCol}>
+            <div style={diffHeading}>Detected on your image</div>
+            {detected.length === 0
+              ? <div style={diffEmpty}>No labels read</div>
+              : <div style={chipWrap}>
+                  {detected.map(l => <code key={l} style={{...chip, background:'rgba(239,68,68,0.10)', color:'#fca5a5'}}>{l}</code>)}
+                </div>}
+          </div>
+          <div style={diffCol}>
+            <div style={diffHeading}>Expected on the rack</div>
+            {expectedUnique.length === 0
+              ? <div style={diffEmpty}>—</div>
+              : <div style={chipWrap}>
+                  {expectedUnique.map(l => <code key={l} style={{...chip, background:'rgba(34,197,94,0.10)', color:'#86efac'}}>{l}</code>)}
+                </div>}
+          </div>
+        </div>
+
+        <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+          <button type="button" onClick={onClose} style={btnGhost}>Dismiss</button>
+          <button type="button" onClick={onRetake} style={btnPrimary}>Upload correct rack</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const modalBackdrop = {
+  position:'fixed', inset:0, zIndex:100,
+  background:'rgba(0,0,0,0.7)', backdropFilter:'blur(4px)',
+  display:'flex', alignItems:'center', justifyContent:'center', padding:16,
+};
+const modalDialog = {
+  width:'100%', maxWidth:520,
+  background:'#0f1419', border:'1px solid rgba(255,255,255,0.08)',
+  borderRadius:14, padding:'20px 22px',
+  boxShadow:'0 24px 48px rgba(0,0,0,0.6)',
+};
+const diffCol = {
+  flex:1, padding:10, borderRadius:8,
+  background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)',
+};
+const diffHeading = {
+  fontSize:10, fontWeight:700, letterSpacing:'0.08em',
+  color:'var(--muted, #9ca3af)', textTransform:'uppercase', marginBottom:6,
+};
+const diffEmpty = { fontSize:11, color:'var(--muted, #6b7280)', fontStyle:'italic' };
+const chipWrap  = { display:'flex', flexWrap:'wrap', gap:4 };
+const chip = {
+  padding:'2px 6px', borderRadius:4, fontSize:10, fontFamily:'var(--mono, monospace)',
+};
+const btnPrimary = {
+  padding:'9px 16px', borderRadius:8, border:'none', cursor:'pointer',
+  background:'#3b82f6', color:'#fff', fontSize:13, fontWeight:600,
+};
+const btnGhost = {
+  padding:'9px 16px', borderRadius:8, cursor:'pointer',
+  background:'transparent', color:'var(--text, #e5e7eb)',
+  border:'1px solid rgba(255,255,255,0.15)', fontSize:13, fontWeight:600,
+};

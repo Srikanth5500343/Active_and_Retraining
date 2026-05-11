@@ -24,10 +24,11 @@ import json
 import argparse
 import hashlib
 import time
-from urllib.parse import urlparse, quote_plus
+from urllib.parse import urlparse, quote_plus, urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from bs4 import BeautifulSoup
+import requests as _req  # always available; used for the image-validation session
 
 # ── Dependencies (same as all_vendor.py) ──────────────────────
 try:
@@ -36,7 +37,6 @@ try:
         browser={"browser": "chrome", "platform": "windows", "mobile": False}
     )
 except ImportError:
-    import requests as _req
     SESSION = _req.Session()
     SESSION.headers.update({"User-Agent": "Mozilla/5.0"})
 
@@ -205,6 +205,264 @@ def _ddg_search(query, max_results=8):
     return []
 
 
+# DuckDuckGo image-search fallback. Used when page scraping fails to
+# return a per-SKU image (Amazon blocks us, FS.com PDPs return 202,
+# random blog posts have no product photos, etc). Returns up to N
+# candidate URLs in ranked order so the caller can validate each and
+# fall through to the next when the top hit is hot-link-blocked.
+def _ddg_image_search(query, max_results=6):
+    if not _HAS_DDGS:
+        return []
+    try:
+        hits = list(DDGS().images(query, max_results=max_results,
+                                  safesearch="off"))
+    except Exception:
+        return []
+    out = []
+    for h in hits or []:
+        url = h.get("image") or h.get("thumbnail") or h.get("url")
+        if url and url.startswith("http"):
+            out.append(url)
+    return out
+
+
+# Dedicated session for image-URL validation. Cloudscraper's SSL context
+# rejects `verify=False` (check_hostname conflict), so we use a plain
+# requests.Session with cert verification disabled — image URLs don't
+# carry credentials, and Python's trust store on Windows commonly fails
+# legit retailer certs that every browser accepts.
+import urllib3 as _urllib3
+_urllib3.disable_warnings(_urllib3.exceptions.InsecureRequestWarning)
+_IMG_VALIDATION_SESSION = _req.Session()
+_IMG_VALIDATION_SESSION.headers.update({
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                   "AppleWebKit/537.36 (KHTML, like Gecko) "
+                   "Chrome/120.0 Safari/537.36"),
+    "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+})
+
+
+# Validate an image URL. Three outcomes:
+#   - True   : we have positive evidence it's an image (HTTP 200+image/*,
+#              or magic-bytes match on a response body)
+#   - False  : we have positive evidence it's NOT an image (404, HTML
+#              error page, payload-too-small, blocklist pattern match)
+#   - True   : we can't tell (network timeout / SSL error / corporate
+#              proxy intercept) — accept and let the browser try, since
+#              "can't reach from Python" is not the same as "broken in
+#              browser" (different cert store, system proxy, etc.)
+#
+# This was tightened from "any failure → reject" because the user's
+# network blocks bhphotovideo / bciimage at the Python layer (proxy at
+# 10.10.1.1) while the browser handles them fine via the same proxy.
+def _validate_image_url(url):
+    if _IMG_SKIP_RE.search(url):
+        return False
+    sess = _IMG_VALIDATION_SESSION
+    # 1. HEAD — cheapest, most CDNs answer this.
+    head = None
+    try:
+        head = sess.head(url, timeout=4, allow_redirects=True, verify=False)
+    except Exception:
+        head = None
+    if head is not None:
+        ct = (head.headers.get("content-type") or "").lower()
+        if head.status_code in (200, 304) and ct.startswith("image/"):
+            return True
+        if head.status_code == 404:
+            return False
+        if head.status_code in (200, 304) and ct.startswith("text/html"):
+            return False  # 200 HTML = "page not found" disguised as success
+    # 2. GET-tail — covers CDNs that block HEAD or send the wrong
+    #    content-type. Magic-byte sniff catches images served with
+    #    text/html headers (some CDNs misconfigure this).
+    try:
+        r = sess.get(url, timeout=5, stream=True, verify=False,
+                     headers={"Range": "bytes=0-1024"})
+    except Exception:
+        # Network unreachable from Python — could still work in browser
+        # (different proxy path, cert store). Be permissive.
+        return True
+    if r.status_code == 404:
+        return False
+    ct = (r.headers.get("content-type") or "").lower()
+    if r.status_code in (200, 206) and ct.startswith("image/"):
+        return True
+    try:
+        magic = next(r.iter_content(chunk_size=16), b"") or b""
+    except Exception:
+        magic = b""
+    is_image = (
+        magic.startswith(b"\xff\xd8\xff")       or   # JPEG
+        magic.startswith(b"\x89PNG\r\n\x1a\n")  or   # PNG
+        magic.startswith(b"GIF87a")             or
+        magic.startswith(b"GIF89a")             or
+        (magic.startswith(b"RIFF") and b"WEBP" in magic) or
+        magic.startswith(b"<svg")               or
+        magic.startswith(b"<?xml")
+    )
+    if is_image:
+        return True
+    if r.status_code in (200, 206) and ct.startswith("text/html"):
+        return False  # HTML body → definitely not an image
+    # Ambiguous result (403/401/500 etc.): assume browser may succeed
+    # via cookies / different proxy path / system trust store.
+    return True
+
+
+# Best-of-N: walk a list of candidate image URLs in order and return
+# the first one that validates. Stops as soon as it finds a winner so
+# we don't waste round-trips when the top hit is already good.
+def _pick_first_valid_image(candidates):
+    for url in candidates or []:
+        if _validate_image_url(url):
+            return url
+    return None
+
+
+# ── Image proxy / local cache ─────────────────────────────────────────
+# To eliminate every browser-side image failure mode (hot-link blocks,
+# CORS, corporate-proxy intercept, mixed-content errors), we DOWNLOAD
+# each candidate image server-side and store it under outputs/sfp_images
+# keyed by a hash of the remote URL. The path /outputs/* is already
+# served statically by app.js, so the client gets a same-origin URL it
+# always loads cleanly. Any URL we can't fetch from our network is also
+# unavailable to the client — so a successful download is a stronger
+# guarantee than HEAD-validation alone.
+_IMG_CACHE_DIR = os.path.join(_PROJECT_ROOT, "outputs", "sfp_images")
+_MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024   # 4MB hard cap per image
+_MIN_KEEP_BYTES     = 1500              # below this is almost certainly an icon
+
+def _detect_image_ext(first_bytes, content_type=""):
+    if first_bytes.startswith(b"\xff\xd8\xff"):           return "jpg"
+    if first_bytes.startswith(b"\x89PNG\r\n\x1a\n"):      return "png"
+    if first_bytes.startswith(b"GIF87a") or first_bytes.startswith(b"GIF89a"): return "gif"
+    if first_bytes.startswith(b"RIFF") and b"WEBP" in first_bytes: return "webp"
+    ct = (content_type or "").lower()
+    if ct.startswith("image/jpeg") or ct.startswith("image/jpg"): return "jpg"
+    if ct.startswith("image/png"):  return "png"
+    if ct.startswith("image/gif"):  return "gif"
+    if ct.startswith("image/webp"): return "webp"
+    return None
+
+def _download_image_to_cache(remote_url):
+    """Download an image to outputs/sfp_images/<hash>.<ext>.
+    Returns the LOCAL relative URL on success, None on failure.
+    Failures include: blocklisted URL, network errors, non-image body,
+    file below the minimum-keep-size (i.e. an icon or placeholder).
+    """
+    if not remote_url or _IMG_SKIP_RE.search(remote_url):
+        return None
+    h = hashlib.sha1(remote_url.encode("utf-8")).hexdigest()[:16]
+    # Cache hit — we've already downloaded this URL in a prior run.
+    try:
+        for fn in os.listdir(_IMG_CACHE_DIR):
+            if fn.startswith(h + "."):
+                return f"/outputs/sfp_images/{fn}"
+    except FileNotFoundError:
+        pass
+    os.makedirs(_IMG_CACHE_DIR, exist_ok=True)
+    try:
+        r = _IMG_VALIDATION_SESSION.get(
+            remote_url, timeout=8, verify=False, stream=True,
+        )
+    except Exception:
+        return None
+    if r.status_code not in (200, 206):
+        return None
+    # Sniff first chunk → derive extension; if we can't tell it's an
+    # image, drop without writing anything.
+    try:
+        first = next(r.iter_content(chunk_size=64), b"") or b""
+    except Exception:
+        return None
+    ext = _detect_image_ext(first, r.headers.get("content-type", ""))
+    if not ext:
+        return None
+    dest = os.path.join(_IMG_CACHE_DIR, f"{h}.{ext}")
+    total = len(first)
+    try:
+        with open(dest, "wb") as f:
+            f.write(first)
+            for chunk in r.iter_content(chunk_size=16384):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > _MAX_DOWNLOAD_BYTES:
+                    raise RuntimeError("too large")
+                f.write(chunk)
+    except Exception:
+        try: os.remove(dest)
+        except Exception: pass
+        return None
+    # Reject tiny files — almost always icons / "image not found" pages
+    # that slipped past the magic-byte check (e.g. tiny 1px PNG).
+    try:
+        if os.path.getsize(dest) < _MIN_KEEP_BYTES:
+            os.remove(dest)
+            return None
+    except Exception:
+        return None
+    return f"/outputs/sfp_images/{h}.{ext}"
+
+
+# Try N candidate URLs in order; first one that DOWNLOADS to our cache
+# wins. Returns the local URL (same-origin path) or None.
+def _pick_and_cache_image(candidates):
+    for url in candidates or []:
+        local = _download_image_to_cache(url)
+        if local:
+            return local
+    return None
+
+
+# Trust gate for scraped imageUrls. A scraped image is only safe to
+# use directly when it's *from the same domain as the page that listed
+# the product* (or from a well-known retailer/distributor CDN). Random
+# off-site hosts (stock-photo sites, blog content CDNs, image-board
+# uploaders) often serve unrelated images even when they validate as
+# "200 + image/*". Anything outside the trust gate gets a forced DDG
+# image-search fallback so the user doesn't see banners/badges/wrong
+# product photos that happen to be valid PNGs.
+_TRUSTED_IMG_HOST_RE = re.compile(
+    r"(^|\.)(fs\.com|cisco\.com|"
+    r"amazon\.(com|co\.uk|de|fr|it|es|ca|com\.au)|m\.media-amazon\.com|"
+    r"ssl-images-amazon\.com|"
+    r"startech\.com|infinitecables\.com|10gtek\.com|fluxlight\.com|"
+    r"digikey\.com|mouser\.com|arrow\.com|avnet\.com|tessco\.com|"
+    r"juniper\.net|arista\.com|aruba(hpe)?\.com|ui\.com|ubnt\.com|"
+    r"tp-link\.com|tplinkcdn\.com|netgear\.com|dell\.com|hpe\.com|"
+    r"shopify\.com|myshopify\.com|cdn\.shopify\.com|"
+    r"cloudfront\.net|akamaized\.net|cloudinary\.com|wp\.com|imgix\.net|"
+    r"newegg\.com|bhphotovideo\.com|ebayimg\.com|cdw\.com|cdwg\.com|"
+    r"worldwidesupply\.net|provantage\.com|amazon\.in|flipkart\.com)$",
+    re.I,
+)
+def _is_trusted_image_host(img_url, source_url):
+    img_host = (urlparse(img_url).hostname or "").lower()
+    src_host = (urlparse(source_url).hostname or "").lower()
+    img_host = re.sub(r"^www\.", "", img_host)
+    src_host = re.sub(r"^www\.", "", src_host)
+    if not img_host:
+        return False
+    # Same hostname or sub/superdomain of the page that listed the product.
+    if img_host == src_host:
+        return True
+    if src_host:
+        # Strip down to the registrable domain (last two labels for .com,
+        # last three for multi-part TLDs like .co.uk) so a CDN subdomain
+        # of the same site is recognised.
+        parts = src_host.split(".")
+        if len(parts) >= 3 and parts[-2] in ("co", "com", "org", "net"):
+            root = ".".join(parts[-3:])
+        else:
+            root = ".".join(parts[-2:])
+        if img_host == root or img_host.endswith("." + root):
+            return True
+    return bool(_TRUSTED_IMG_HOST_RE.search(img_host))
+
+
 def search_sfp_modules(vendor, model, slot_type):
     """Search the web for compatible SFP modules.
     Returns list of {url, title, snippet}."""
@@ -370,30 +628,60 @@ def _scrape_page(url):
     modules = []
     seen_parts = set()
 
-    # Try to extract prices from JSON-LD structured data (e-commerce standard)
+    # Try to extract prices + product images from JSON-LD structured data
+    # (e-commerce standard). JSON-LD images are per-SKU and the most
+    # reliable — Cisco, FS.com, Amazon, big retailers all emit them.
     json_ld_prices = {}
     json_ld_brands = {}
+    json_ld_images = {}
     try:
         for script in soup.find_all("script", {"type": "application/ld+json"}):
             data = json.loads(script.string)
             if isinstance(data, dict):
-                if data.get("@type") == "Product" and data.get("name") and data.get("offers"):
-                    offer = data["offers"][0] if isinstance(data["offers"], list) else data["offers"]
+                if data.get("@type") == "Product" and data.get("name"):
                     pn_match = _PART_RE.search(data.get("name", ""))
                     if pn_match:
                         pn = pn_match.group(1)
-                        if offer.get("price"):
-                            json_ld_prices[pn] = f"${offer['price']}"
-                        # Brand from JSON-LD is the most reliable source
+                        offers = data.get("offers")
+                        if offers:
+                            offer = offers[0] if isinstance(offers, list) else offers
+                            if isinstance(offer, dict) and offer.get("price"):
+                                json_ld_prices[pn] = f"${offer['price']}"
                         ld_brand = (data.get("brand") or {})
                         if isinstance(ld_brand, dict):
                             ld_brand = ld_brand.get("name", "")
                         if ld_brand:
                             json_ld_brands[pn] = str(ld_brand)
+                        # Image field is sometimes a string, sometimes a list,
+                        # sometimes an ImageObject dict with a `url` field.
+                        img = data.get("image")
+                        if isinstance(img, list) and img:
+                            img = img[0]
+                        if isinstance(img, dict):
+                            img = img.get("url") or img.get("contentUrl")
+                        if isinstance(img, str) and img:
+                            json_ld_images[pn] = urljoin(url, img)
     except Exception:
         pass
 
+    # Page-level og:image / twitter:image — used as a fallback ONLY when
+    # the page is showing a single product. On multi-product list pages
+    # the OG image is usually a banner / category hero, not a real photo.
+    page_og_image = None
+    for sel in (("meta", {"property": "og:image"}),
+                ("meta", {"name": "og:image"}),
+                ("meta", {"property": "twitter:image"}),
+                ("meta", {"name": "twitter:image"})):
+        tag = soup.find(*sel)
+        if tag and tag.get("content"):
+            page_og_image = urljoin(url, tag["content"].strip())
+            break
+
     # Strategy 1: Table rows — most structured data source.
+    # We also harvest a per-row image from <img> tags inside each row so a
+    # table that lists products with thumbnails (FS.com, Cisco Commerce,
+    # most catalog pages) yields the right photo per SKU even when JSON-LD
+    # is missing.
     for table in soup.find_all("table"):
         for row in table.find_all("tr"):
             cells = row.find_all(["td", "th"])
@@ -409,10 +697,15 @@ def _scrape_page(url):
                     mod["price"] = json_ld_prices[mod["partNumber"]]
                 if not mod.get("brand") and mod["partNumber"] in json_ld_brands:
                     mod["brand"] = json_ld_brands[mod["partNumber"]]
+                row_img = _best_img_in(row, url)
+                img = json_ld_images.get(mod["partNumber"]) or row_img
+                if img:
+                    mod["imageUrl"] = img
                 mod["sourceUrl"] = url
                 modules.append(mod)
 
-    # Strategy 2: Product cards / list items with part numbers.
+    # Strategy 2: Product cards / list items with part numbers. Same
+    # per-element image harvest as Strategy 1.
     for el in soup.find_all(["div", "li", "article", "section"]):
         text = el.get_text(" ", strip=True)
         if len(text) < 20 or len(text) > 600:
@@ -426,12 +719,187 @@ def _scrape_page(url):
                 mod["price"] = json_ld_prices[mod["partNumber"]]
             if not mod.get("brand") and mod["partNumber"] in json_ld_brands:
                 mod["brand"] = json_ld_brands[mod["partNumber"]]
+            el_img = _best_img_in(el, url)
+            img = json_ld_images.get(mod["partNumber"]) or el_img
+            if img:
+                mod["imageUrl"] = img
             mod["sourceUrl"] = url
             modules.append(mod)
         if len(modules) >= 8:
             break
 
+    # Rescue pass: if text-snippet strategies found nothing but the page
+    # has JSON-LD Product schema (typical of FS.com / Shopify / Magento
+    # product-detail pages with long descriptions that overflow the
+    # 20-600 char text window), build the module straight from JSON-LD.
+    if not modules and (json_ld_prices or json_ld_brands or json_ld_images):
+        all_pns = set(json_ld_prices) | set(json_ld_brands) | set(json_ld_images)
+        for pn in all_pns:
+            mod = _parse_module_text(pn, url) or {"partNumber": pn}
+            if not mod.get("partNumber"):
+                mod["partNumber"] = pn
+            if json_ld_prices.get(pn):  mod["price"]    = json_ld_prices[pn]
+            if json_ld_brands.get(pn):  mod["brand"]    = json_ld_brands[pn]
+            if json_ld_images.get(pn):  mod["imageUrl"] = json_ld_images[pn]
+            mod["sourceUrl"] = url
+            modules.append(mod)
+        if not modules:
+            # Still nothing — fall back to a single module from the page
+            # itself, since at minimum we know it's a product page.
+            pass
+
+    # Final pass: when a page yields exactly one module, it's almost
+    # certainly a product-detail page — look for the main product image
+    # in the conventional product-gallery containers first, and only
+    # fall back to og:image if those don't yield anything. Both paths
+    # apply the same logo / banner filters so we don't end up showing
+    # the site brand again.
+    if len(modules) == 1 and not modules[0].get("imageUrl"):
+        pn = modules[0]["partNumber"]
+        img = _find_product_image(soup, url, pn)
+        if not img and page_og_image and not _IMG_SKIP_RE.search(page_og_image):
+            img = page_og_image
+        if img:
+            modules[0]["imageUrl"] = img
+
     return modules[:8]
+
+
+# Hunt for the main product image on a product-detail page. Walks the
+# DOM looking for <img> inside containers whose class/id matches the
+# common "product gallery" patterns, then takes the largest one. Used
+# only when a single module was extracted (i.e. likely a PDP).
+def _find_product_image(soup, base_url, part_number=None):
+    candidate_imgs = []
+    # 1. Containers with product-image-flavoured class or id.
+    for tag in soup.find_all(["div", "section", "figure", "ul", "li"]):
+        cls = " ".join(tag.get("class") or [])
+        tag_id = tag.get("id") or ""
+        if _PRODUCT_IMG_CLASS_RE.search(cls) or _PRODUCT_IMG_CLASS_RE.search(tag_id):
+            for img in tag.find_all("img"):
+                src = _img_src(img)
+                if src and not src.startswith("data:") and not _IMG_SKIP_RE.search(src):
+                    candidate_imgs.append((img, src))
+    # 2. Common shop themes nest the main image inside <a class="product-image">.
+    for a in soup.find_all("a", {"class": _PRODUCT_IMG_CLASS_RE}):
+        for img in a.find_all("img"):
+            src = _img_src(img)
+            if src and not src.startswith("data:") and not _IMG_SKIP_RE.search(src):
+                candidate_imgs.append((img, src))
+    if not candidate_imgs:
+        return None
+    # If the part number matches an alt, trust that hit unconditionally.
+    if part_number:
+        pn_re = re.compile(re.escape(part_number), re.I)
+        for img, src in candidate_imgs:
+            if pn_re.search(img.get("alt") or ""):
+                return urljoin(base_url, src.strip())
+    # Otherwise return the largest by declared size (or the first when
+    # nothing has declared dimensions).
+    best, best_score = None, -1
+    for img, src in candidate_imgs:
+        try:
+            w = int(img.get("width") or 0)
+            h = int(img.get("height") or 0)
+        except (TypeError, ValueError):
+            w = h = 0
+        score = (w * h) or 1
+        if score > best_score:
+            best_score = score
+            best = urljoin(base_url, src.strip())
+    return best
+
+
+# Best <img> inside a given element — picks the most product-likely
+# image and rejects site logos, banners, and tracking junk. Returns
+# absolute URL or None.
+#
+# Filtering tiers (highest priority first):
+#   1. <img alt="..."> contains the part number  → strong match, use it
+#   2. <img> whose src/alt doesn't look like a logo/banner → take largest
+#   3. Otherwise → None (caller falls through to silhouette)
+#
+# Site logos are the main false-positive — FS.com, Amazon, Cisco all
+# embed brand banners inside product cards. We reject by URL path, alt
+# text, and (for og:image) declared role.
+_IMG_SKIP_RE = re.compile(
+    r"(pixel|spacer|blank|tracking|favicon|loader|sprite|placeholder|"
+    r"logo|banner|header[-_]?img|brand[-_]?mark|sitelogo|site[-_]?logo|"
+    r"badge|trustpilot|payment|cards?\.(svg|png|jpg)|"
+    # FS.com banner/promo images live under /mall/generalImg/ — no
+    # actual product photos are stored there. Same pattern for any
+    # /general/ or /promo/ path on retailer CDNs.
+    r"/(generalImg|general|promo|hero[-_]banner|category)/|"
+    # "Image coming soon" placeholders — OPTCORE literally serves a
+    # file called `image-comming-soon_500.jpg` (their typo) on every
+    # product without a photo, which validates as a real image. Catch
+    # by URL pattern; nothing useful has "coming-soon" / "no-image" in
+    # its path.
+    r"(comming[-_]?soon|coming[-_]?soon|no[-_]?image|no[-_]?photo|"
+    r"nopic|image[-_]?unavailable|product[-_]?placeholder|"
+    r"tbd[-_]?image|missing[-_]?image|default[-_]?product))",
+    re.I,
+)
+# Product-image container class names — when we find ONE module on a
+# page we look inside these first, since they reliably hold the real
+# product photo on retailer product-detail pages (FS, Cisco Commerce,
+# Shopify themes, Magento, WooCommerce, BigCommerce).
+_PRODUCT_IMG_CLASS_RE = re.compile(
+    r"\b(product[-_]?(image|gallery|photo|media|main)?|"
+    r"gallery[-_]?(image|main|hero)?|"
+    r"main[-_]?(image|photo)|hero[-_]?image|"
+    r"primary[-_]?image|sku[-_]?image|featured[-_]?image)\b",
+    re.I,
+)
+_LOGO_ALT_RE = re.compile(
+    r"\b(logo|banner|company|brand|home\s*page|site)\b", re.I,
+)
+def _best_img_in(el, base_url, part_number=None):
+    # First pass: an <img> whose alt explicitly names this part number is
+    # almost certainly the right product photo. Trust it unconditionally.
+    if part_number:
+        pn_re = re.compile(re.escape(part_number), re.I)
+        for img in el.find_all("img"):
+            alt = (img.get("alt") or "").strip()
+            src = _img_src(img)
+            if not src or src.startswith("data:"):
+                continue
+            if pn_re.search(alt):
+                return urljoin(base_url, src.strip())
+    # Second pass: largest non-logo image. Score = w×h, with unsized
+    # images getting a small floor so they remain candidates.
+    best = None
+    best_score = 0
+    for img in el.find_all("img"):
+        src = _img_src(img)
+        if not src or src.startswith("data:"):
+            continue
+        if _IMG_SKIP_RE.search(src):
+            continue
+        alt = (img.get("alt") or "").strip()
+        if alt and _LOGO_ALT_RE.search(alt):
+            continue
+        # Reject images whose alt is exactly the site domain (typical of
+        # the top-of-page brand mark).
+        host = urlparse(base_url).hostname or ""
+        bare = re.sub(r"^www\.|\.com$|\.net$|\.org$", "", host).strip()
+        if bare and alt.lower() == bare.lower():
+            continue
+        try:
+            w = int(img.get("width") or 0)
+            h = int(img.get("height") or 0)
+        except (TypeError, ValueError):
+            w = h = 0
+        score = (w * h) or 1
+        if score > best_score:
+            best_score = score
+            best = urljoin(base_url, src.strip())
+    return best
+
+
+def _img_src(img):
+    return (img.get("src") or img.get("data-src") or
+            img.get("data-lazy-src") or img.get("data-original") or "")
 
 
 _MARKETPLACE_RE = re.compile(
@@ -656,13 +1124,69 @@ def recommend(vendor, model, interfaces=None):
     # Never fall back to brandless modules; show nothing rather than junk.
     modules = [m for m in modules if m.get("brand")]
 
+    # Image enrichment via server-side download + local cache. For each
+    # module we collect candidate URLs (scraped first if trusted, then
+    # DDG image search) and try to actually fetch each one to our
+    # outputs/sfp_images/ cache. The first that downloads cleanly wins
+    # and we hand the client a same-origin /outputs/... URL so browser
+    # CORS / hot-link / corporate-proxy issues can't affect rendering.
+    # Modules whose images can't be downloaded are DROPPED entirely —
+    # we never recommend a part the user can't see.
+    def _resolve(mod):
+        existing = mod.get("imageUrl")
+        source   = mod.get("sourceUrl", "")
+        candidates = []
+        # Scraped URL is tried first only if it came from a trusted host
+        # (page's own domain or a recognized retailer). Random off-site
+        # URLs go through the DDG path so we don't propagate banners /
+        # site logos / wrong-product images sourced from blog content.
+        if existing and _is_trusted_image_host(existing, source):
+            candidates.append(existing)
+        q = f"{mod.get('brand', '')} {mod['partNumber']} SFP transceiver"
+        for c in _ddg_image_search(q.strip(), max_results=8):
+            if c not in candidates:
+                candidates.append(c)
+        return mod, _pick_and_cache_image(candidates)
+    try:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for mod, img in ex.map(_resolve, modules):
+                if img:
+                    mod["imageUrl"] = img
+                elif mod.get("imageUrl"):
+                    mod.pop("imageUrl", None)
+    except Exception as e:
+        print(f"[sfp] image enrichment failed: {e}", file=sys.stderr)
+
+    # Hard requirement: a module without a working image is dropped.
+    # The procurement card needs a photo so the user can identify what
+    # they'd actually be buying; a silhouette is worse than not
+    # recommending the part at all.
+    modules = [m for m in modules if m.get("imageUrl")]
+
+    # Brand diversification: round-robin across brands so a single
+    # high-volume vendor (e.g. OPTCORE's category page lists 8 SKUs)
+    # can't crowd out everyone else. Each brand contributes one module
+    # per pass until the cap is reached. Within a brand we keep input
+    # order, so the most-relevant SKU still surfaces first.
+    from collections import OrderedDict
+    by_brand = OrderedDict()
+    for m in modules:
+        by_brand.setdefault(m["brand"], []).append(m)
+    diverse = []
+    target = 15
+    while len(diverse) < target and any(by_brand.values()):
+        for brand, bucket in by_brand.items():
+            if bucket:
+                diverse.append(bucket.pop(0))
+                if len(diverse) >= target:
+                    break
+    modules = diverse
+
     # No fallback to a static/generic module list — if we couldn't find real
     # products via live scraping, we return an empty list so the UI can show
     # an honest "no results" state instead of phantom or pre-baked entries.
 
-    # Cap at 15 — gives the UI enough variety for Primary + Budget +
-    # ~12 alternatives without being overwhelming.
-    modules = modules[:15]
+    # (Cap of 15 already enforced by the diversity round-robin above.)
 
     # 4g. Determine cable recommendations — always use standard set for slot type.
     # Scraped module types are often incomplete (null), so use the full standard

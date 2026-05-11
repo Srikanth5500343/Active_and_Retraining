@@ -1,2 +1,0 @@
-vendor_query,model_query,current_version,tier,vendor_resolved,vendor_url,model_normalized,rn_url,rn_followed_from,latest_version,up_to_date,versions_found_count,changelog_sections,error,elapsed_sec,verdict
-ZyXEL,GS1900-48HPv2,V2.50,strong,ZyXEL,https://www.zyxel.com,GS1900-48HPV2,https://www.zyxel.com/us/en-us/support/download?model=gs1900-48hpv2,,2.90,False,0,1,,101.6,PASS

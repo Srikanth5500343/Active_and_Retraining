@@ -56,12 +56,17 @@ export function resetProbe() {
 function parseInterfaceStatusTable(text) {
   if (!text) return [];
   // Strip null bytes and paging prompts that remain after --More-- auto-advance.
-  // TP-Link emits: "Press any key to continue (Q to quit)\0<spaces><next line>"
+  // TP-Link emits: "Press any key to continue (Q to quit)\0<spaces><next line>".
+  // Convert \0 to \n so the data after the prompt becomes its own row, then
+  // strip ONLY the prompt text (plus trailing tabs/spaces) — never eat to the
+  // next \n, or we lose the port row that sits on the same line as the prompt
+  // (the "27 of 28" bug: Gi1/0/23 vanished because the server-side cleanup
+  // missed an edge case and this regex devoured the row).
   const cleaned = text
-    .replace(/\x00/g, '')
-    .replace(/Press any key to continue[^\n]*/gi, '\n')
-    .replace(/--More--[^\n]*/g, '\n')
-    .replace(/<--- More --->[^\n]*/g, '\n');
+    .replace(/\x00/g, '\n')
+    .replace(/Press any key to continue(?:\s*\(Q to quit\))?[ \t]*/gi, '')
+    .replace(/--More--[ \t]*/g, '')
+    .replace(/<--- More --->[ \t]*/g, '');
   const out = [];
   for (const rawLine of cleaned.split('\n')) {
     const line = rawLine.replace(/\r$/, '').trim();

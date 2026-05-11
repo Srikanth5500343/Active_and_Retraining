@@ -1,7 +1,46 @@
 {
-  "polled_at": "2026-04-24T13:34:38Z",
-  "count": 11,
+  "polled_at": "2026-05-11T09:06:08Z",
+  "count": 12,
   "tickets": [
+    {
+      "incident_number": "INC0099001",
+      "sys_id": "rvew-core-sw01-port12-down-demo",
+      "state": "New",
+      "priority": "2 - High",
+      "urgency": "1 - High",
+      "category": "Network",
+      "opened_at": "2026-05-11 08:35:00",
+      "opened_by": "RackTrack Verification Demo",
+      "short_description": "Port 12 on RVEW-CORE-SW01 (Stack Member 2) down — verify cable + faceplate",
+      "description": "Monitoring reports Gi1/0/12 oper-DOWN on RVEW-CORE-SW01 stack member 2 (rack RACK-RVEW-CORE-01, Reading-DC row A position 1). Field tech to photograph the rack front so we can verify the port cabling. Upload MUST be the RACK-RVEW-CORE-01 front — rack-identity verification will reject any other rack.",
+      "target": {
+        "device": "RVEW-CORE-SW01",
+        "stack_member": 2,
+        "port": 12,
+        "device_source": "cmdb_ci",
+        "port_source": "parsed_text"
+      },
+      "cmdb": {
+        "mgmt_ip": "10.20.30.13",
+        "mac": "00:1A:2B:3C:4D:5E",
+        "model": "Catalyst 9300-48P",
+        "serial": "FCW-DEMO-RVEW01",
+        "os_version": "17.9.4a",
+        "vendor": "cisco-ios",
+        "sys_class_name": "cmdb_ci_ip_switch",
+        "interface_name": "RVEW-CORE-SW01:Gi1/0/12",
+        "interface_alias": "Gi1/0/12",
+        "port_short_description": "admin=up oper=DOWN speed=1G duplex=full vlan=10 mode=access",
+        "rack_name": "RACK-RVEW-CORE-01",
+        "rack_scan_id": "RK-C7FC2523",
+        "u_position": 13,
+        "site": "Reading-DC",
+        "row": "A",
+        "rack_position": "1"
+      },
+      "instance_url": "https://dev.service-now.com/incident.do?sys_id=rvew-core-sw01-port12-down-demo",
+      "polled_at": "2026-05-11T08:35:00Z"
+    },
     {
       "incident_number": "INC0010014",
       "sys_id": "59c2f84883e40310319f5cc0deaad3b3",
@@ -326,7 +365,7 @@
       "category": "Network",
       "opened_at": "2026-04-24 04:57:52",
       "opened_by": "System Administrator",
-      "short_description": "Port 15 on SW-U10 not working \u2014 need physical verification",
+      "short_description": "Port 15 on SW-U10 not working — need physical verification",
       "description": "Link down on SW-U10 port 15 (Gi1/0/15). Mgmt says admin=up oper=DOWN. Dispatch RackTrack verification on rack RK-00A187E2 to confirm physical presence and cable integrity.",
       "target": {
         "device": "SW-U10",
@@ -361,7 +400,7 @@
       "category": "Network",
       "opened_at": "2026-04-24 03:46:43",
       "opened_by": "System Administrator",
-      "short_description": "Port 12 on SW-U10 not working \u2014 web server WEB-01 unreachable",
+      "short_description": "Port 12 on SW-U10 not working — web server WEB-01 unreachable",
       "description": "Monitoring shows link down on SW-U10 port 12 since 09:00. WEB-01 (10.10.4.100) cannot be reached. Need physical verification of port 12 cabling and downstream path to SRV-U01 via PP-U08.",
       "target": {
         "device": "SW-U10",

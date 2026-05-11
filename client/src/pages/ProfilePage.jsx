@@ -149,6 +149,31 @@ export default function ProfilePage() {
         </div>
       </section>
 
+      {/* ── Quick-action: live port drift (continuous SSH polling) ── */}
+      <button
+        type="button"
+        onClick={() => navigate('/port-history')}
+        style={{
+          margin: '0 14px 8px',
+          padding: '12px 14px',
+          background: 'linear-gradient(180deg, rgba(34,211,238,0.14), rgba(59,130,246,0.10))',
+          border: '1px solid rgba(34,211,238,0.35)',
+          borderRadius: 12,
+          color: '#ecfeff',
+          fontSize: 13,
+          fontWeight: 600,
+          textAlign: 'left',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+        }}
+      >
+        <span>Live port drift · monitored switches</span>
+        <span aria-hidden style={{ opacity: 0.7 }}>›</span>
+      </button>
+
       {/* ── Bottom 60% — scan history ── */}
       <section className={styles.historyWrap}>
         <div className={styles.historyHead}>

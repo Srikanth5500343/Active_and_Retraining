@@ -1,0 +1,216 @@
+{
+  "_comment": "Self-contained demo dataset for the tenant-mat topology view. Does not touch auth.db, rack_owners, rack_groups, or the outputs/ tree. Editing this file is the only way to change what the /demo/topology page shows.",
+  "schema": "tenant_mat.v1",
+  "tenant": {
+    "id": "demo-acme",
+    "slug": "acme",
+    "name": "Acme Corp",
+    "rack_count": 15
+  },
+  "buildings": [
+    {
+      "id": "bldg-hq",
+      "name": "HQ Datacenter",
+      "city": "New York, NY",
+      "address": "1 Wall St",
+      "floors": [
+        {
+          "id": "hq-f1",
+          "label": "Floor 1 — Production",
+          "width_m": 30,
+          "height_m": 18,
+          "rows": [
+            { "id": "row-a", "label": "Row A", "y_m": 4 },
+            { "id": "row-b", "label": "Row B", "y_m": 10 }
+          ]
+        },
+        {
+          "id": "hq-f2",
+          "label": "Floor 2 — Staging",
+          "width_m": 24,
+          "height_m": 14,
+          "rows": [
+            { "id": "row-c", "label": "Row C", "y_m": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bldg-dr",
+      "name": "DR Site",
+      "city": "Austin, TX",
+      "address": "200 Congress Ave",
+      "floors": [
+        {
+          "id": "dr-f1",
+          "label": "DR Hall",
+          "width_m": 36,
+          "height_m": 20,
+          "rows": [
+            { "id": "row-d", "label": "Row D", "y_m": 5 },
+            { "id": "row-e", "label": "Row E", "y_m": 13 }
+          ]
+        }
+      ]
+    }
+  ],
+  "racks": [
+    {
+      "id": "RK-DEMO-001", "name": "HQ-A-01", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f1", "row_id": "row-a",
+      "position": 1, "x_m": 3, "y_m": 4, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-09T14:22:00Z",
+      "device_count": 18, "power_kw": 6.4,
+      "model": "APC AR3100", "serial": "ACQ2410-001"
+    },
+    {
+      "id": "RK-DEMO-002", "name": "HQ-A-02", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f1", "row_id": "row-a",
+      "position": 2, "x_m": 5.4, "y_m": 4, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-09T14:31:00Z",
+      "device_count": 22, "power_kw": 7.1,
+      "model": "APC AR3100", "serial": "ACQ2410-002"
+    },
+    {
+      "id": "RK-DEMO-003", "name": "HQ-A-03", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f1", "row_id": "row-a",
+      "position": 3, "x_m": 7.8, "y_m": 4, "rotation_deg": 0,
+      "status": "drift",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-08T11:05:00Z",
+      "device_count": 16, "power_kw": 5.2,
+      "model": "APC AR3100", "serial": "ACQ2410-003",
+      "drift_notes": ["3 devices found that are not in CMDB", "U22 device serial mismatch"]
+    },
+    {
+      "id": "RK-DEMO-004", "name": "HQ-A-04", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f1", "row_id": "row-a",
+      "position": 4, "x_m": 10.2, "y_m": 4, "rotation_deg": 0,
+      "status": "cmdb_only",
+      "scanned": false, "in_cmdb": true,
+      "last_seen": null,
+      "device_count": 0, "power_kw": null,
+      "model": "APC AR3100", "serial": "ACQ2410-004",
+      "drift_notes": ["Never scanned"]
+    },
+    {
+      "id": "RK-DEMO-005", "name": "HQ-B-01", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f1", "row_id": "row-b",
+      "position": 1, "x_m": 3, "y_m": 10, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-10T09:14:00Z",
+      "device_count": 24, "power_kw": 8.3,
+      "model": "APC AR3150", "serial": "ACQ2411-005"
+    },
+    {
+      "id": "RK-DEMO-006", "name": "HQ-B-02", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f1", "row_id": "row-b",
+      "position": 2, "x_m": 5.4, "y_m": 10, "rotation_deg": 0,
+      "status": "scan_only",
+      "scanned": true, "in_cmdb": false,
+      "last_seen": "2026-05-10T09:28:00Z",
+      "device_count": 9, "power_kw": 3.1,
+      "model": "APC AR3100", "serial": "UNK-006",
+      "drift_notes": ["Rack scanned in field but not present in CMDB — likely a missing CI"]
+    },
+    {
+      "id": "RK-DEMO-007", "name": "HQ-B-03", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f1", "row_id": "row-b",
+      "position": 3, "x_m": 7.8, "y_m": 10, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-10T09:45:00Z",
+      "device_count": 20, "power_kw": 6.8,
+      "model": "APC AR3100", "serial": "ACQ2411-007"
+    },
+    {
+      "id": "RK-DEMO-008", "name": "HQ-C-01", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f2", "row_id": "row-c",
+      "position": 1, "x_m": 3, "y_m": 5, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-07T16:02:00Z",
+      "device_count": 12, "power_kw": 4.0,
+      "model": "Tripp Lite SR42UB", "serial": "TL-8001"
+    },
+    {
+      "id": "RK-DEMO-009", "name": "HQ-C-02", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f2", "row_id": "row-c",
+      "position": 2, "x_m": 5.4, "y_m": 5, "rotation_deg": 0,
+      "status": "drift",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-07T16:18:00Z",
+      "device_count": 14, "power_kw": 4.7,
+      "model": "Tripp Lite SR42UB", "serial": "TL-8002",
+      "drift_notes": ["Power draw exceeds CMDB-declared limit (4.5 kW)"]
+    },
+    {
+      "id": "RK-DEMO-010", "name": "HQ-C-03", "u_size": 42,
+      "building_id": "bldg-hq", "floor_id": "hq-f2", "row_id": "row-c",
+      "position": 3, "x_m": 7.8, "y_m": 5, "rotation_deg": 0,
+      "status": "cmdb_only",
+      "scanned": false, "in_cmdb": true,
+      "last_seen": null,
+      "device_count": 0, "power_kw": null,
+      "model": "Tripp Lite SR42UB", "serial": "TL-8003",
+      "drift_notes": ["Never scanned"]
+    },
+    {
+      "id": "RK-DEMO-011", "name": "DR-D-01", "u_size": 42,
+      "building_id": "bldg-dr", "floor_id": "dr-f1", "row_id": "row-d",
+      "position": 1, "x_m": 4, "y_m": 5, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-05T10:11:00Z",
+      "device_count": 18, "power_kw": 5.9,
+      "model": "Eaton RE42612", "serial": "ET-7001"
+    },
+    {
+      "id": "RK-DEMO-012", "name": "DR-D-02", "u_size": 42,
+      "building_id": "bldg-dr", "floor_id": "dr-f1", "row_id": "row-d",
+      "position": 2, "x_m": 6.4, "y_m": 5, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-05T10:24:00Z",
+      "device_count": 20, "power_kw": 6.2,
+      "model": "Eaton RE42612", "serial": "ET-7002"
+    },
+    {
+      "id": "RK-DEMO-013", "name": "DR-D-03", "u_size": 42,
+      "building_id": "bldg-dr", "floor_id": "dr-f1", "row_id": "row-d",
+      "position": 3, "x_m": 8.8, "y_m": 5, "rotation_deg": 0,
+      "status": "drift",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-05T10:41:00Z",
+      "device_count": 17, "power_kw": 5.5,
+      "model": "Eaton RE42612", "serial": "ET-7003",
+      "drift_notes": ["CMDB lists 19 devices, scan found 17 — 2 missing"]
+    },
+    {
+      "id": "RK-DEMO-014", "name": "DR-E-01", "u_size": 42,
+      "building_id": "bldg-dr", "floor_id": "dr-f1", "row_id": "row-e",
+      "position": 1, "x_m": 4, "y_m": 13, "rotation_deg": 0,
+      "status": "ok",
+      "scanned": true, "in_cmdb": true,
+      "last_seen": "2026-05-06T08:33:00Z",
+      "device_count": 11, "power_kw": 3.8,
+      "model": "Eaton RE42612", "serial": "ET-7004"
+    },
+    {
+      "id": "RK-DEMO-015", "name": "DR-E-02", "u_size": 42,
+      "building_id": "bldg-dr", "floor_id": "dr-f1", "row_id": "row-e",
+      "position": 2, "x_m": 6.4, "y_m": 13, "rotation_deg": 0,
+      "status": "cmdb_only",
+      "scanned": false, "in_cmdb": true,
+      "last_seen": null,
+      "device_count": 0, "power_kw": null,
+      "model": "Eaton RE42612", "serial": "ET-7005",
+      "drift_notes": ["Never scanned"]
+    }
+  ]
+}

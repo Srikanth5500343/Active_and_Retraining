@@ -9,6 +9,7 @@ import { PortsContent } from './PortsPage.jsx';
 import { TopologyContent } from './TopologyPage.jsx';
 import { NetdiscoContent } from './NetdiscoPage.jsx';
 import { SwitchInfoContent } from './SwitchInformationPage.jsx';
+import { PortHistoryContent } from './PortHistoryPage.jsx';
 
 // ── Naming convention ─────────────────────────────────────────
 const CLASS_CODE = {
@@ -63,12 +64,17 @@ function formatUnitsRange(units = []) {
   ).join(' ');
 }
 
-function buildDeviceLabels(devices, unitsDetected = []) {
+function buildDeviceLabels(devices, unitsDetected = [], pattern = null) {
   const counts = {};
+  const padding = pattern?.padding || 2;
   return devices.map(dev => {
     const code = CLASS_CODE[dev.class_name] || dev.class_name.replace(/\s+/g, '').slice(0, 4).toUpperCase();
     counts[code] = (counts[code] || 0) + 1;
-    const seq  = String(counts[code]).padStart(2, '0');
+    const seq = String(counts[code]).padStart(padding, '0');
+    // When OCR detected a real label on this rack, mint matching names for
+    // the rest (e.g. RVEW-CORE-SW01 → RVEW-CORE-PDU01) instead of falling
+    // back to the unit-prefixed scheme.
+    if (pattern) return `${pattern.prefix}${pattern.sep}${code}${seq}`;
     const labelUnits = dev.units?.length ? dev.units : unitsDetected.length ? [unitsDetected[0]] : [];
     const formatted = formatUnitsRange(labelUnits) || 'U01';
     const primaryLabel = formatted.split(' ')[0];
@@ -1105,7 +1111,11 @@ export default function ResultsPage() {
   }, [consoleOpen, switchCreds.vendor]);
 
   const { scanId, rackId, cached, devices: initialDevices = [], units_detected = [], originalExt, qualityWarning, qualityWarningMsg, timings: analysisTimings } = result || {};
-  const ocrLabels = state?.ocrLabels || null;  // deviceLabels from POST /api/ocr/labels or GET /api/ocr/labels/:rackId
+  const [fetchedOcrLabels, setFetchedOcrLabels] = useState(null);
+  // Prefer the bundle ScanPage handed us via navigation state (front+rear merge
+  // from RearImagePrompt); on cold-load (refresh / History / Profile route)
+  // fall back to a fetched bundle so detected labels survive a page reload.
+  const ocrLabels = state?.ocrLabels || fetchedOcrLabels;
   const [warningDismissed, setWarningDismissed] = useState(false);
 
   // ── Ticket-mode bootstrapping ──
@@ -1238,6 +1248,33 @@ export default function ResultsPage() {
     return () => { cancelled = true; };
   }, [scanId]);
 
+  // Always fetch /api/ocr/labels/:rackId on mount so refresh, deep-link, and
+  // navigation-from-history routes pick up the latest OCR-derived names and
+  // reclassifications. We still honor a navigation-state bundle from ScanPage
+  // (RearImagePrompt) as a fast path, but only if it carries the modern shape
+  // (pattern + reclassifications). Older shapes are ignored — otherwise stale
+  // state silently suppresses the network call and the page renders with the
+  // synthesized fallback even though the server has correct data.
+  useEffect(() => {
+    if (!scanId) return;
+    const stateBundle = state?.ocrLabels;
+    const stateIsModern = stateBundle && ('pattern' in stateBundle || 'reclassifications' in stateBundle);
+    if (stateIsModern) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await authFetch(apiUrl(`/api/ocr/labels/${encodeURIComponent(scanId)}`));
+        if (!r.ok) return;
+        const data = await r.json();
+        if (cancelled) return;
+        const hasLabels = Array.isArray(data?.deviceLabels) && data.deviceLabels.some(d => d.label);
+        const hasReclass = Array.isArray(data?.reclassifications) && data.reclassifications.length > 0;
+        if (hasLabels || data?.pattern || hasReclass) setFetchedOcrLabels(data);
+      } catch { /* ignore — fall back to synthesized names */ }
+    })();
+    return () => { cancelled = true; };
+  }, [scanId, state?.ocrLabels]);
+
   const fmtMs = (ms) => {
     if (ms == null || isNaN(ms)) return '—';
     return `${(ms / 1000).toFixed(2)} s`;
@@ -1247,23 +1284,39 @@ export default function ResultsPage() {
     return `${Math.round(Number(v) * 100)}%`;
   };
   const heroImgSrc = resultImg || apiUrl(`/outputs/${scanId}/original_image.${originalExt || 'png'}`);
+
+  // Apply brand-token reclassifications from the OCR labels endpoint, so a
+  // Planar AV controller YOLO labelled as UPS gets bumped to "Controller" for
+  // both naming and rendering. Synthesizing labels reads class_name, so the
+  // override must precede buildDeviceLabels.
+  const effectiveDevices = useMemo(() => {
+    const reclass = ocrLabels?.reclassifications;
+    if (!Array.isArray(reclass) || reclass.length === 0) return devices;
+    const byIdx = new Map(reclass.map(r => [r.device_index, r]));
+    return devices.map((dev, idx) => {
+      const r = byIdx.get(idx);
+      if (!r || !r.class_name || r.class_name === dev?.class_name) return dev;
+      return { ...dev, class_name: r.class_name, _reclassifiedFrom: dev.class_name, _reclassifiedBrand: r.brand };
+    });
+  }, [devices, ocrLabels]);
+
   const labels = useMemo(() => {
-    const generated = buildDeviceLabels(devices, units_detected);
-    
-    // If we have OCR labels, use them preferentially, falling back to synthetic names
+    const pattern = ocrLabels?.pattern || null;
+    const generated = buildDeviceLabels(effectiveDevices, units_detected, pattern);
+
+    // If we have OCR labels, use them preferentially, falling back to the
+    // pattern-derived synthetic names from buildDeviceLabels.
     if (ocrLabels && Array.isArray(ocrLabels.deviceLabels)) {
-      return ocrLabels.deviceLabels.map(ocr => {
-        const syntheticName = generated[ocr.device_index] || `Device ${ocr.device_index}`;
-        // Prefer OCR label if it exists and has reasonable confidence, otherwise use synthetic
-        const displayLabel = ocr.label && (ocr.conf || 0) >= 0.4 
-          ? ocr.label 
-          : syntheticName;
-        return displayLabel;
+      return effectiveDevices.map((_, idx) => {
+        const ocr = ocrLabels.deviceLabels.find(d => d.device_index === idx);
+        const synthetic = generated[idx] || `Device ${idx}`;
+        if (ocr?.label && (ocr.conf || 0) >= 0.4) return ocr.label;
+        return synthetic;
       });
     }
-    
+
     return generated;
-  }, [devices, units_detected, ocrLabels]);
+  }, [effectiveDevices, units_detected, ocrLabels]);
 
   const clampZoom = (value) => Math.min(2.5, Math.max(0.8, value));
   const zoomIn = () => setZoom((prev) => clampZoom(prev + 0.15));
@@ -1347,7 +1400,7 @@ export default function ResultsPage() {
 
   // phase='all' is now handled by the 'all' tab — no early return needed
 
-  const selectedDevice = selectedIdx ? devices[selectedIdx - 1] : null;
+  const selectedDevice = selectedIdx ? effectiveDevices[selectedIdx - 1] : null;
   const selectedLabel  = selectedIdx ? labels[selectedIdx - 1]  : null;
   const selColor       = selectedDevice ? getColor(selectedDevice.class_name) : DEFAULT_COLOR;
   const cableInfo      = parseCableType(portInfo?.cable_type);
@@ -2850,6 +2903,15 @@ export default function ResultsPage() {
               </svg>
               Switch Info
             </button>
+            <button className={`${styles.reportChip} ${styles.reportChipConsole}`}
+              onClick={() => openConsole()}
+              title="Open SSH console for this port">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+              Console
+            </button>
             <div className={styles.shareWrap}>
               <button className={`${styles.reportChip} ${styles.reportChipShare} ${shareStatus === 'sent' ? styles.reportChipSlackSent : ''} ${shareStatus === 'error' ? styles.reportChipSlackErr : ''}`}
                 onClick={() => { if (shareStatus !== 'sending') setShareMenuOpen(v => !v); }}
@@ -2889,7 +2951,16 @@ export default function ResultsPage() {
 
           {/* Nav actions — change device / new scan */}
           <div className={styles.pActions} style={{ '--ac': rc }}>
-            <button className={styles.pActionBtn} onClick={() => { setPhase('detect'); setPortNum(''); setNextPort(''); setPortInfo(null); setResultImg(null); setRackImg(null); setPortView('rack'); setError(null); resetZoom(); }}>
+            <button className={styles.pActionBtn} onClick={() => {
+              setPhase('detect');
+              setTab('overview');
+              setSelectedIdx(null);
+              setPortNum(''); setNextPort(''); setPortInfo(null);
+              setResultImg(null); setRackImg(null); setPortView('rack');
+              setDeviceFbStatus('idle'); setActualDeviceClass(''); setDeviceFbError(null);
+              setPortCountFbStatus('idle'); setActualPortCount(''); setPortCountFbError(null);
+              setError(null); resetZoom();
+            }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="17" width="20" height="4" rx="1"/></svg>
               Change Device
             </button>
@@ -3334,12 +3405,20 @@ export default function ResultsPage() {
                     <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                   </filter>
                 </defs>
-                {/* Tappable rect + label chip per pickable device — this is the device picker */}
-                {devices.map((dev, i) => {
-                  if (!isDevicePickable(dev)) return null;
+                {/* Rect + label chip per detected device.
+                    Pickable (port-bearing) devices are tappable for port inspection;
+                    other real devices (PDU/UPS/Server-no-ports, etc.) still render so
+                    the user sees the full detection coverage at a glance. Placeholder
+                    Empty / Unidentified / Closed Unit boxes stay hidden — they're
+                    rack-slot fillers, not actionable. Uses effectiveDevices so any
+                    brand-token class override (Planar→Controller, etc.) drives both
+                    chip color and the hidden/visible filter. */}
+                {effectiveDevices.map((dev, i) => {
+                  if (!dev?.box || HIDDEN_DEVICE_TYPES.has(dev.class_name)) return null;
                   const idx = i + 1;
                   const isSel = selectedIdx === idx;
                   if (isSel) return null; // selected rendered last for z-order
+                  const pickable = isDevicePickable(dev);
                   const [bx1, by1, bx2, by2] = dev.box;
                   const w = bx2 - bx1, h = by2 - by1;
                   const color = getColor(dev.class_name);
@@ -3350,7 +3429,7 @@ export default function ResultsPage() {
                   const chipW = Math.max(chipH * 2.2, lbl.length * chipH * 0.45 + chipPadX * 2);
                   const chipX = bx1 + 4;
                   const chipY = by1 + 4;
-                  const handleTap = (e) => {
+                  const handleTap = pickable ? (e) => {
                     e.stopPropagation();
                     setSelectedIdx(idx);
                     setPortNum(''); setPortInfo(null); setError(null);
@@ -3360,13 +3439,21 @@ export default function ResultsPage() {
                     setPortCountFbStatus('idle');
                     setActualPortCount('');
                     setPortCountFbError(null);
-                  };
+                  } : undefined;
                   return (
-                    <g key={idx} className={styles.devPickGroup} onClick={handleTap}>
+                    <g
+                      key={idx}
+                      className={styles.devPickGroup}
+                      onClick={handleTap}
+                      style={pickable ? undefined : { opacity: 0.7, pointerEvents: 'none' }}
+                    >
                       <rect
                         x={bx1} y={by1} width={w} height={h} rx="4"
                         className={styles.devPickRect}
-                        style={{ stroke: color }}
+                        style={{
+                          stroke: color,
+                          strokeDasharray: pickable ? undefined : '6 4',
+                        }}
                       />
                       {lbl && (
                         <g className={styles.devPickChip}>
@@ -3493,7 +3580,7 @@ export default function ResultsPage() {
             rectangle (mobile-friendly). Hidden in ticket-mode and when the
             all-devices view is up. */}
         {!ticketMode && phase !== 'all' && (() => {
-          const pickables = devices
+          const pickables = effectiveDevices
             .map((dev, i) => ({ dev, idx: i + 1, label: labels[i] || `Device ${i + 1}` }))
             .filter(({ dev }) => isDevicePickable(dev));
           if (pickables.length === 0) return null;
@@ -3765,6 +3852,13 @@ export default function ResultsPage() {
       {tab === 'switches' && (
         <div className={styles.tabContent}>
           <SwitchInfoContent rackId={rackId || scanId} />
+        </div>
+      )}
+
+      {/* ── Tab: Drift (continuous SSH telemetry from monitored switches) ── */}
+      {tab === 'drift' && (
+        <div className={styles.tabContent}>
+          <PortHistoryContent />
         </div>
       )}
 

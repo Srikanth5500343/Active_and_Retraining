@@ -8,6 +8,7 @@ import {
 } from '../utils/portsProbe';
 import { fetchSfpAnalysis, generateOfflineFallback, SFP_SLOT_TYPES } from '../utils/sfpDatabase';
 import RackTabs from '../components/RackTabs.jsx';
+import SfpModuleImage from '../components/SfpModuleImage.jsx';
 import styles from './PortsPage.module.css';
 
 function fmtMs(ms) {
@@ -564,24 +565,31 @@ function SfpAdvisor({ scan, sfpPorts, sfpCounts }) {
                 <span className={styles.heroPickBadge}>★ TOP PICK</span>
                 <span className={styles.heroPickBrand}>{recommended.brand || 'Unknown'}</span>
               </div>
-              <div className={styles.heroPickSku}>{recommended.partNumber}</div>
-              <div className={styles.heroPickSpecs}>
-                {recommended.speed && <span className={styles.heroSpecChip}>{recommended.speed}</span>}
-                {recommended.type && <span className={styles.heroSpecChip}>{recommended.type}</span>}
-                {recommended.maxDistance && <span className={styles.heroSpecChip}>{recommended.maxDistance}</span>}
-                {recommended.wavelength && <span className={styles.heroSpecChip}>{recommended.wavelength}</span>}
-              </div>
-              {recommended.price && (
-                <div className={styles.heroPickPrice}>
-                  <span className={styles.heroPickUnit}>{recommended.price}<span className={styles.heroPickEa}>each</span></span>
-                  {currentQty > 1 && total && (
-                    <>
-                      <span className={styles.heroPickPriceDot}>·</span>
-                      <span className={styles.heroPickTotal}>{total} for {currentQty}</span>
-                    </>
+              <div className={styles.heroPickBody}>
+                <div className={styles.heroPickInfo}>
+                  <div className={styles.heroPickSku}>{recommended.partNumber}</div>
+                  <div className={styles.heroPickSpecs}>
+                    {recommended.speed && <span className={styles.heroSpecChip}>{recommended.speed}</span>}
+                    {recommended.type && <span className={styles.heroSpecChip}>{recommended.type}</span>}
+                    {recommended.maxDistance && <span className={styles.heroSpecChip}>{recommended.maxDistance}</span>}
+                    {recommended.wavelength && <span className={styles.heroSpecChip}>{recommended.wavelength}</span>}
+                  </div>
+                  {recommended.price && (
+                    <div className={styles.heroPickPrice}>
+                      <span className={styles.heroPickUnit}>{recommended.price}<span className={styles.heroPickEa}>each</span></span>
+                      {currentQty > 1 && total && (
+                        <>
+                          <span className={styles.heroPickPriceDot}>·</span>
+                          <span className={styles.heroPickTotal}>{total} for {currentQty}</span>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
+                <div className={styles.heroPickImage}>
+                  <SfpModuleImage module={recommended} size="hero" />
+                </div>
+              </div>
               {recommended.sourceUrl && (
                 <a
                   href={recommended.sourceUrl}
@@ -609,6 +617,9 @@ function SfpAdvisor({ scan, sfpPorts, sfpCounts }) {
               onClick={!budgetOption.sourceUrl ? (e) => e.preventDefault() : undefined}
             >
               <div className={styles.compactPickTag}>$ BEST PRICE</div>
+              <div className={styles.compactPickThumb}>
+                <SfpModuleImage module={budgetOption} size="compact" />
+              </div>
               <div className={styles.compactPickInfo}>
                 <div className={styles.compactPickHead}>
                   <span className={styles.compactPickBrand}>{budgetOption.brand || 'Unknown'}</span>
@@ -675,6 +686,9 @@ function SfpAdvisor({ scan, sfpPorts, sfpCounts }) {
                       {...linkProps}
                       className={styles.altsRow}
                     >
+                      <div className={styles.altsRowThumb}>
+                        <SfpModuleImage module={m} size="compact" />
+                      </div>
                       <div className={styles.altsRowMain}>
                         <span className={styles.altsRowBrand}>{m.brand || 'Unknown'}</span>
                         <span className={styles.altsRowSku}>{m.partNumber}</span>

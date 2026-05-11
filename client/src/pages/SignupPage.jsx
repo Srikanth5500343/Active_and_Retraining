@@ -3,16 +3,16 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './AuthPages.module.css';
 import { useAuth } from '../AuthContext.jsx';
 
-const PW_RULES = [
+export const PW_RULES = [
   { id: 'len',   label: '8 characters',   test: pw => pw.length >= 8 },
   { id: 'upper', label: 'an uppercase',   test: pw => /[A-Z]/.test(pw) },
   { id: 'lower', label: 'a lowercase',    test: pw => /[a-z]/.test(pw) },
   { id: 'digit', label: 'a digit',        test: pw => /[0-9]/.test(pw) },
   { id: 'spec',  label: 'a special char', test: pw => /[^A-Za-z0-9]/.test(pw) },
 ];
-const STRENGTH_COLORS = ['#fca5a5', '#fbbf24', '#fcd34d', '#86efac', '#34d399', '#22d3ee'];
+export const STRENGTH_COLORS = ['#fca5a5', '#fbbf24', '#fcd34d', '#86efac', '#34d399', '#22d3ee'];
 
-function CodeGrid({ value, onChange, disabled }) {
+export function CodeGrid({ value, onChange, disabled }) {
   const refs = useRef([]);
   const digits = value.padEnd(6, ' ').split('').slice(0, 6);
 

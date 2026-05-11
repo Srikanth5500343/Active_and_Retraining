@@ -16,18 +16,12 @@
   transition: background var(--T) var(--E), color var(--T) var(--E);
 }
 
-/* Home view follows the app's own theme (var(--bg) / var(--t1)).
-   The 3 flow views (scan / network / alert) are intentional dark
-   "lens" moments — each has its own tint AND its own rack position. */
+/* All views follow the app's own theme — light in light mode, dark in dark mode */
 .v_home      { background: var(--bg); color: var(--t1); }
-.v_controls  { background: #0E1018; color: #F5F7FF; }
-.v_scan      { background: #060812; color: #F5F7FF; }
-.v_network   { background: #0A0F1E; color: #F5F7FF; }
-.v_alert     { background: #100808; color: #F5F7FF; }
-:global([data-theme='light']) .v_controls { background: #1A1D29; color: #F5F7FF; }
-:global([data-theme='light']) .v_scan     { background: #0E1320; color: #F5F7FF; }
-:global([data-theme='light']) .v_network  { background: #0F1320; color: #F5F7FF; }
-:global([data-theme='light']) .v_alert    { background: #1A0E0E; color: #F5F7FF; }
+.v_controls  { background: var(--bg); color: var(--t1); }
+.v_scan      { background: var(--bg); color: var(--t1); }
+.v_network   { background: var(--bg); color: var(--t1); }
+.v_alert     { background: var(--bg); color: var(--t1); }
 
 /* Backdrop glow */
 .backdrop { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
@@ -65,7 +59,12 @@
   backdrop-filter: blur(12px);
 }
 .backBtn svg { width: 16px; height: 16px; }
-:global([data-theme='light']) .backBtn { background: rgba(11,15,31,0.85); }
+/* All non-home views are theme-aware now, so the back button uses the app surface */
+.home:not(.v_home) .backBtn {
+  background: var(--card2);
+  color: var(--t1);
+  border: 1px solid var(--gb);
+}
 
 .modeLabel {
   position: absolute;
@@ -104,10 +103,16 @@
 .flowDot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.45);
-  transition: width 0.3s var(--E), background 0.3s var(--E);
+  background: var(--t2);
+  opacity: 0.40;
+  transition: width 0.3s var(--E), background 0.3s var(--E), opacity 0.3s var(--E);
 }
-.flowDotOn { width: 22px; border-radius: 999px; background: #FFFFFF; }
+.flowDotOn {
+  width: 22px;
+  border-radius: 999px;
+  background: var(--c1);
+  opacity: 1;
+}
 
 
 /* ════════════════════════════════════════════════════════════════════
@@ -140,19 +145,22 @@
 }
 .rackStage:active { cursor: grabbing; }
 
-/* Per-view stage geometry — every view has the rack in a UNIQUE place */
-.v_home     .rackStage { top: 174px; left: 50%;  width: 200px; height: 260px; transform: translateX(-50%); }
-.v_controls .rackStage { top: auto;  left: 50%;  bottom: 4px;  width: 240px; height: 320px; transform: translateX(-50%); }
+/* Per-view stage geometry — every view has the rack in a UNIQUE place.
+   On HOME we hide the CSS-3D rack because the hero.png image lives
+   inside the rack card instead. */
+.v_home     .rackStage { opacity: 0; pointer-events: none; }
+.v_controls .rackStage { top: auto;  left: 50%;  bottom: -20px;  width: 360px; height: 520px; transform: translateX(-50%) scale(1.25); }
 
-/* SCAN — rack DOMINATES the screen, big and dead-centre */
-.v_scan     .rackStage { top: 90px;  left: 50%;  width: 240px; height: 320px; transform: translateX(-50%) scale(1.12); }
+/* SCAN — rack DOMINATES the screen, larger and shifted down so the
+   floating AR chips (top 28% / 50% / 76%) line up with the rack body. */
+.v_scan     .rackStage { top: 200px; left: 50%;  width: 280px; height: 400px; transform: translateX(-50%) scale(1.30); }
 
 /* TOPOLOGY — rack pushed to the LEFT edge, small.  The network graph
    takes over the right side of the screen as the centrepiece. */
-.v_network  .rackStage { top: 100px; left: 22%;  width: 150px; height: 200px; transform: translateX(-50%) scale(0.7); }
+.v_network  .rackStage { top: 140px; left: 22%;  width: 160px; height: 220px; transform: translateX(-50%) scale(0.78); }
 
-/* ALERT — rack centred but TILTED back, mid-size */
-.v_alert    .rackStage { top: 100px; left: 50%;  width: 220px; height: 290px; transform: translateX(-50%) scale(1.0); }
+/* ALERT — rack centred but TILTED back, mid-size, shifted down */
+.v_alert    .rackStage { top: 140px; left: 50%;  width: 320px; height: 440px; transform: translateX(-50%) scale(1.30); }
 
 .rackSpot {
   position: absolute;
@@ -366,19 +374,97 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 1.5px;
+  gap: 1px;
   flex-wrap: nowrap;
   overflow: hidden;
 }
+
+/* Realistic RJ45 jack — uniform dark recess, single subtle green link
+   LED below.  Reads like a real Cisco/HPE faceplate without LED noise. */
 .uPort {
+  position: relative;
   flex-shrink: 0;
-  width: 4px; height: 5px;
-  background: rgba(255,255,255,0.10);
-  border-radius: 0.5px;
-  animation: portBlink 2.2s ease-in-out infinite;
+  width: 6px;
+  height: 10px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #020308 0%, #0A0D14 70%, #0F1320 100%);
+  border: 0.5px solid #1F2330;
+  box-shadow:
+    inset 0 1px 1.5px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 }
-.uPort:nth-child(3n+1) { background: #22D3EE; box-shadow: 0 0 4px rgba(34,211,238,0.85); }
-.uPort:nth-child(5n+2) { background: rgba(99,102,241,0.85); box-shadow: 0 0 3px rgba(99,102,241,0.65); }
+/* The actual jack cavity — a darker inner slot. Gives the port the
+   "looking into a recessed connector" feel. */
+.uPort::before {
+  content: '';
+  position: absolute;
+  inset: 1.5px 1px 3px 1px;
+  background: linear-gradient(180deg, #000 0%, #050608 100%);
+  border-radius: 0.5px;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.95);
+}
+/* Tiny extra gap every 2 ports — switches group RJ45 jacks in pairs */
+.uPort:nth-child(even) { margin-right: 2px; }
+
+/* Single link LED at the bottom — most ports stay dark, a few are
+   "linked" green.  Way less noisy than the previous two-LED design. */
+.uPort::after {
+  content: '';
+  position: absolute;
+  bottom: 0.5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1.5px;
+  height: 1.5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  z-index: 2;
+}
+/* A subset of ports show a green link LED with a gentle blink */
+.uPort:nth-child(3n+1)::after {
+  background: #22C55E;
+  box-shadow: 0 0 3px rgba(34, 197, 94, 0.85);
+  animation: portBlink 2.4s ease-in-out infinite;
+}
+.uPort:nth-child(7n+2)::after {
+  background: #22C55E;
+  box-shadow: 0 0 3px rgba(34, 197, 94, 0.85);
+  animation: portBlink 2.4s ease-in-out infinite;
+  animation-delay: 0.6s;
+}
+.uPort:nth-child(11n+5)::after {
+  background: #22C55E;
+  box-shadow: 0 0 3px rgba(34, 197, 94, 0.85);
+  animation: portBlink 2.4s ease-in-out infinite;
+  animation-delay: 1.1s;
+}
+
+/* Target port — the one the user must fix. RJ45 silhouette stays so it
+   reads as a port, but it's lit RED inside, lifted forward, and casts a
+   strong red glow. The LED flips to red and pulses. */
+.uPortTarget {
+  background: linear-gradient(180deg, #4A0505 0%, #1A0303 100%) !important;
+  border-color: #EF4444 !important;
+  transform: translateZ(10px) translateY(-1px);
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85)) drop-shadow(0 0 14px rgba(239, 68, 68, 0.55));
+  animation: portTargetPulse 1.4s ease-in-out infinite;
+  z-index: 5;
+}
+.uPortTarget::before {
+  background: linear-gradient(180deg, #1A0303 0%, #2A0606 100%) !important;
+  box-shadow: inset 0 0 0 0.5px rgba(239, 68, 68, 0.55), inset 0 0 4px rgba(239, 68, 68, 0.55) !important;
+}
+.uPortTarget::after {
+  background: #EF4444 !important;
+  box-shadow: 0 0 5px #EF4444, 0 0 10px rgba(239, 68, 68, 0.85) !important;
+  width: 2px !important;
+  height: 2px !important;
+  animation: portBlink 1s ease-in-out infinite !important;
+}
+@keyframes portTargetPulse {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85)) drop-shadow(0 0 14px rgba(239, 68, 68, 0.55)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(239, 68, 68, 1))    drop-shadow(0 0 22px rgba(239, 68, 68, 0.80)); }
+}
 @keyframes portBlink {
   0%, 80%, 100% { opacity: 0.5; }
   85%, 95%      { opacity: 1; }
@@ -483,22 +569,57 @@
 .uOutlet::before { left: 2.5px; }
 .uOutlet::after  { right: 2.5px; }
 
-/* Active / lifted unit */
+/* Target outlet — the one specific port the user is told to fix.
+   It pulses red, lifts forward, and casts a red glow so the eye
+   lands on it instantly when Step 3 is shown. */
+.uOutletTarget {
+  background: linear-gradient(180deg, #FCA5A5 0%, #DC2626 100%);
+  border-color: #EF4444;
+  transform: translateZ(8px);
+  box-shadow:
+    0 0 12px rgba(239, 68, 68, 0.95),
+    0 0 22px rgba(239, 68, 68, 0.55),
+    inset 0 0 4px rgba(255, 255, 255, 0.40);
+  animation: outletTargetPulse 1.4s ease-in-out infinite;
+}
+.uOutletTarget::before,
+.uOutletTarget::after { background: rgba(0, 0, 0, 0.65); }
+@keyframes outletTargetPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.95), 0 0 22px rgba(239, 68, 68, 0.55), inset 0 0 4px rgba(255,255,255,0.40); }
+  50%      { box-shadow: 0 0 18px rgba(239, 68, 68, 1),    0 0 32px rgba(239, 68, 68, 0.80), inset 0 0 6px rgba(255,255,255,0.60); }
+}
+
+/* Active / lifted unit — the device that needs fixing.
+   A clean red rectangle outline + glow makes the user's eye land on it
+   instantly when Step 2 or Step 3 is shown. */
 .uActive {
   transform: translateZ(12px) translateY(-2px);
-  filter: brightness(1.25) drop-shadow(0 0 12px rgba(34,211,238,0.65));
+  border-color: #EF4444;
+  outline: 1.5px solid #EF4444;
+  outline-offset: 0;
+  filter: brightness(1.10) drop-shadow(0 0 14px rgba(239, 68, 68, 0.75));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(239, 68, 68, 0.55),
+    0 0 0 1px #EF4444;
+  animation: uActivePulse 2s ease-in-out infinite;
+}
+@keyframes uActivePulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.55), 0 0 14px rgba(239,68,68,0.50), 0 0 0 1px #EF4444; }
+  50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.55), 0 0 22px rgba(239,68,68,0.75), 0 0 0 1.5px #EF4444; }
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   HOME VIEW (light)
+   HOME VIEW — compact, uniform, hero-image driven
    ════════════════════════════════════════════════════════════════════ */
 .homeView {
   position: relative;
   z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px 18px 110px;
+  gap: 10px;
+  padding: 16px 16px 100px;
   height: 100%;
   opacity: 1;
   transition: opacity var(--T) var(--E), transform var(--T) var(--E);
@@ -514,7 +635,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 .brand {
   display: flex;
@@ -553,38 +674,300 @@
   50%      { transform: scale(1.3); opacity: 0.65; }
 }
 
-/* Rack hero card — uses the app's card surface; tall enough to hold the rack */
-.rackCard {
+/* Hero rack — no container, no labels. Just a floating image with
+   a soft ambient glow behind it. Doubled in size from the previous card. */
+.rackHero {
   position: relative;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: var(--card);
-  border: 1px solid var(--gb);
-  border-radius: 24px;
-  padding: 18px 18px 16px;
-  width: 100%;
-  height: 420px;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% + 32px);
+  height: 640px;
+  padding: 0;
+  margin: -16px -16px -24px;
+  background: transparent;
+  border: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  text-align: left;
-  font-family: var(--font);
-  color: var(--t1);
-  box-shadow:
-    0 1px 2px rgba(17, 24, 39, 0.04),
-    0 18px 36px rgba(17, 24, 39, 0.10);
-  overflow: hidden;
+  isolation: isolate;
+  transition: transform 0.2s ease;
 }
-:global(html:not([data-theme='light'])) .rackCard {
-  background: linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.30),
-    0 18px 36px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+.rackHero::before {
+  /* Soft violet/cyan ambient glow behind the rack — replaces the card backdrop */
+  content: '';
+  position: absolute;
+  inset: 14% 6% 10% 6%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse,
+    rgba(99, 102, 241, 0.22) 0%,
+    rgba(34, 211, 238, 0.10) 40%,
+    transparent 75%);
+  filter: blur(36px);
+  z-index: 0;
+  pointer-events: none;
+}
+:global(html:not([data-theme='light'])) .rackHero::before {
+  background: radial-gradient(ellipse,
+    rgba(99, 102, 241, 0.40) 0%,
+    rgba(34, 211, 238, 0.18) 40%,
+    transparent 75%);
+  filter: blur(48px);
+}
+.rackHero:hover  { transform: translateY(-3px); }
+.rackHero:active { transform: translateY(0) scale(0.99); }
+
+.rackHeroImg {
+  position: relative;
+  z-index: 1;
+  max-height: 100%;
+  max-width: 100%;
+  width: 100%;
+  object-fit: contain;
+  transform: translateY(40px);
+  filter:
+    drop-shadow(0 24px 32px rgba(0, 0, 0, 0.40))
+    drop-shadow(0 0 28px rgba(34, 211, 238, 0.28));
+  animation: heroFloat 6s ease-in-out infinite;
+  pointer-events: none;
+}
+:global(html:not([data-theme='light'])) .rackHeroImg {
+  filter:
+    drop-shadow(0 24px 32px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 36px rgba(34, 211, 238, 0.40));
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(40px); }
+  50%      { transform: translateY(32px); }
 }
 
-.rackCardHead { display: flex; flex-direction: column; gap: 2px; position: relative; z-index: 2; }
+/* Tap-affordance ripple — concentric rings expanding from the base
+   of the rack, like water dropping. Three rings on a staggered loop
+   so there's always one expanding while another fades out. */
+.rackRipple {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%);
+  width: 320px;
+  height: 130px;
+  pointer-events: none;
+  display: block;
+}
+.rackRippleRing {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 240px;
+  height: 78px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(99, 102, 241, 0.85);
+  box-shadow:
+    0 0 12px rgba(99, 102, 241, 0.45),
+    inset 0 0 8px rgba(99, 102, 241, 0.30);
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  animation: rackRipple 1.8s cubic-bezier(0, 0.55, 0.45, 1) infinite;
+}
+.rackRippleRing:nth-child(2) {
+  animation-delay: 0.60s;
+  border-color: rgba(34, 211, 238, 0.85);
+  box-shadow:
+    0 0 14px rgba(34, 211, 238, 0.55),
+    inset 0 0 8px rgba(34, 211, 238, 0.35);
+}
+.rackRippleRing:nth-child(3) {
+  animation-delay: 1.20s;
+  border-color: rgba(167, 139, 250, 0.85);
+  box-shadow:
+    0 0 14px rgba(167, 139, 250, 0.55),
+    inset 0 0 8px rgba(167, 139, 250, 0.35);
+}
+@keyframes rackRipple {
+  0%   { transform: translate(-50%, -50%) scale(0.25); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 0.40; }
+  100% { transform: translate(-50%, -50%) scale(1.45); opacity: 0; }
+}
+:global(html:not([data-theme='light'])) .rackRippleRing {
+  border-color: rgba(129, 140, 248, 0.95);
+  box-shadow:
+    0 0 16px rgba(129, 140, 248, 0.60),
+    inset 0 0 10px rgba(129, 140, 248, 0.40);
+}
+:global(html:not([data-theme='light'])) .rackRippleRing:nth-child(2) {
+  border-color: rgba(34, 211, 238, 0.95);
+  box-shadow:
+    0 0 18px rgba(34, 211, 238, 0.65),
+    inset 0 0 10px rgba(34, 211, 238, 0.40);
+}
+:global(html:not([data-theme='light'])) .rackRippleRing:nth-child(3) {
+  border-color: rgba(167, 139, 250, 0.95);
+  box-shadow:
+    0 0 18px rgba(167, 139, 250, 0.65),
+    inset 0 0 10px rgba(167, 139, 250, 0.40);
+}
+
+/* AR scan-beam — a horizontal cyan line that sweeps vertically over the
+   rack image, like a barcode/3D scanner. Strong visual cue that the rack
+   is scannable / interactive. */
+.rackScanBeam {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 0;
+  height: 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 3;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.10) 10%,
+    rgba(34, 211, 238, 0.95) 50%,
+    rgba(34, 211, 238, 0.10) 90%,
+    transparent 100%);
+  box-shadow:
+    0 0 16px rgba(34, 211, 238, 0.85),
+    0 0 32px rgba(34, 211, 238, 0.55),
+    0 0 64px rgba(34, 211, 238, 0.35);
+  animation: scanBeam 3.2s ease-in-out infinite;
+}
+@keyframes scanBeam {
+  0%   { transform: translateY(20%);  opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(420%); opacity: 0; }
+}
+
+/* "Tap rack to open" chip — floating below the rack with a gentle bounce
+   so the eye picks it up. Pill shape, glass-y, never visually fights
+   the hero image. */
+.rackTapHint {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(99, 102, 241, 0.30);
+  box-shadow:
+    0 4px 14px rgba(99, 102, 241, 0.25),
+    0 0 0 4px rgba(99, 102, 241, 0.06);
+  animation: tapHintBob 2.2s ease-in-out infinite;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+:global(html:not([data-theme='light'])) .rackTapHint {
+  color: #e0e7ff;
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(167, 139, 250, 0.40);
+  box-shadow:
+    0 4px 14px rgba(167, 139, 250, 0.20),
+    0 0 0 4px rgba(167, 139, 250, 0.05);
+}
+.rackTapHintFinger {
+  font-size: 0.95rem;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+  animation: tapHintFinger 1.6s ease-in-out infinite;
+}
+@keyframes tapHintBob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-4px); }
+}
+@keyframes tapHintFinger {
+  0%, 100% { transform: translateY(0)   scale(1);    }
+  35%      { transform: translateY(-3px) scale(1.10); }
+  70%      { transform: translateY(0)   scale(1);    }
+}
+
+/* Footer stats strip inside the rack card */
+.rackCardFoot {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--t2);
+  border-top: 1px solid var(--gb);
+  letter-spacing: 0.01em;
+}
+.rackCardFoot b {
+  font-weight: 800;
+  color: var(--t1);
+  font-variant-numeric: tabular-nums;
+  margin-right: 1px;
+}
+.rackCardFootDot {
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--t2);
+  opacity: 0.40;
+}
+.rackCardFootDc {
+  margin-left: auto;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.66rem;
+  color: var(--c1);
+  opacity: 0.85;
+}
+:global(html:not([data-theme='light'])) .rackCardFootDc { color: #C7D2FE; }
+
+/* Floating health pill on the rack card head row */
+.rackHealth {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rackHealthDot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.rackHealthOk {
+  color: #16A34A;
+  background: rgba(34, 197, 94, 0.10);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+.rackHealthWarn {
+  color: #DC2626;
+  background: rgba(239, 68, 68, 0.10);
+  border: 1px solid rgba(239, 68, 68, 0.40);
+}
+:global(html:not([data-theme='light'])) .rackHealthOk  { color: #86EFAC; background: rgba(34, 197, 94, 0.14); }
+:global(html:not([data-theme='light'])) .rackHealthWarn{ color: #FCA5A5; background: rgba(239, 68, 68, 0.14); }
+
+.rackCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  position: relative;
+  z-index: 2;
+}
 
 /* Active-incident chip — appears in the rack hero card when there is an
    open ServiceNow incident on this rack. The exact number it displays
@@ -725,12 +1108,12 @@
   animation: pulse 1.6s ease-in-out infinite;
 }
 
-/* Sequential rack nav */
+/* Sequential rack nav — sits flush below the rack card */
 .rackNav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 4px 0 4px;
+  margin: 2px 0 2px;
   padding: 0 4px;
 }
 .rackNavBtn {
@@ -767,19 +1150,21 @@
 .sectionLabelBold  { font-weight: 800; color: var(--t1); }
 .sectionLabelLight { font-weight: 400; color: var(--t2); opacity: 0.65; }
 
-/* Big primary CTA — replaces the 3-card bottom row.
-   Single, unmistakable action: scan something. */
+/* Primary CTA — same horizontal rhythm as the rack card above and the
+   secondary CTA below, so the column reads as a uniform stack. */
 .primaryCta {
   display: flex;
   align-items: center;
   gap: 14px;
   width: 100%;
-  padding: 16px 14px 16px 16px;
+  height: 68px;
+  margin-top: 56px;
+  padding: 0 12px 0 14px;
   background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #8B5CF6 100%);
   background-size: 200% 100%;
   color: #FFFFFF;
   border: 0;
-  border-radius: 22px;
+  border-radius: 18px;
   font-family: var(--font);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -787,7 +1172,7 @@
   flex-shrink: 0;
   box-shadow:
     0 1px 2px rgba(79, 70, 229, 0.22),
-    0 14px 32px rgba(79, 70, 229, 0.40),
+    0 12px 28px rgba(79, 70, 229, 0.36),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
   animation: ctaShift 6s ease-in-out infinite alternate;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
@@ -806,8 +1191,8 @@
 }
 .primaryCtaIcon {
   flex-shrink: 0;
-  width: 44px; height: 44px;
-  border-radius: 14px;
+  width: 40px; height: 40px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.20);
   display: flex;
   align-items: center;
@@ -815,7 +1200,7 @@
   color: #FFFFFF;
   backdrop-filter: blur(8px);
 }
-.primaryCtaIcon svg { width: 22px; height: 22px; }
+.primaryCtaIcon svg { width: 20px; height: 20px; }
 .primaryCtaText {
   flex: 1;
   display: flex;
@@ -824,19 +1209,19 @@
   min-width: 0;
 }
 .primaryCtaTitle {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.025em;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 .primaryCtaSub {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.78);
 }
 .primaryCtaGo {
   flex-shrink: 0;
-  width: 36px; height: 36px;
+  width: 30px; height: 30px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.22);
   display: flex;
@@ -845,8 +1230,85 @@
   color: #FFFFFF;
   transition: transform 0.2s ease;
 }
-.primaryCtaGo svg { width: 16px; height: 16px; }
+.primaryCtaGo svg { width: 14px; height: 14px; }
 .primaryCta:hover .primaryCtaGo { transform: translateX(3px); }
+
+/* Secondary CTA — identical shape & height to primary so the column lines up */
+.secondaryCta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 68px;
+  margin-top: 0;
+  padding: 0 12px 0 14px;
+  background: transparent;
+  color: inherit;
+  border: 1.5px solid rgba(99, 102, 241, 0.35);
+  border-radius: 18px;
+  font-family: var(--font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  flex-shrink: 0;
+  transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+.secondaryCta:hover {
+  background: rgba(99, 102, 241, 0.07);
+  border-color: rgba(99, 102, 241, 0.55);
+  transform: translateY(-1px);
+}
+.secondaryCta:active { transform: translateY(0) scale(0.985); }
+:global([data-theme="dark"]) .secondaryCta {
+  border-color: rgba(167, 139, 250, 0.35);
+}
+:global([data-theme="dark"]) .secondaryCta:hover {
+  background: rgba(167, 139, 250, 0.10);
+  border-color: rgba(167, 139, 250, 0.55);
+}
+.secondaryCtaIcon {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.10);
+  display: flex; align-items: center; justify-content: center;
+  color: #4F46E5;
+  border: 1px solid rgba(99, 102, 241, 0.20);
+}
+:global([data-theme="dark"]) .secondaryCtaIcon {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+}
+.secondaryCtaIcon svg { width: 20px; height: 20px; }
+.secondaryCtaText {
+  flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0;
+}
+.secondaryCtaTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+.secondaryCtaSub {
+  font-size: 0.74rem;
+  font-weight: 500;
+  opacity: 0.65;
+}
+.secondaryCtaGo {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.10);
+  display: flex; align-items: center; justify-content: center;
+  color: #4F46E5;
+  transition: transform 0.2s ease;
+}
+:global([data-theme="dark"]) .secondaryCtaGo {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+}
+.secondaryCtaGo svg { width: 14px; height: 14px; }
+.secondaryCta:hover .secondaryCtaGo { transform: translateX(3px); }
 
 /* ════════════════════════════════════════════════════════════════════
    CONTROLS VIEW — RackTrack feature tiles
@@ -877,9 +1339,617 @@
    - Chevron arrow circle bottom-right (signals "tap to open")
    - Hover: lift + chevron slides right
    ─────────────────────────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════════════
+   Step 1 panel — sophisticated, layered, with depth.
+   Ambient glow, big iOS-style icon tile with pulsing ring, real
+   typographic hierarchy. NOT a flat ticket card.
+   ════════════════════════════════════════════════════════════════════ */
+.issuePanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(160deg, var(--card) 0%, var(--card2) 100%);
+  border: 1px solid var(--gb);
+  border-radius: 22px;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 1px 2px rgba(17, 24, 39, 0.04),
+    0 18px 38px rgba(17, 24, 39, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.50);
+}
+:global(html:not([data-theme='light'])) .issuePanel {
+  background: linear-gradient(160deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%);
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 18px 38px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+/* Top accent stripe — severity reads from the colour */
+.issuePanel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #EF4444 18%, #EF4444 82%, transparent 100%);
+}
+.issuePanel_P1::before { background: linear-gradient(90deg, transparent 0%, #B91C1C 18%, #B91C1C 82%, transparent 100%); }
+.issuePanel_P2::before { background: linear-gradient(90deg, transparent 0%, #DC2626 18%, #DC2626 82%, transparent 100%); }
+.issuePanel_P3::before { background: linear-gradient(90deg, transparent 0%, #F97316 18%, #F97316 82%, transparent 100%); }
+.issuePanel_clear::before { background: linear-gradient(90deg, transparent 0%, #22C55E 18%, #22C55E 82%, transparent 100%); }
+
+/* Big ambient glow blob inside the card — gives the panel depth */
+.issuePanelGlow {
+  position: absolute;
+  z-index: 0;
+  top: -40%;
+  right: -30%;
+  width: 90%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(239, 68, 68, 0.18) 0%,
+    rgba(239, 68, 68, 0.06) 35%,
+    transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+.issuePanel_clear .issuePanelGlow {
+  background: radial-gradient(circle,
+    rgba(34, 197, 94, 0.18) 0%,
+    rgba(34, 197, 94, 0.06) 35%,
+    transparent 70%);
+}
+:global(html:not([data-theme='light'])) .issuePanelGlow {
+  background: radial-gradient(circle,
+    rgba(239, 68, 68, 0.32) 0%,
+    rgba(239, 68, 68, 0.10) 35%,
+    transparent 70%);
+}
+:global(html:not([data-theme='light'])) .issuePanel_clear .issuePanelGlow {
+  background: radial-gradient(circle,
+    rgba(34, 197, 94, 0.30) 0%,
+    rgba(34, 197, 94, 0.10) 35%,
+    transparent 70%);
+}
+
+/* Top meta strip */
+.issuePanelMeta {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 0;
+}
+.issuePanelRackChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid var(--gb);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--t2);
+}
+.issuePanelRackChipId {
+  font-family: 'Courier New', monospace;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--c1);
+}
+.issuePanelRackChipDot {
+  width: 2.5px; height: 2.5px;
+  border-radius: 50%;
+  background: var(--t2);
+  opacity: 0.45;
+}
+:global(html:not([data-theme='light'])) .issuePanelRackChip {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+.issuePanelPri {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 9px;
+  border: 1px solid rgba(239, 68, 68, 0.40);
+  border-radius: 999px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  color: #DC2626;
+  background: rgba(239, 68, 68, 0.10);
+  white-space: nowrap;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.04);
+}
+.issuePanelPriDot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.issuePanelPri_ok {
+  color: #16A34A;
+  border-color: rgba(34, 197, 94, 0.40);
+  background: rgba(34, 197, 94, 0.10);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.04);
+}
+:global(html:not([data-theme='light'])) .issuePanelPri    { color: #FCA5A5; border-color: rgba(239, 68, 68, 0.55); background: rgba(239, 68, 68, 0.18); }
+:global(html:not([data-theme='light'])) .issuePanelPri_ok { color: #86EFAC; border-color: rgba(34, 197, 94, 0.50); background: rgba(34, 197, 94, 0.16); }
+
+/* Hero row — icon tile + headline stack */
+.issuePanelHero {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 16px 18px;
+}
+
+/* Big iOS-style icon tile with a pulsing ring around it */
+.issuePanelIcon {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #EF4444 0%, #B91C1C 100%);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 8px 18px rgba(239, 68, 68, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.issuePanel_clear .issuePanelIcon {
+  background: linear-gradient(160deg, #22C55E 0%, #15803D 100%);
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.issuePanelIconRing {
+  position: absolute;
+  inset: -6px;
+  border-radius: 22px;
+  border: 1.5px solid rgba(239, 68, 68, 0.45);
+  animation: iconRingPulse 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+.issuePanel_clear .issuePanelIconRing { border-color: rgba(34, 197, 94, 0.45); }
+@keyframes iconRingPulse {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(1.08); opacity: 0.95; }
+}
+
+.issuePanelHeroText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.issuePanelEyebrow {
+  display: inline-block;
+  width: max-content;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #DC2626;
+  opacity: 0.85;
+}
+.issuePanel_clear .issuePanelEyebrow { color: #16A34A; }
+:global(html:not([data-theme='light'])) .issuePanelEyebrow { color: #FCA5A5; }
+:global(html:not([data-theme='light'])) .issuePanel_clear .issuePanelEyebrow { color: #86EFAC; }
+
+.issuePanelTitle {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.20;
+  color: var(--t1);
+}
+
+.issuePanelTarget {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background: var(--card2);
+  border: 1px solid var(--gb);
+  border-radius: 999px;
+  width: max-content;
+  max-width: 100%;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--t1);
+}
+.issuePanelTarget b {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--c1);
+}
+.issuePanelTargetIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--c1);
+  flex-shrink: 0;
+}
+.issuePanelTag {
+  font-family: 'Courier New', monospace;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--c1);
+}
+:global(html:not([data-theme='light'])) .issuePanelTarget {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+:global(html:not([data-theme='light'])) .issuePanelTarget b,
+:global(html:not([data-theme='light'])) .issuePanelTag { color: #C7D2FE; }
+
+/* Inline CTA at the bottom of the panel — refined, not saturated */
+.issuePanelAction {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 13px 14px 13px 18px;
+  background:
+    linear-gradient(180deg, rgba(99, 102, 241, 0.04) 0%, rgba(99, 102, 241, 0.10) 100%);
+  border: 0;
+  border-top: 1px solid var(--gb);
+  color: var(--c1);
+  font-family: var(--font);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.18s ease;
+}
+.issuePanelActionText { display: inline-flex; align-items: center; gap: 8px; }
+.issuePanelActionArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.32);
+  transition: transform 0.2s ease;
+}
+.issuePanelActionArrow svg { width: 14px; height: 14px; }
+.issuePanelAction:hover { background: linear-gradient(180deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.16) 100%); }
+.issuePanelAction:hover .issuePanelActionArrow { transform: translateX(3px); }
+.issuePanelAction:active .issuePanelActionArrow { transform: translateX(1px) scale(0.96); }
+:global(html:not([data-theme='light'])) .issuePanelAction { color: #C7D2FE; border-top-color: rgba(255,255,255,0.08); }
+:global(html:not([data-theme='light'])) .issuePanelAction { background: linear-gradient(180deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.18) 100%); }
+
+/* Rack-context pill — a compact tag at the top of each non-home view */
+.ctxPill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin-bottom: 6px;
+  background: var(--card);
+  border: 1px solid var(--gb);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--t2);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+}
+.ctxPillId {
+  font-family: 'Courier New', monospace;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--c1);
+}
+.ctxPillDot {
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--t2);
+  opacity: 0.40;
+}
+.ctxPillRole { font-weight: 700; color: var(--t1); }
+.ctxPillDc { opacity: 0.70; }
+:global(html:not([data-theme='light'])) .ctxPill {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+/* Step-CTA — same shape language as the home page CTAs, theme-aware */
+.stepCta {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 68px;
+  padding: 0 12px 0 14px;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #8B5CF6 100%);
+  background-size: 200% 100%;
+  color: #FFFFFF;
+  border: 0;
+  border-radius: 18px;
+  font-family: var(--font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+  box-shadow:
+    0 1px 2px rgba(79, 70, 229, 0.22),
+    0 12px 28px rgba(79, 70, 229, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  animation: ctaShift 6s ease-in-out infinite alternate;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.stepCta:hover { transform: translateY(-2px); }
+.stepCta:active { transform: translateY(0) scale(0.98); }
+.stepCtaIcon {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.20);
+  display: flex; align-items: center; justify-content: center;
+  color: #FFFFFF;
+  backdrop-filter: blur(8px);
+}
+.stepCtaText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.stepCtaTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+.stepCtaSub {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.78);
+}
+.stepCtaGo {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  display: flex; align-items: center; justify-content: center;
+  color: #FFFFFF;
+  transition: transform 0.2s ease;
+}
+.stepCtaGo svg { width: 14px; height: 14px; }
+.stepCta:hover .stepCtaGo { transform: translateX(3px); }
+
+/* Subtle ghost link below the primary CTA */
+.stepGhost {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: center;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--t2);
+  border: 0;
+  border-radius: 999px;
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+.stepGhost svg { width: 12px; height: 12px; opacity: 0.65; }
+.stepGhost:hover { color: var(--c1); }
+.stepGhost:hover svg { opacity: 1; transform: translateX(2px); }
+
+/* ════════════════════════════════════════════════════════════════════
+   STEP 1 — issue card.  One glance: icon, headline, where, severity.
+   Theme-aware (uses app surface tokens) and visually distinct from
+   the Step 3 port card below.
+   ════════════════════════════════════════════════════════════════════ */
+.issueCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 14px 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--gb);
+  border-left: 4px solid #EF4444;
+  border-radius: 18px;
+  box-shadow:
+    0 1px 2px rgba(17, 24, 39, 0.05),
+    0 12px 28px rgba(239, 68, 68, 0.10);
+}
+:global(html:not([data-theme='light'])) .issueCard {
+  background: linear-gradient(160deg, rgba(239,68,68,0.06) 0%, rgba(255,255,255,0.02) 100%);
+  border-color: rgba(255,255,255,0.08);
+  border-left-color: #EF4444;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.30), 0 12px 28px rgba(239,68,68,0.18);
+}
+.issueCard_P1 { border-left-color: #B91C1C; }
+.issueCard_P2 { border-left-color: #DC2626; }
+.issueCard_clear {
+  border-left-color: #22C55E;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05), 0 12px 28px rgba(34, 197, 94, 0.10);
+}
+:global(html:not([data-theme='light'])) .issueCard_clear {
+  background: linear-gradient(160deg, rgba(34,197,94,0.06) 0%, rgba(255,255,255,0.02) 100%);
+}
+
+.issueIcon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.10);
+  color: #DC2626;
+  display: flex; align-items: center; justify-content: center;
+}
+:global(html:not([data-theme='light'])) .issueIcon {
+  background: rgba(239, 68, 68, 0.16);
+  color: #FCA5A5;
+}
+.issueCard_clear .issueIcon { background: rgba(34, 197, 94, 0.12); color: #16A34A; }
+:global(html:not([data-theme='light'])) .issueCard_clear .issueIcon { background: rgba(34, 197, 94, 0.16); color: #86EFAC; }
+
+.issueBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.issueHeadline {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--t1);
+  line-height: 1.15;
+}
+.issueWhere {
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--t2);
+  opacity: 0.85;
+}
+
+.issueChip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+  color: #FFFFFF;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+}
+.issueChip_ok {
+  background: linear-gradient(135deg, #22C55E 0%, #15803D 100%);
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.35);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   STEP 3 — port card.  The big number IS the answer.
+   ════════════════════════════════════════════════════════════════════ */
+.portCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 0 12px;
+  border-bottom: 1px solid var(--gb);
+}
+.portBadge {
+  flex-shrink: 0;
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 12px;
+  background: linear-gradient(160deg, #4F46E5 0%, #6366F1 50%, #8B5CF6 100%);
+  color: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.portBadgeLabel {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.20em;
+  color: rgba(255,255,255,0.85);
+}
+.portBadgeNum {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.portInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.portInfoDevice {
+  font-family: 'Courier New', monospace;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--c1);
+}
+.portInfoHint {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--t2);
+  line-height: 1.35;
+}
+
+.portActions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.portBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px 11px 20px;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  color: #FFFFFF;
+  border: 0;
+  border-radius: 999px;
+  font-family: var(--font);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.35);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.portBtn svg { width: 14px; height: 14px; }
+.portBtn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(79, 70, 229, 0.45); }
+.portBtn:active { transform: translateY(0) scale(0.97); }
+
 /* ════════════════════════════════════════════════════════════════════
    CONTROLS view — incident-led layout (NOT a tile grid).
-   The active ServiceNow incident is the hero; tools sit below as chips.
    ════════════════════════════════════════════════════════════════════ */
 
 /* Incident hero card */
@@ -1036,38 +2106,40 @@
   align-items: flex-start;
   gap: 2px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--gb);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #FFFFFF;
+  background: var(--card);
+  color: var(--t1);
   font-family: var(--font);
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
-.tool:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.18); transform: translateY(-1px); }
+.tool:hover { background: var(--card2); border-color: var(--c1); transform: translateY(-1px); }
 .tool:active { transform: translateY(0) scale(0.97); }
 .toolIcon {
   width: 28px; height: 28px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--card2);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--c1);
   margin-bottom: 4px;
 }
 .toolLabel {
   font-size: 0.86rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--t1);
 }
 .toolMeta {
   font-size: 0.66rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--t2);
+  opacity: 0.65;
 }
 
 /* Rack identity strip — small context line at the bottom */
@@ -1079,22 +2151,24 @@
   padding: 0 4px;
   font-size: 0.7rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--t2);
   letter-spacing: 0.02em;
+  opacity: 0.85;
 }
 .rackStripId {
   font-family: 'Courier New', monospace;
   font-weight: 800;
   letter-spacing: 0.04em;
-  color: #C7D2FE;
+  color: var(--c1);
 }
 .rackStripDot {
   width: 3px; height: 3px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.30);
+  background: var(--t2);
+  opacity: 0.40;
 }
-.rackStripRole { font-weight: 700; color: rgba(255, 255, 255, 0.78); }
-.rackStripDc { color: rgba(255, 255, 255, 0.45); }
+.rackStripRole { font-weight: 700; color: var(--t1); }
+.rackStripDc { color: var(--t2); opacity: 0.70; }
 
 /* ════════════════════════════════════════════════════════════════════
    CMDB ticket panel — modelled on CmdbTicketBanner.jsx
@@ -1292,7 +2366,7 @@
   position: absolute;
   z-index: 9;
   left: 18px; right: 18px;
-  bottom: 100px;
+  bottom: 170px;
   padding: 16px 18px;
   background: rgba(255,255,255,0.96);
   border-radius: 22px;
@@ -1351,8 +2425,9 @@
   font-weight: 800;
   letter-spacing: 0.18em;
   color: rgba(34, 211, 238, 0.9);
-  pointer-events: auto;
+  pointer-events: none;
 }
+.v_scan .scanHudBar { pointer-events: auto; }
 .scanHudBarFill {
   position: absolute;
   inset: 0 0 0 0;
@@ -1393,7 +2468,7 @@
 }
 .arChip1 { top: 28%; left: 6%;  animation-delay: 1.9s; }
 .arChip2 { top: 50%; right: 6%; animation-delay: 2.1s; }
-.arChip3 { top: 76%; left: 8%;  animation-delay: 2.3s; }
+.arChip3 { top: 62%; left: 8%;  animation-delay: 2.3s; }
 @keyframes arChipIn {
   from { opacity: 0; transform: scale(0.85) translateY(-4px); }
   to   { opacity: 1; transform: scale(1)    translateY(0); }
@@ -1404,7 +2479,7 @@
 /* Big "Open AR scan" CTA at the bottom of the HUD */
 .scanHudCta {
   position: absolute;
-  bottom: 110px;
+  bottom: 160px;
   left: 18px; right: 18px;
   display: inline-flex;
   align-items: center;
@@ -1419,10 +2494,11 @@
   font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  pointer-events: auto;
+  pointer-events: none;
   box-shadow: 0 1px 2px rgba(6, 182, 212, 0.20), 0 12px 28px rgba(6, 182, 212, 0.40);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
+.v_scan .scanHudCta { pointer-events: auto; }
 .scanHudCta svg { width: 16px; height: 16px; }
 .scanHudCta:hover { transform: translateY(-1px); }
 .scanHudCta:active { transform: translateY(0) scale(0.98); }
@@ -1467,8 +2543,9 @@
   border: 1px solid rgba(99, 102, 241, 0.22);
   border-radius: 18px;
   backdrop-filter: blur(14px);
-  pointer-events: auto;
+  pointer-events: none;
 }
+.v_network .netStrip { pointer-events: auto; }
 .netStrip > div { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .netStrip strong {
   font-size: 1.4rem;
@@ -1550,10 +2627,11 @@
   border-radius: 999px;
   white-space: nowrap;
   transform: translate(-50%, -50%);
-  pointer-events: auto;
+  pointer-events: none;
   animation: netNodeIn 0.55s cubic-bezier(0.34, 1.4, 0.6, 1) backwards;
   backdrop-filter: blur(6px);
 }
+.v_network .netNode { pointer-events: auto; }
 @keyframes netNodeIn {
   from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }

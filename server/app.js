@@ -152,6 +152,28 @@ try {
     'netdisco proxy not loaded');
 }
 
+// Port-history / drift API — backed by the SSH poller. All routes under
+// /api/ports/*. The poller itself is started later, inside the listen()
+// callback, so the SSH runner export below is already in place.
+try {
+  app.use(require('./port_history'));
+  logger.info({ event: 'router.loaded', router: 'port_history' }, 'port history router loaded');
+} catch (err) {
+  logger.warn({ event: 'router.load_failed', router: 'port_history', err: err.message },
+    'port history router not loaded');
+}
+
+// Demo tenant-mat — isolated, no-auth, file-backed dataset used by the
+// /demo/topology UI to prototype the unified rack-layout view. Reads
+// server/data/demo_tenant.json; touches no real tenant data.
+try {
+  app.use(require('./demo_topology'));
+  logger.info({ event: 'router.loaded', router: 'demo_topology' }, 'demo tenant-mat router loaded');
+} catch (err) {
+  logger.warn({ event: 'router.load_failed', router: 'demo_topology', err: err.message },
+    'demo tenant-mat router not loaded');
+}
+
 // CMDB-ticket integration — every CMDB write is gated behind an SR
 // (sc_request) approval. Routes under /api/cmdb/ticket/*; the poller
 // runs every 5 min.
@@ -1059,7 +1081,38 @@ function scheduleCanonicalRefresh(rackId) {
   setImmediate(() => {
     writeCanonicalScanResult(rackId);
     scheduleOcrDevices(rackId);
+    scheduleOcrLabels(rackId);
   });
+}
+
+// Fire-and-forget full-image label OCR after a scan finishes. Per-device OCR
+// (scheduleOcrDevices) only sees the crop YOLO produced, so when the detector
+// misses a device or boxes it tight enough to clip its faceplate label, the
+// per-device pass returns empty text. Running label OCR on the whole rack
+// photo recovers brand badges (PLANAR, TRIPP-LITE, AUDIOCODES, SONY, …) and
+// rack-applied labels that fall outside any single device's bbox — the GET
+// /api/ocr/labels/:rackId endpoint then maps those tokens back to devices by
+// Y-overlap and surfaces a brand-token reclassification for the client.
+const _ocrLabelsRunning = new Set();
+function scheduleOcrLabels(rackId) {
+  if (!rackId || _ocrLabelsRunning.has(rackId)) return;
+  const rackDir   = path.join(outputsDir, rackId);
+  const frontPath = path.join(rackDir, 'labels-front.json');
+  const metaPath  = path.join(rackDir, 'scan_meta.json');
+  if (!fs.existsSync(metaPath) || fs.existsSync(frontPath)) return;
+  let imagePath = null;
+  try { imagePath = JSON.parse(fs.readFileSync(metaPath, 'utf8'))?.imagePath; } catch (_) { return; }
+  if (!imagePath || !fs.existsSync(imagePath)) return;
+  _ocrLabelsRunning.add(rackId);
+  runOcrLabels(imagePath)
+    .then(result => {
+      fs.mkdirSync(rackDir, { recursive: true });
+      fs.writeFileSync(frontPath, JSON.stringify(result, null, 2));
+    })
+    .catch(err => {
+      logger.warn(`[ocr_labels] ${rackId} failed: ${err.message}`);
+    })
+    .finally(() => { _ocrLabelsRunning.delete(rackId); });
 }
 
 // Fire-and-forget per-device OCR after a scan finishes. Runs only when
@@ -1709,18 +1762,106 @@ app.post('/api/ocr/labels', upload.single('image'), async (req, res) => {
  * GET /api/ocr/labels/:rackId
  * Returns the cached OCR labels for a rack (front + rear, if both exist) and
  * maps each label to its best-matching detected device by vertical bbox
- * overlap with the device's U-slot region. Devices without an OCR match keep
- * their synthetic name (the client can decide whether to display the label).
+ * overlap with the device's U-slot region. Falls back to ocr_devices.json
+ * (per-device crop OCR) when no front/rear label files are present — so any
+ * physical label captured during the analyze flow is surfaced as a candidate
+ * name. When at least one label is detected, also infers the pattern
+ * (prefix-CODE-NN) so the client can mint matching names for unlabeled
+ * devices in the same rack.
  *
  * Response:
  *   {
  *     front:  { labels: [...], image_size: {w,h} } | null,
  *     rear:   { labels: [...], image_size: {w,h} } | null,
  *     deviceLabels: [
- *       { device_index, synthetic_name, label, conf, source: 'front'|'rear' }
- *     ]
+ *       { device_index, synthetic_name, label, conf,
+ *         source: 'front'|'rear'|'per_device' }
+ *     ],
+ *     pattern: { prefix, sep, classTok, padding } | null
  *   }
  */
+// Pull the first identifier-shaped token out of raw OCR text. Repairs the
+// most common EasyOCR confusions (O↔0, I↔1) when they sit next to digits, so
+// "RVEW-CORE-SWO1 STACK MEMBER 2" yields "RVEW-CORE-SW01".
+function normalizeOcrLabelText(rawText) {
+  if (!rawText) return null;
+  const s = String(rawText).trim();
+  if (!s) return null;
+  for (const tok of s.split(/\s+/)) {
+    const fixed = tok
+      .replace(/([A-Z])O(?=\d)/g, '$10')
+      .replace(/(\d)O/g, '$10')
+      .replace(/([A-Z])I(?=\d)/g, '$11')
+      .replace(/(\d)I/g, '$11')
+      .toUpperCase();
+    // Require at least one separator and a letters-then-digits final segment,
+    // e.g. RVEW-CORE-SW01 or RACK01_PDU3. Bare tokens like "SW01" don't
+    // qualify on their own — they're ambiguous without a site/rack prefix.
+    if (/^[A-Z][A-Z0-9]*(?:[-_][A-Z0-9]+)*[-_][A-Z]+\d+$/.test(fixed)) return fixed;
+  }
+  return null;
+}
+
+// Parse RVEW-CORE-SW01 → { prefix:'RVEW-CORE', sep:'-', classTok:'SW', padding:2 }
+function inferLabelPattern(label) {
+  if (!label) return null;
+  const m = label.match(/^(.+)([-_])([A-Z]+)(\d+)$/);
+  if (!m) return null;
+  return { prefix: m[1], sep: m[2], classTok: m[3], padding: m[4].length };
+}
+
+// Brand → class-name lookup. The YOLO detector can't see vendor badges, so
+// when OCR catches a known brand inside (or adjacent to) a device's bbox we
+// upgrade the class. Order matters — more specific brands first so e.g.
+// "Cisco Catalyst" hits CATALYST before CISCO.
+const BRAND_CLASS = [
+  ['MEDIAPACK',  'Gateway'],
+  ['AUDIOCODES', 'Gateway'],
+  ['PLANAR',     'Controller'],
+  ['TRIPP-LITE', 'PDU'],
+  ['TRIPPLITE',  'PDU'],
+  ['TRIPP LITE', 'PDU'],
+  ['CATALYST',   'Switch'],
+  ['NEXUS',      'Switch'],
+  ['ARUBA',      'Switch'],
+  ['JUNIPER',    'Switch'],
+  ['CEDGE',      'Router'],
+  ['MERAKI',     'Switch'],
+  ['PALOALTO',   'Firewall'],
+  ['PALO ALTO',  'Firewall'],
+  ['FORTIGATE',  'Firewall'],
+  ['FORTINET',   'Firewall'],
+  ['CHECKPOINT', 'Firewall'],
+  ['APC',        'UPS'],
+  ['EATON',      'UPS'],
+  ['SCHNEIDER',  'UPS'],
+  ['SONY',       'Recorder'],
+  ['POLYCOM',    'Gateway'],
+  ['CISCO',      'Switch'],
+];
+
+function classifyByBrand(text) {
+  if (!text) return null;
+  const s = String(text).toUpperCase();
+  for (const [brand, cls] of BRAND_CLASS) {
+    if (s.includes(brand)) return { brand, class_name: cls };
+  }
+  // Fuzzy matches for common OCR errors that ocr_devices.py emits on these
+  // brands (verified against real captures in outputs/).
+  if (/\bBON\s+SON\b/.test(s)) return { brand: 'SONY',      class_name: 'Recorder' };
+  if (/\bMEDIA\s*PACK\b/.test(s)) return { brand: 'MEDIAPACK', class_name: 'Gateway' };
+  if (/\bMEDLA\s*PACK\b/.test(s)) return { brand: 'MEDIAPACK', class_name: 'Gateway' };
+  // TRIPP-LITE OCR variants seen in the wild: TRIPPLITE, TRIPP-LITE,
+  // TRIPPLME (l→m), TRIPPLE (dropped suffix), TRIPP_LITE, TRIPPL!TE, etc.
+  // The TRIPP prefix is distinctive enough that any token starting with it
+  // and continuing as letters is safely Tripp-Lite.
+  if (/\bTRIPP[A-Z]{1,8}\b/.test(s)) return { brand: 'TRIPP-LITE', class_name: 'PDU' };
+  if (/\bRIPP[-\s]?LITE\b/.test(s)) return { brand: 'TRIPP-LITE', class_name: 'PDU' };
+  if (/\bPLAN[A4]R\b/.test(s)) return { brand: 'PLANAR', class_name: 'Controller' };
+  if (/\bCED[O0]E[K_]?[O0]?[I1]?\b/.test(s)) return { brand: 'CEDGE', class_name: 'Router' };
+  return null;
+}
+
 app.get('/api/ocr/labels/:rackId', (req, res) => {
   const rackId  = req.params.rackId;
   const rackDir = path.join(outputsDir, rackId);
@@ -1731,25 +1872,46 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
     catch { return null; }
   };
 
+  // For racks scanned before scheduleOcrLabels existed (or where it hasn't
+  // completed yet), trigger the full-image OCR pass in the background so
+  // brand-token reclassification becomes available on the next refresh.
+  if (!fs.existsSync(path.join(rackDir, 'labels-front.json'))) {
+    try { scheduleOcrLabels(rackId); } catch (_) {}
+  }
+
   const front = readJson(path.join(rackDir, 'labels-front.json'));
   const rear  = readJson(path.join(rackDir, 'labels-rear.json'));
   const dum   = readJson(path.join(rackDir, 'device_unit_map.json'));
+  const perDev = readJson(path.join(rackDir, 'ocr_devices.json'));
 
   const deviceLabels = [];
   if (dum && Array.isArray(dum.devices)) {
     // For each device, find the best-matching label by Y-overlap (front → rear fallback).
+    // device_unit_map.json stores boxes as `box: [x1,y1,x2,y2]` in pixel
+    // coords; label bboxes are also pixel-absolute. Compare Y centers directly
+    // rather than going through percentages — dum has no image_size field,
+    // and the percentages from labels-front are tied to their own image_size.
+    //
+    // matchSide only considers identifier-shaped labels (RVEW-CORE-SW01,
+    // RACK01-PDU3, …) for naming. Brand badges (PLANAR, TRIPPLME) and
+    // descriptive chatter (STACK MEMBER 2, 1044248) are ignored here —
+    // they're still consumed by mapFullImageLabels below for reclassification.
+    // Without this filter the device chip would show "PLANAR" as its name,
+    // and inferLabelPattern would pick a non-pattern token as the template.
     const matchSide = (sideName, sideData) => {
-      if (!sideData?.labels?.length || !sideData.image_size) return null;
-      const imgH = sideData.image_size.h || 1;
+      if (!sideData?.labels?.length) return null;
       return dum.devices.map((dev, idx) => {
-        const yPct  = (dev.bbox?.y ?? 0) / (dum.image_size?.h || imgH) * 100;
-        const hPct  = (dev.bbox?.h ?? 0) / (dum.image_size?.h || imgH) * 100;
-        // Find label whose center yPct falls inside the device's vertical band.
+        const box = dev.box;
+        if (!Array.isArray(box) || box.length < 4) return null;
+        const dy = box[1];
+        const dh = box[3] - box[1];
         let best = null, bestScore = -1;
         for (const l of sideData.labels) {
-          const lYPct = (l.bbox?.yPct ?? 0) + (l.bbox?.h ?? 0) / imgH * 50;
-          // overlap score: 1.0 if center is inside the device band, else falls off
-          if (lYPct < yPct - 1 || lYPct > yPct + hPct + 1) continue;
+          if (!normalizeOcrLabelText(l.text)) continue;
+          const ly = (l.bbox?.y ?? 0);
+          const lh = (l.bbox?.h ?? 0);
+          const lYCenter = ly + lh / 2;
+          if (lYCenter < dy - 6 || lYCenter > dy + dh + 6) continue;
           const score = (l.conf || 0);
           if (score > bestScore) { bestScore = score; best = l; }
         }
@@ -1765,19 +1927,209 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
     for (const m of frontMatches) matched.set(m.idx, m);
     for (const m of rearMatches) if (!matched.has(m.idx)) matched.set(m.idx, m);
 
+    // Find a "stack member N" hint near a device's Y-band — captured as a
+    // separate OCR label, e.g. "STACK MEMBER 2". Used to differentiate two
+    // physically distinct switches that share the same hostname sticker.
+    const findStackMember = (sideData, dy, dh) => {
+      if (!sideData?.labels?.length) return null;
+      for (const l of sideData.labels) {
+        const ly = (l.bbox?.y ?? 0);
+        const lh = (l.bbox?.h ?? 0);
+        const lyc = ly + lh / 2;
+        if (lyc < dy - 6 || lyc > dy + dh + 6) continue;
+        const m = String(l.text || '').match(/(?:stack\s*)?mem(?:ber|rer|8er|ber)\s*(\d+)/i);
+        if (m) return m[1];
+      }
+      return null;
+    };
+
     dum.devices.forEach((dev, idx) => {
       const m = matched.get(idx);
+      if (!m) {
+        deviceLabels.push({ device_index: idx, synthetic_name: dev.name || `dev${idx}`, label: null, conf: null, source: null });
+        return;
+      }
+      const rawText = m.label.text;
+      const normalized = normalizeOcrLabelText(rawText) || rawText;
+      const box = dev.box;
+      const sideData = m.side === 'front' ? front : rear;
+      const stackN = findStackMember(sideData, box[1], box[3] - box[1]);
+      const finalLabel = stackN ? `${normalized}/${stackN}` : normalized;
       deviceLabels.push({
         device_index:   idx,
         synthetic_name: dev.name || `dev${idx}`,
-        label:          m ? m.label.text : null,
-        conf:           m ? m.label.conf : null,
-        source:         m ? m.side : null,
+        label:          finalLabel,
+        conf:           m.label.conf,
+        source:         m.side,
+        stack_base:     normalized,
       });
     });
+
+    // Per-device crop OCR fills any slot still missing a label. We match by
+    // U-slot since ocr_devices.json and device_unit_map.json are generated
+    // from the same detection pass. Two relaxations from the front/rear path:
+    //   - Threshold 0.4 instead of 0.6 — Cisco stack members often produce
+    //     mid-confidence OCR on the second/third stack switch because cables
+    //     partially occlude the label, but the text is still recognizable.
+    //   - Duplicate labels are kept (with a /N stack-member suffix when the
+    //     raw text contains "STACK MEMBER N") so two physical switches with
+    //     identical hostnames don't collapse to a single chip.
+    if (perDev && Array.isArray(perDev.devices)) {
+      const seenLabels = new Map(); // normalized label → count assigned
+      for (const od of perDev.devices) {
+        if (!od.raw_text || (od.ocr_conf || 0) < 0.4) continue;
+        const norm = normalizeOcrLabelText(od.raw_text);
+        if (!norm) continue;
+        const pos = String(od.position || '').toLowerCase();
+        const idx = dum.devices.findIndex(d => (d.units || []).some(u => String(u).toLowerCase() === pos));
+        if (idx < 0) continue;
+        const slot = deviceLabels[idx];
+        if (!slot || slot.label) continue;
+        // Stack-member differentiation: prefer the explicit "STACK MEMBER N"
+        // from raw_text, otherwise increment a /N counter for repeated labels.
+        let finalLabel = norm;
+        const stackM = od.raw_text.match(/stack\s*member\s*(\d+)/i);
+        const seenCount = seenLabels.get(norm) || 0;
+        if (stackM) {
+          finalLabel = `${norm}/${stackM[1]}`;
+        } else if (seenCount > 0) {
+          finalLabel = `${norm}/${seenCount + 1}`;
+        }
+        seenLabels.set(norm, seenCount + 1);
+        slot.label  = finalLabel;
+        slot.conf   = od.ocr_conf;
+        slot.source = 'per_device';
+        slot.stack_base = norm; // for the client / debugging
+      }
+    }
   }
 
-  res.json({ front, rear, deviceLabels });
+  // Post-pass: symmetric stack-member suffixing. When two+ devices share the
+  // same stack_base (e.g. two switches both labelled RVEW-CORE-SW01 because
+  // they form a Cisco stack), suffix every member with /N — not just the
+  // duplicates after the first. That way the UI doesn't visually merge the
+  // primary into a single chip and leave the others looking like /2, /3.
+  if (dum && Array.isArray(dum.devices)) {
+    const byBase = new Map();
+    deviceLabels.forEach(d => {
+      if (!d.stack_base) return;
+      if (!byBase.has(d.stack_base)) byBase.set(d.stack_base, []);
+      byBase.get(d.stack_base).push(d);
+    });
+    for (const group of byBase.values()) {
+      if (group.length < 2) continue;
+      // Order by Y (top-down) so suffix /1 is always physically highest.
+      group.sort((a, b) => (dum.devices[a.device_index]?.box?.[1] ?? 0) - (dum.devices[b.device_index]?.box?.[1] ?? 0));
+      group.forEach((d, i) => {
+        // Keep an explicit /N already set (from "STACK MEMBER N" text), otherwise
+        // assign by Y-order.
+        const existing = d.label?.match(/\/(\d+)$/);
+        if (!existing) d.label = `${d.stack_base}/${i + 1}`;
+      });
+    }
+  }
+
+  // Pick the highest-confidence label as the pattern template. Prefer the
+  // base label (without stack suffix) so the pattern doesn't include /N.
+  const bestLabeled = deviceLabels
+    .filter(d => d.label && (d.conf || 0) >= 0.6)
+    .sort((a, b) => (b.conf || 0) - (a.conf || 0))[0];
+  const pattern = bestLabeled ? inferLabelPattern(bestLabeled.stack_base || bestLabeled.label) : null;
+
+  // Brand-token reclassification — read every OCR'd token we have (front
+  // image labels + per-device crop text) and, when a known brand name lands
+  // inside or atop a device's bbox, upgrade that device's class. This
+  // recovers Planar/Sony/Audiocodes/Tripp-Lite/CEdge etc. that YOLO
+  // mislabels as UPS / Empty / Server based on silhouette alone.
+  const reclassifications = {};
+  const noteReclass = (idx, hit, srcText, conf) => {
+    if (idx == null || idx < 0 || !hit) return;
+    const prev = reclassifications[idx];
+    if (prev && (prev.conf || 0) >= (conf || 0)) return;
+    reclassifications[idx] = {
+      device_index: idx,
+      class_name:   hit.class_name,
+      brand:        hit.brand,
+      raw_text:     srcText,
+      conf:         conf || 0,
+    };
+  };
+
+  if (dum && Array.isArray(dum.devices)) {
+    // Per-device crop text — direct device-to-text mapping.
+    if (perDev && Array.isArray(perDev.devices)) {
+      for (const od of perDev.devices) {
+        const hit = classifyByBrand(od.raw_text);
+        if (!hit) continue;
+        const pos = String(od.position || '').toLowerCase();
+        const idx = dum.devices.findIndex(d => (d.units || []).some(u => String(u).toLowerCase() === pos));
+        noteReclass(idx, hit, od.raw_text, od.ocr_conf);
+      }
+    }
+    // Full-image OCR labels — match to the device whose bbox vertically
+    // contains the label's center. Front side first; rear is a fallback for
+    // racks where the brand badge is only visible on the back. Pixel-absolute
+    // comparison; dum has no image_size and dev uses `box: [x1,y1,x2,y2]`.
+    const mapFullImageLabels = (sideData) => {
+      if (!sideData?.labels?.length) return;
+      for (const lbl of sideData.labels) {
+        const hit = classifyByBrand(lbl.text);
+        if (!hit) continue;
+        const ly = lbl.bbox?.y ?? 0;
+        const lh = lbl.bbox?.h ?? 0;
+        const lYCenter = ly + lh / 2;
+        let bestIdx = -1, bestDist = Infinity;
+        dum.devices.forEach((dev, idx) => {
+          const box = dev.box;
+          if (!Array.isArray(box) || box.length < 4) return;
+          const dy = box[1];
+          const dh = box[3] - box[1];
+          if (lYCenter < dy - 6 || lYCenter > dy + dh + 6) return;
+          const dist = Math.abs(lYCenter - (dy + dh / 2));
+          if (dist < bestDist) { bestDist = dist; bestIdx = idx; }
+        });
+        noteReclass(bestIdx, hit, lbl.text, lbl.conf);
+      }
+    };
+    mapFullImageLabels(front);
+    mapFullImageLabels(rear);
+
+    // Label-driven reclassification: when YOLO marked a device Unidentified
+    // (or Empty) but OCR captured an identifier-shaped label whose class
+    // token names a known class — e.g. "RVEW-CORE-SW01" → SW → Switch — use
+    // the label's own evidence to upgrade the class. Only applies to
+    // low-confidence YOLO classes so we don't overrule strong detections.
+    const CLASS_FROM_CODE = {
+      SW:'Switch', SWITCH:'Switch', SWT:'Switch',
+      PP:'Patch Panel', PANEL:'Patch Panel',
+      FW:'Firewall', FWL:'Firewall',
+      RO:'Router', RTR:'Router', RT:'Router',
+      SVR:'Server', SRV:'Server', SERVER:'Server',
+      LB:'Load Balancer',
+      GW:'Gateway', GT:'Gateway', GTW:'Gateway',
+      MO:'Modem', MDM:'Modem',
+      CTRL:'Controller', CTL:'Controller',
+      REC:'Recorder',
+      AMP:'Amplifier',
+      PDU:'PDU', PSU:'PSU', UPS:'UPS',
+    };
+    const WEAK_CLASSES = new Set(['Unidentified', 'Empty', 'Closed Unit']);
+    for (const d of deviceLabels) {
+      if (!d.stack_base) continue;
+      const dev = dum.devices[d.device_index];
+      if (!dev || !WEAK_CLASSES.has(dev.class_name)) continue;
+      const codeM = d.stack_base.match(/[-_]([A-Z]+)\d+$/);
+      const inferred = codeM ? CLASS_FROM_CODE[codeM[1]] : null;
+      if (inferred) {
+        noteReclass(d.device_index, { brand: 'LABEL', class_name: inferred }, d.stack_base, d.conf || 0.5);
+      }
+    }
+  }
+
+  res.json({
+    front, rear, deviceLabels, pattern,
+    reclassifications: Object.values(reclassifications),
+  });
 });
 
 /**
@@ -1912,6 +2264,108 @@ function readTicketByNumber(inc) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
 }
 
+// ── Rack identity (CMDB) ─────────────────────────────────────
+// Manually-seeded canonical rack records live in cmdb_racks/<rack_name>.json.
+// Each carries the expected label pattern + the device labels we expect to
+// see on the front of that rack. Used by verifyRackIdentity() to gate
+// ticket-driven uploads — i.e. "you said this is RACK-RVEW-CORE-01; the
+// labels in this photo say otherwise; please upload the correct rack."
+const CMDB_RACKS_DIR = path.join(__dirname, '..', 'cmdb_racks');
+
+function readCmdbRack(rackName) {
+  if (!rackName) return null;
+  const p = path.join(CMDB_RACKS_DIR, `${rackName}.json`);
+  if (!fs.existsSync(p)) return null;
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+}
+
+// Run label OCR + read whatever's cached, then return all identifier-shaped
+// tokens we recognise from this rack's image. Tokens are upper-cased and
+// normalised the same way labels-front / per-device OCR are processed in
+// /api/ocr/labels/:rackId, so equality comparisons with CMDB expected
+// labels work directly.
+function collectIdentifierTokens(rackDir) {
+  const readJson = (p) => {
+    try { return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null; }
+    catch { return null; }
+  };
+  const tokens = new Set();
+  const front  = readJson(path.join(rackDir, 'labels-front.json'));
+  const rear   = readJson(path.join(rackDir, 'labels-rear.json'));
+  const perDev = readJson(path.join(rackDir, 'ocr_devices.json'));
+  const pushNorm = (text) => {
+    const n = normalizeOcrLabelText(text);
+    if (n) tokens.add(n);
+  };
+  for (const side of [front, rear]) {
+    if (!side?.labels) continue;
+    for (const l of side.labels) pushNorm(l.text);
+  }
+  if (perDev?.devices) for (const d of perDev.devices) pushNorm(d.raw_text);
+  return [...tokens];
+}
+
+// Verify that an uploaded rack image (already analyzed → rackDir populated)
+// is the rack the ticket says it is. Returns { ok, reason, detected,
+// expected, matches, missing, pattern_ok }. The caller decides what to do
+// on a `false` result (typically 409 + ask user to upload the correct rack).
+//
+// Match rule (soft mode, default): accept if ≥ min_label_matches expected
+// labels appear in the upload's OCR tokens, OR if the upload's label pattern
+// (prefix-CODE-NN) matches the CMDB rack's pattern AND we read at least one
+// identifier token. Soft mode also accepts when no labels were detected at
+// all — that's a "no signal either way" case, surfaced to the client with
+// `reason: 'no_labels_detected'` so the UI can prompt for a manual confirm.
+//
+// Strict mode (when cmdbRack.verification.mode === 'strict'): rejects on
+// no_labels_detected and demands at least min_label_matches concrete hits.
+function verifyRackIdentity(rackDir, ticket) {
+  const rackName = ticket?.cmdb?.rack_name;
+  const cmdbRack = readCmdbRack(rackName);
+  if (!cmdbRack) {
+    // No CMDB record for this rack → can't verify, fall through (open by default).
+    return { ok: true, reason: 'no_cmdb_record', detected: [], expected: [], matches: [] };
+  }
+  const detected = collectIdentifierTokens(rackDir);
+  const expected = (cmdbRack.expected_devices || []).map(d => String(d.label || '').toUpperCase()).filter(Boolean);
+  const expectedSet = new Set(expected);
+  const matches = detected.filter(t => expectedSet.has(t));
+  const min = cmdbRack.verification?.min_label_matches ?? 1;
+  const mode = cmdbRack.verification?.mode || 'soft';
+
+  // Pattern check — RVEW-CORE-* style. Useful when a label is OCR'd that
+  // *isn't* in the expected list (e.g. a new device added to this rack)
+  // but still clearly belongs to this rack's naming scheme.
+  const pat = cmdbRack.label_pattern;
+  const patternRegex = pat?.regex ? new RegExp(pat.regex) : null;
+  const patternHits = patternRegex ? detected.filter(t => patternRegex.test(t)) : [];
+  const patternOk = patternHits.length > 0;
+
+  if (matches.length >= min) {
+    return { ok: true, reason: 'expected_label_match', detected, expected, matches, pattern_ok: patternOk };
+  }
+  if (patternOk && mode === 'soft') {
+    return { ok: true, reason: 'pattern_match_only', detected, expected, matches, pattern_ok: true };
+  }
+  if (detected.length === 0) {
+    // No legible labels — soft mode accepts and falls back to the
+    // synthesized U-prefixed pattern downstream; strict mode rejects.
+    return {
+      ok: mode === 'soft' ? true : false,
+      reason: 'no_labels_detected',
+      detected, expected, matches, pattern_ok: false,
+    };
+  }
+  return {
+    ok: false,
+    reason: 'rack_mismatch',
+    detected, expected, matches,
+    pattern_ok: patternOk,
+    missing: expected.filter(e => !detected.includes(e)),
+  };
+}
+
+
 /**
  * Map a CMDB device name (e.g. SW-U10) to a device_index inside a scan's
  * device_unit_map.json. Matching rule: class matches the name prefix
@@ -1935,18 +2389,79 @@ function deviceIndexFromTicket(rackDir, cmdbDeviceName) {
  *     detections_at_u: [{class_name, confidence}],  // everything the scan sees at expected_u
  *   }
  */
-function resolveTicketDevice(rackDir, cmdbDeviceName) {
+// Map of class codes used in device names (RVEW-CORE-SW01, SW-U10, …) to
+// canonical class_name values from the YOLO detector. Lets us derive the
+// expected class from a CMDB device name regardless of which naming
+// convention the site uses.
+const CLASS_CODE_TO_NAME = {
+  SW:'Switch', SWT:'Switch', SWITCH:'Switch',
+  PP:'Patch Panel', PANEL:'Patch Panel',
+  FW:'Firewall', FWL:'Firewall',
+  RO:'Router', RTR:'Router', RT:'Router',
+  SRV:'Server', SVR:'Server', SERVER:'Server',
+  LB:'Load Balancer',
+  GW:'Gateway', GT:'Gateway', GTW:'Gateway',
+  MO:'Modem', MDM:'Modem',
+  CTRL:'Controller', CTL:'Controller',
+  REC:'Recorder',
+  AMP:'Amplifier',
+  PDU:'PDU', PSU:'PSU', UPS:'UPS',
+};
+
+function resolveTicketDevice(rackDir, cmdbDeviceName, cmdbHint = null) {
   const result = { device_index: null, expected_class: null, expected_u: null, detections_at_u: [] };
   const mapPath = path.join(rackDir, 'device_unit_map.json');
   if (!fs.existsSync(mapPath)) return result;
   const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-  const prefixToClass = { 'SW-': 'Switch', 'PP-': 'Patch Panel', 'SRV-': 'Server' };
-  const prefix = Object.keys(prefixToClass).find(p => cmdbDeviceName.toUpperCase().startsWith(p));
-  if (!prefix) return result;
-  result.expected_class = prefixToClass[prefix];
-  const m = /U(\d{1,2})$/i.exec(cmdbDeviceName);
-  if (!m) return result;
-  const uNum = parseInt(m[1], 10);
+  const name = String(cmdbDeviceName || '').toUpperCase();
+
+  // Strategy A — legacy "<CODE>-U<NN>" names (SW-U10, PP-U08, SRV-U02).
+  // Class comes from the prefix, U-position from the suffix.
+  const legacyPrefix = { 'SW-':'Switch', 'PP-':'Patch Panel', 'SRV-':'Server' };
+  const lp = Object.keys(legacyPrefix).find(p => name.startsWith(p));
+  let uNum = null;
+  if (lp) {
+    result.expected_class = legacyPrefix[lp];
+    const m = /U(\d{1,2})$/i.exec(name);
+    if (m) uNum = parseInt(m[1], 10);
+  }
+
+  // Strategy B — pattern-style names like RVEW-CORE-SW01. The last segment
+  // (split on - or _) is "<CLASS_CODE><digits>"; class is the code,
+  // U-position comes from the ticket's cmdb.u_position (the name itself
+  // doesn't encode U). Anything that resolves a class here is preferred
+  // over the legacy parse only when the legacy parse hasn't already
+  // populated expected_class.
+  if (!result.expected_class) {
+    const tail = name.match(/([-_])([A-Z]+)(\d+)(?:\/\d+)?$/);
+    if (tail) {
+      const code = tail[2];
+      const cls  = CLASS_CODE_TO_NAME[code];
+      if (cls) result.expected_class = cls;
+    }
+  }
+
+  // U-position fallback: take it from the CMDB hint when the name didn't
+  // encode it. Common for hostnames like RVEW-CORE-SW01 where U is a
+  // separate CMDB field rather than part of the name.
+  if (uNum == null && cmdbHint?.u_position != null) {
+    const n = parseInt(cmdbHint.u_position, 10);
+    if (!Number.isNaN(n)) uNum = n;
+  }
+
+  // Final class fallback: derive from cmdb.sys_class_name when the name
+  // gave us nothing useful (e.g. CMDB shipped a free-form hostname).
+  if (!result.expected_class && cmdbHint?.sys_class_name) {
+    const k = String(cmdbHint.sys_class_name).toLowerCase();
+    if (k.includes('switch'))     result.expected_class = 'Switch';
+    else if (k.includes('router'))     result.expected_class = 'Router';
+    else if (k.includes('firewall'))   result.expected_class = 'Firewall';
+    else if (k.includes('server'))     result.expected_class = 'Server';
+    else if (k.includes('pdu'))        result.expected_class = 'PDU';
+    else if (k.includes('ups'))        result.expected_class = 'UPS';
+  }
+
+  if (uNum == null || !result.expected_class) return result;
   result.expected_u = uNum;
   const uTarget = `u${String(uNum).padStart(2, '0')}`;
   const devices = map.devices || [];
@@ -2178,6 +2693,126 @@ app.get('/api/incidents/active', (req, res) => {
 });
 
 /**
+ * GET /api/incidents/:inc/expected-rack
+ * Returns what the field tech should photograph for this incident — the
+ * site/row/position breadcrumb and the rack's expected labels — so the
+ * client can render a clear "upload THIS rack" prompt before the user
+ * picks an image. No upload required.
+ */
+app.get('/api/incidents/:inc/expected-rack', (req, res) => {
+  const ticket = readTicketByNumber(req.params.inc);
+  if (!ticket) return res.status(404).json({ ok: false, error: `Ticket ${req.params.inc} not in inbox` });
+  const cmdbRack = readCmdbRack(ticket.cmdb?.rack_name);
+  res.json({
+    ok: true,
+    incident_number: ticket.incident_number,
+    target: ticket.target || null,
+    rack: {
+      rack_name:     ticket.cmdb?.rack_name      || null,
+      rack_scan_id:  ticket.cmdb?.rack_scan_id   || null,
+      site:          ticket.cmdb?.site           || cmdbRack?.site           || null,
+      row:           ticket.cmdb?.row            || cmdbRack?.row            || null,
+      position:      ticket.cmdb?.rack_position  || cmdbRack?.position       || null,
+      u_position:    ticket.cmdb?.u_position     || null,
+      label_pattern: cmdbRack?.label_pattern     || null,
+      expected_labels: (cmdbRack?.expected_devices || []).map(d => d.label),
+      verification:  cmdbRack?.verification      || null,
+    },
+  });
+});
+
+/**
+ * POST /api/incidents/:inc/verify-rack
+ * Field-tech identity check before they're allowed to act on a ticket.
+ * Body: multipart/form-data with `image` (front-of-rack photo).
+ *
+ * Runs analyze + label OCR on the upload, then checks the detected
+ * identifier-shaped labels against the ticket's CMDB rack record. Three
+ * outcomes:
+ *   - 200 {ok:true}                       → rack identity confirmed, proceed
+ *   - 409 {ok:false, reason:'rack_mismatch', detected, expected, missing}
+ *                                         → wrong rack — tell the tech to
+ *                                           upload the correct one
+ *   - 200 {ok:null, reason:'no_labels_detected'}
+ *                                         → soft mode, couldn't verify either
+ *                                           way — UI prompts for manual confirm
+ *
+ * Always returns `detected` and `expected` so the client can show a diff.
+ */
+app.post('/api/incidents/:inc/verify-rack', upload.single('image'), async (req, res) => {
+  const incNumber = req.params.inc;
+  const ticket = readTicketByNumber(incNumber);
+  if (!ticket) return res.status(404).json({ ok: false, error: `Ticket ${incNumber} not in inbox` });
+  if (!req.file) return res.status(400).json({ ok: false, error: 'No image file provided' });
+
+  let tmpPath = req.file.path;
+  try {
+    tmpPath = await normalizeImage(tmpPath);
+    const rackId  = computeRackId(tmpPath);
+    const rackDir = path.join(outputsDir, rackId);
+    const dumPath = path.join(rackDir, 'device_unit_map.json');
+
+    // Re-use the cached analysis if we've already seen this exact image.
+    if (!fs.existsSync(dumPath)) {
+      fs.mkdirSync(rackDir, { recursive: true });
+      const ext = path.extname(tmpPath) || '.jpg';
+      const imagePath = path.join(rackDir, `original_image${ext}`);
+      fs.copyFileSync(tmpPath, imagePath);
+      await runPipelineAnalyze(imagePath, rackDir);
+    }
+    safeUnlink(tmpPath);
+
+    // Make sure both OCR passes have run so verification has every signal
+    // available — per-device crops (ocr_devices.json) AND full-image labels
+    // (labels-front.json). Per-device is part of runPipelineAnalyze; the
+    // full-image pass we trigger here so verification isn't racing the
+    // background scheduler.
+    const frontPath = path.join(rackDir, 'labels-front.json');
+    if (!fs.existsSync(frontPath)) {
+      try {
+        const imgPath = path.join(rackDir, fs.readdirSync(rackDir).find(f => /^original_image\./.test(f)) || 'original_image.jpg');
+        if (fs.existsSync(imgPath)) {
+          const result = await runOcrLabels(imgPath);
+          fs.writeFileSync(frontPath, JSON.stringify(result, null, 2));
+        }
+      } catch (e) {
+        logger.warn(`[verify-rack] labels OCR failed for ${rackId}: ${e.message}`);
+      }
+    }
+
+    const verdict = verifyRackIdentity(rackDir, ticket);
+    audit.log({
+      req,
+      action: 'incident.verify_rack',
+      meta: { incNumber, rackId, ok: verdict.ok, reason: verdict.reason, matches: verdict.matches?.length || 0 },
+    });
+
+    const status = verdict.ok === false ? 409 : 200;
+    return res.status(status).json({
+      ok: verdict.ok,
+      reason: verdict.reason,
+      incident_number: incNumber,
+      uploaded_rack_id: rackId,
+      expected_rack_name: ticket.cmdb?.rack_name || null,
+      detected: verdict.detected,
+      expected: verdict.expected,
+      matches: verdict.matches,
+      missing: verdict.missing || [],
+      pattern_ok: verdict.pattern_ok || false,
+      message: verdict.ok === true
+        ? 'Rack identity confirmed.'
+        : verdict.ok === null
+          ? `This might not be ${ticket.cmdb?.rack_name}. Please check manually and confirm, or upload the correct rack.`
+          : `This isn't ${ticket.cmdb?.rack_name}. Please upload the correct rack.`,
+    });
+  } catch (e) {
+    safeUnlink(tmpPath);
+    logger.warn(`[verify-rack] ${incNumber} failed: ${e.message}`);
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/**
  * POST /api/analyze-for-ticket
  * Scan-page one-shot: upload image + incident_number. Server does:
  *   1. Normal analyze (or cache hit)
@@ -2234,9 +2869,59 @@ app.post('/api/analyze-for-ticket', upload.single('image'), async (req, res) => 
       timings.analyze_ms = Date.now() - tPipeStart;
     }
 
+    // STEP 1b — rack identity verification. Refuse to proceed if the OCR'd
+    // labels on this image don't match the ticket's expected rack. This is
+    // the "did the tech upload the right physical rack?" guard. Skipped
+    // when the upload caller has explicitly waived verification (e.g. an
+    // earlier verify-rack step already approved, or a confirmed manual
+    // override) via `verified=1` in the form body.
+    const verifyWaived = req.body?.verified === '1' || req.body?.verified === 'true';
+    if (!verifyWaived) {
+      // Ensure full-image labels exist before verifying — per-device OCR
+      // (run by analyze above) is sometimes too narrowly cropped.
+      const frontPath = path.join(rackDir, 'labels-front.json');
+      if (!fs.existsSync(frontPath)) {
+        try {
+          const imgFile = fs.readdirSync(rackDir).find(f => /^original_image\./.test(f));
+          if (imgFile) {
+            const result = await runOcrLabels(path.join(rackDir, imgFile));
+            fs.writeFileSync(frontPath, JSON.stringify(result, null, 2));
+          }
+        } catch (e) {
+          logger.warn(`[analyze-for-ticket] labels OCR failed for ${rackId}: ${e.message}`);
+        }
+      }
+      const verdict = verifyRackIdentity(rackDir, ticket);
+      if (verdict.ok === false) {
+        timings.total_ms = Date.now() - reqStart;
+        audit.log({
+          req,
+          action: 'scan.analyze_for_ticket.rack_mismatch',
+          meta: { incNumber, rackId, expected: ticket.cmdb?.rack_name, detected: verdict.detected },
+        });
+        return res.status(409).json({
+          ok: false,
+          error: 'rack_mismatch',
+          incident_number: incNumber,
+          uploaded_rack_id: rackId,
+          expected_rack_name: ticket.cmdb?.rack_name || null,
+          detected: verdict.detected,
+          expected: verdict.expected,
+          matches: verdict.matches,
+          missing: verdict.missing || [],
+          message: `This isn't ${ticket.cmdb?.rack_name}. Please upload the correct rack.`,
+          timings,
+        });
+      }
+      // ok === true or ok === null both proceed; client surfaces the
+      // 'no_labels_detected' case downstream if it wants a manual confirm.
+    }
+
     // STEP 2 — resolve ticket device to a scan device_index, and in the same
     // call gather "what is physically there at the expected U" for drift reporting.
-    const resolved = resolveTicketDevice(rackDir, target.device);
+    // Pass the CMDB block so the resolver can use u_position and sys_class_name
+    // when the device name itself (e.g. RVEW-CORE-SW01) doesn't encode them.
+    const resolved = resolveTicketDevice(rackDir, target.device, cmdb);
     if (resolved.device_index == null) {
       // PHYSICAL DRIFT — CMDB says there should be a `expected_class` at U`expected_u`,
       // but the scan sees something else (or nothing). Return a drift payload with
@@ -2672,7 +3357,12 @@ function runSwitchCommand({ host, port = 22, username, password, command, timeou
         cb(_prompts.map(() => password));
       })
       .on('ready', () => {
-        conn.shell({ term: 'vt100' }, (err, stream) => {
+        // Advertise a tall, wide PTY so vendor pagers don't kick in mid-output.
+        // ssh2 defaults to 24×80 — TP-Link JetStream then paginates `show interface
+        // status` on a 28-port switch, dropping rows around the page boundary even
+        // with `disable pager` set. Real terminals (PuTTY etc.) send their actual
+        // window size and the switch fits everything in one page.
+        conn.shell({ term: 'vt100', rows: 1000, cols: 200 }, (err, stream) => {
           if (err) return finish(err);
 
           let buf = '';
@@ -2839,7 +3529,12 @@ function runSwitchCommandsSequential({
       })
       .on('error', (err) => { clearTimeout(overallTimer); settle(err); })
       .on('ready', () => {
-        conn.shell({ term: 'vt100' }, (err, stream) => {
+        // Advertise a tall, wide PTY so vendor pagers don't kick in mid-output.
+        // ssh2 defaults to 24×80 — TP-Link JetStream then paginates `show interface
+        // status` on a 28-port switch, dropping rows around the page boundary even
+        // with `disable pager` set. Real terminals (PuTTY etc.) send their actual
+        // window size and the switch fits everything in one page.
+        conn.shell({ term: 'vt100', rows: 1000, cols: 200 }, (err, stream) => {
           if (err) { clearTimeout(overallTimer); return settle(err); }
 
           const stripAnsi = (s) => s
@@ -3142,13 +3837,18 @@ function readConsoleTranscript(rackDir, deviceIndex, port) {
 function cleanShellOutput(raw, cmd) {
   if (!raw) return '';
   let out = raw.replace(/\r/g, '');
-  // remove null bytes left by some TP-Link firmware after paging prompts
-  out = out.replace(/\x00/g, '');
-  // strip paging prompts: "Press any key to continue (Q to quit)", "--More--", etc.
-  // These leave the data after them on the same line, so replace with newline.
-  out = out.replace(/Press any key to continue[^\n]*/gi, '\n');
-  out = out.replace(/--More--[^\n]*/g, '\n');
-  out = out.replace(/<--- More --->[^\n]*/g, '\n');
+  // Replace null bytes (TP-Link inserts them after paging prompts) with a
+  // newline so the data that follows the prompt becomes its own line. If we
+  // strip them outright the next regex eats the prompt PLUS the next port row
+  // up to the next \n — that was the "27 of 28 ports" bug (Gi1/0/23 vanished).
+  out = out.replace(/\x00/g, '\n');
+  // Strip paging prompts: "Press any key to continue (Q to quit)", "--More--", etc.
+  // Only consume the prompt text (and trailing spaces/tabs) — never the data
+  // that may follow it on the same line. The "(Q to quit)" suffix is optional
+  // because some firmware revisions omit it.
+  out = out.replace(/Press any key to continue(?:\s*\(Q to quit\))?[ \t]*/gi, '');
+  out = out.replace(/--More--[ \t]*/g, '');
+  out = out.replace(/<--- More --->[ \t]*/g, '');
   // remove the first occurrence of the command (which the switch echoed back)
   if (cmd) {
     const idx = out.indexOf(cmd);
@@ -4081,6 +4781,7 @@ module.exports.writeCanonicalScanResult = writeCanonicalScanResult;
 module.exports.renderHTMLReport        = renderHTMLReport;
 module.exports.renderJSONReport        = renderJSONReport;
 module.exports.renderCSVReport         = renderCSVReport;
+module.exports.runSwitchCommandsSequential = runSwitchCommandsSequential;
 
 // ── User feedback on port identification ──────────────────────
 const feedbackDir      = path.join(__dirname, 'feedback');
@@ -4768,9 +5469,23 @@ if (require.main === module) {
   };
   tryListen();
 
+  // Start the port-state poller. Inject runSwitchCommandsSequential so
+  // it can reuse the same persistent-SSH path the console feature uses;
+  // it polls every monitored_devices row marked enabled=1, parses the
+  // output, and writes snapshot + change events into auth.db.
+  try {
+    const portPoller = require('./lib/port_poller');
+    const intervalMs = Number(process.env.PORT_POLL_INTERVAL_MS) || 60_000;
+    portPoller.start({ intervalMs, sshRunner: runSwitchCommandsSequential });
+  } catch (err) {
+    logger.warn({ event: 'port_poller.start_failed', err: err.message },
+      'port poller did not start');
+  }
+
   const gracefulShutdown = (signal) => {
     logger.info({ event: 'server.shutdown', signal },
       `${signal} received — stopping workers and HTTP server`);
+    try { require('./lib/port_poller').stop(); } catch (_) {}
     pool.shutdown().finally(() => {
       if (server) server.close(() => process.exit(0));
       else process.exit(0);

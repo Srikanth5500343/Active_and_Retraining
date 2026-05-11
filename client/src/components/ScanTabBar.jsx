@@ -6,6 +6,7 @@ const TABS = [
   { key: 'topology',  label: 'Topology',  icon: <IconTopology /> },
   { key: 'network',   label: 'Network',   icon: <IconNetwork /> },
   { key: 'switches',  label: 'Switches',  icon: <IconSwitch /> },
+  { key: 'drift',     label: 'Drift',     icon: <IconDrift /> },
 ];
 
 export default function ScanTabBar({ activeTab, onTabChange, badges = {} }) {
@@ -110,6 +111,16 @@ function IconSwitch() {
       <circle cx="18" cy="5.5" r="1.2" fill="currentColor" stroke="none"/>
       <circle cx="18" cy="12.5" r="1.2" fill="currentColor" stroke="none"/>
       <circle cx="18" cy="19.5" r="1.2" fill="currentColor" stroke="none"/>
+    </svg>
+  );
+}
+
+function IconDrift() {
+  // Time-series glyph: a row of stepped bars suggesting state transitions
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17h3v-5h4v-4h4v8h4v-3h3"/>
+      <line x1="3" y1="21" x2="21" y2="21"/>
     </svg>
   );
 }

@@ -1199,6 +1199,45 @@
     inset 0 1px 0 rgba(255,255,255,0.05);
   overflow: hidden;
 }
+
+/* SfpModuleImage slots — hero (right of info column) and compact thumb.
+   The image element itself has NO chrome (no border, no background) so
+   only the photo shows. The slot just reserves a fixed size to prevent
+   layout shift while the image loads. */
+.heroPickBody {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 12px;
+}
+.heroPickInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.heroPickImage {
+  flex-shrink: 0;
+  width: 132px;
+  height: 132px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+@media (max-width: 380px) {
+  .heroPickImage { width: 108px; height: 108px; }
+}
+.compactPickThumb {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+}
+.altsRowThumb {
+  grid-area: thumb;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+}
 .heroPick::before {
   content: '';
   position: absolute;
@@ -1469,11 +1508,11 @@
 }
 .altsRow {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   grid-template-rows: auto auto;
   grid-template-areas:
-    "main side"
-    "meta side";
+    "thumb main side"
+    "thumb meta side";
   column-gap: 10px;
   row-gap: 2px;
   padding: 10px 12px;
@@ -1481,6 +1520,7 @@
   text-decoration: none;
   color: inherit;
   transition: background 0.12s;
+  align-items: center;
 }
 .altsRow:last-child { border-bottom: none; }
 .altsRow:hover { background: rgba(34,211,238,0.04); }

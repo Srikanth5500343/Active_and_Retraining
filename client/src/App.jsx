@@ -14,11 +14,14 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import LogoCompare from './pages/LogoCompare.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import SpecificationsPage from './pages/SpecificationsPage.jsx';
 import FirmwarePage from './pages/FirmwarePage.jsx';
 import SwitchInformationPage from './pages/SwitchInformationPage.jsx';
 import MultiRackTopologyPage from './pages/MultiRackTopologyPage.jsx';
 import MultiRackRedirect from './pages/MultiRackRedirect.jsx';
+import PortHistoryPage from './pages/PortHistoryPage.jsx';
+import TenantMatPage from './pages/TenantMatPage.jsx';
 import { ShutterProvider } from './ShutterContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ThemeProvider } from './ThemeContext.jsx';
@@ -68,6 +71,7 @@ export default function App() {
             <Route path="/" element={<><HomePage /><BottomNav /></>} />
             <Route path="/login"  element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/scan" element={
               <ProtectedRoute><><ScanPage /><BottomNav /></></ProtectedRoute>
             } />
@@ -117,7 +121,13 @@ export default function App() {
             <Route path="/results/:rackId/netdisco" element={
               <ProtectedRoute><NetdiscoPage /></ProtectedRoute>
             } />
+            <Route path="/port-history" element={
+              <ProtectedRoute><><PortHistoryPage /><BottomNav /></></ProtectedRoute>
+            } />
             <Route path="/compare" element={<LogoCompare />} />
+            {/* Demo: unified tenant rack-layout view. No auth — backed by
+                server/data/demo_tenant.json, isolated from real scan data. */}
+            <Route path="/demo/topology" element={<TenantMatPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ShutterProvider>

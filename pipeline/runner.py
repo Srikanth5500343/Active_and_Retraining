@@ -469,15 +469,20 @@ def main():
         selected_port_info["location"] = selected_port_box
 
         if selected_port_info["status"] == "connected" and cable_model is not None:
-            # Double the port box size before handing it to the cable classifier:
-            # a wider crop gives the model more cable context (connector + a bit
-            # of the cable body) which stabilises color/connector predictions.
+            # Quadruple the port box size before handing it to the cable
+            # classifier: the connector alone is a too-tight crop for the
+            # model — it needs the connector PLUS a chunk of the cable body
+            # (color, sheath texture) to nail RJ-45 vs LC vs SC and the
+            # specific color reliably. pad_x = 1.5 * box_w → crop width =
+            # box_w + 2*1.5*box_w = 4*box_w. The displayed bbox in the UI
+            # remains the original `selected_port_box`; this enlargement is
+            # internal to the classifier call only.
             bx1, by1, bx2, by2 = selected_port_box
             box_w = max(1, bx2 - bx1)
             box_h = max(1, by2 - by1)
             port_crop = crop_box(
                 img, selected_port_box,
-                pad_x=box_w // 2, pad_y=box_h // 2,
+                pad_x=(box_w * 3) // 2, pad_y=(box_h * 3) // 2,
             )
             cable_class, cable_conf = classify_cable(port_crop, cable_model)
             connector, color = parse_cable_type_color(cable_class)

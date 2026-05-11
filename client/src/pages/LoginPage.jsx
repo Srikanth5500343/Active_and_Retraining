@@ -7,6 +7,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loading } = useAuth();
+  const [tenant,   setTenant]   = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);
@@ -22,7 +23,7 @@ export default function LoginPage() {
       return;
     }
     try {
-      await login(username.trim(), password);
+      await login(username.trim(), password, tenant.trim());
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message);
@@ -50,6 +51,20 @@ export default function LoginPage() {
         <form className={styles.form} onSubmit={submit} autoComplete="on">
           <div className={styles.field}>
             <input
+              id="login-tenant"
+              className={styles.input}
+              type="text"
+              placeholder=" "
+              autoComplete="organization"
+              value={tenant}
+              onChange={e => { setTenant(e.target.value); setError(null); }}
+              autoFocus
+            />
+            <label className={styles.label} htmlFor="login-tenant">Organization</label>
+          </div>
+
+          <div className={styles.field}>
+            <input
               id="login-user"
               className={styles.input}
               type="text"
@@ -57,7 +72,6 @@ export default function LoginPage() {
               autoComplete="username"
               value={username}
               onChange={e => { setUsername(e.target.value); setError(null); }}
-              autoFocus
             />
             <label className={styles.label} htmlFor="login-user">Username or email</label>
           </div>
@@ -79,6 +93,21 @@ export default function LoginPage() {
                 ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
             </button>
+          </div>
+
+          <div style={{display:'flex',justifyContent:'flex-end',marginTop:-6,marginBottom:2}}>
+            <Link
+              to="/forgot-password"
+              state={{ email: username.includes('@') ? username.trim() : '' }}
+              style={{
+                fontSize:12,
+                color:'var(--muted, #9ca3af)',
+                textDecoration:'none',
+                fontWeight:500,
+              }}
+            >
+              Forgot password?
+            </Link>
           </div>
 
           {error && (

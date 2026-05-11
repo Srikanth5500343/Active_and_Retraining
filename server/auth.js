@@ -62,6 +62,12 @@ db.exec(`
     code            TEXT NOT NULL,
     code_expires_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS password_resets (
+    email           TEXT PRIMARY KEY,
+    code            TEXT NOT NULL,
+    code_expires_at INTEGER NOT NULL,
+    requested_at    INTEGER NOT NULL
+  );
 `);
 
 // ── Tenant migration ─────────────────────────────────────────
@@ -510,24 +516,149 @@ function registerRoutes(app) {
     res.json({ ok: true, sent: true });
   });
 
-  // ── Login: username OR email + password ────────────────────
+  // ── Login: username OR email + password (+ optional tenant) ─
+  // Tenant is optional but, when provided, scopes the lookup so that the
+  // same username can exist in different orgs without ambiguity (the
+  // existing UNIQUE constraint on users.username still applies globally,
+  // but the per-tenant scoping prevents one org's user from signing in
+  // with another org's stolen credentials if uniqueness is ever relaxed).
+  // Match is case-insensitive against tenant name OR slug.
   app.post('/api/auth/login', (req, res) => {
-    const { username, password } = req.body || {};
+    const { username, password, tenant } = req.body || {};
     if (!username || !password) {
       audit.log({ req, action: 'auth.login', status: 'fail', error: 'missing fields' });
       return res.status(400).json({ error: 'username and password required' });
     }
     const ident = String(username).trim();
+    const tenantArg = String(tenant || '').trim();
 
-    const user = db.prepare(`
-      SELECT * FROM users WHERE email = ? OR username = ? COLLATE NOCASE
-    `).get(ident.toLowerCase(), ident);
+    let tenantRow = null;
+    if (tenantArg) {
+      tenantRow = db.prepare(`
+        SELECT * FROM tenants
+        WHERE slug = ? COLLATE NOCASE OR name = ? COLLATE NOCASE
+      `).get(tenantArg, tenantArg);
+      if (!tenantRow) {
+        audit.log({ req, action: 'auth.login', status: 'fail',
+          error: 'unknown tenant', payload: { ident, tenant: tenantArg } });
+        return res.status(401).json({ error: 'Invalid organization or credentials' });
+      }
+    }
+
+    const user = tenantRow
+      ? db.prepare(`
+          SELECT * FROM users
+          WHERE (email = ? OR username = ? COLLATE NOCASE)
+            AND tenant_id = ?
+        `).get(ident.toLowerCase(), ident, tenantRow.id)
+      : db.prepare(`
+          SELECT * FROM users WHERE email = ? OR username = ? COLLATE NOCASE
+        `).get(ident.toLowerCase(), ident);
 
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-      audit.log({ req, action: 'auth.login', status: 'fail', error: 'invalid credentials', payload: { ident } });
-      return res.status(401).json({ error: 'Invalid username or password' });
+      audit.log({ req, action: 'auth.login', status: 'fail',
+        error: 'invalid credentials',
+        payload: { ident, tenant: tenantArg || null } });
+      return res.status(401).json({ error: tenantArg ? 'Invalid organization or credentials' : 'Invalid username or password' });
     }
-    audit.log({ req, user, action: 'auth.login', status: 'ok', targetType: 'user', targetId: user.id });
+    audit.log({ req, user, action: 'auth.login', status: 'ok',
+      targetType: 'user', targetId: user.id,
+      payload: { tenant_id: user.tenant_id } });
+    res.json({ ok: true, token: makeToken(user), user: publicUser(user) });
+  });
+
+  // ── Forgot password — stage 1: request a reset code ─────────
+  // Always returns 200 (even when the email is unknown) so attackers can't
+  // enumerate registered emails. The code is only created/sent when a user
+  // actually exists for that email. 1-minute expiry to match signup.
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    const { email } = req.body || {};
+    if (!email || !EMAIL_RE.test(String(email).trim())) {
+      audit.log({ req, action: 'auth.forgot_password.start', status: 'fail',
+        error: 'invalid email', payload: { email } });
+      return res.status(400).json({ error: 'Valid email required' });
+    }
+    const emailNorm = String(email).trim().toLowerCase();
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(emailNorm);
+
+    if (user) {
+      const code = genCode();
+      const expiresAt = Date.now() + 60 * 1000; // 1 minute
+      db.prepare(`
+        INSERT INTO password_resets (email, code, code_expires_at, requested_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET
+          code = excluded.code,
+          code_expires_at = excluded.code_expires_at,
+          requested_at = excluded.requested_at
+      `).run(emailNorm, code, expiresAt, Date.now());
+
+      // Reuse the verification email template — same look, different copy
+      // would be nicer but for now the user just sees a 6-digit code.
+      const sent = await sendVerificationEmail(emailNorm, code);
+      audit.log({ req, action: 'auth.forgot_password.start',
+        status: sent ? 'ok' : 'partial',
+        payload: { email: emailNorm, sent } });
+    } else {
+      // Don't reveal that the email isn't registered.
+      audit.log({ req, action: 'auth.forgot_password.start',
+        status: 'ok', payload: { email: emailNorm, sent: false, reason: 'no_user' } });
+    }
+
+    // Always 200 with the same shape — silent on existence.
+    res.json({ ok: true, email: emailNorm });
+  });
+
+  // ── Forgot password — stage 2: verify code + set new password ─
+  app.post('/api/auth/reset-password', (req, res) => {
+    const { email, code, password } = req.body || {};
+    if (!email || !code || !password) {
+      audit.log({ req, action: 'auth.forgot_password.reset', status: 'fail',
+        error: 'missing fields' });
+      return res.status(400).json({ error: 'email, code, and new password required' });
+    }
+    const pwErr = validatePassword(password);
+    if (pwErr) {
+      audit.log({ req, action: 'auth.forgot_password.reset', status: 'fail',
+        error: pwErr, payload: { email } });
+      return res.status(400).json({ error: pwErr });
+    }
+    const emailNorm = String(email).trim().toLowerCase();
+    const reset = db.prepare('SELECT * FROM password_resets WHERE email = ?').get(emailNorm);
+    if (!reset) {
+      audit.log({ req, action: 'auth.forgot_password.reset', status: 'fail',
+        error: 'no pending reset', payload: { email: emailNorm } });
+      return res.status(404).json({ error: 'No pending reset for that email — request a new code' });
+    }
+    if (Date.now() > reset.code_expires_at) {
+      db.prepare('DELETE FROM password_resets WHERE email = ?').run(emailNorm);
+      audit.log({ req, action: 'auth.forgot_password.reset', status: 'fail',
+        error: 'code expired', payload: { email: emailNorm } });
+      return res.status(410).json({ error: 'Reset code has expired — request a new one' });
+    }
+    if (String(code).trim() !== reset.code) {
+      audit.log({ req, action: 'auth.forgot_password.reset', status: 'fail',
+        error: 'wrong code', payload: { email: emailNorm } });
+      return res.status(400).json({ error: 'Incorrect reset code' });
+    }
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(emailNorm);
+    if (!user) {
+      // Pending reset for a user that was deleted between stages.
+      db.prepare('DELETE FROM password_resets WHERE email = ?').run(emailNorm);
+      audit.log({ req, action: 'auth.forgot_password.reset', status: 'fail',
+        error: 'user gone', payload: { email: emailNorm } });
+      return res.status(404).json({ error: 'No account exists for that email' });
+    }
+
+    const newHash = bcrypt.hashSync(password, 10);
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, user.id);
+    db.prepare('DELETE FROM password_resets WHERE email = ?').run(emailNorm);
+
+    audit.log({ req, user, action: 'auth.forgot_password.reset',
+      status: 'ok', targetType: 'user', targetId: user.id });
+
+    // Issue a fresh token so the client can sign the user in immediately
+    // after they reset — no second login round-trip needed.
     res.json({ ok: true, token: makeToken(user), user: publicUser(user) });
   });
 

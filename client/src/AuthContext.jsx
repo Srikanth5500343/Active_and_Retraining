@@ -50,10 +50,25 @@ export function AuthProvider({ children }) {
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (username, password, tenant = '') => {
     setLoading(true);
     try {
-      const data = await callApi('/api/auth/login', { body: { username, password } });
+      const body = { username, password };
+      if (tenant) body.tenant = tenant;
+      const data = await callApi('/api/auth/login', { body });
+      setState({ token: data.token, user: data.user });
+      return data.user;
+    } finally { setLoading(false); }
+  }, []);
+
+  const forgotPassword = useCallback(async (email) => {
+    return await callApi('/api/auth/forgot-password', { body: { email } });
+  }, []);
+
+  const resetPassword = useCallback(async (email, code, password) => {
+    setLoading(true);
+    try {
+      const data = await callApi('/api/auth/reset-password', { body: { email, code, password } });
       setState({ token: data.token, user: data.user });
       return data.user;
     } finally { setLoading(false); }
@@ -90,6 +105,7 @@ export function AuthProvider({ children }) {
       user, token, loading,
       isAuthed: !!user,
       login, signup, verifyCode, resendCode, logout,
+      forgotPassword, resetPassword,
     }}>
       {children}
     </AuthContext.Provider>
