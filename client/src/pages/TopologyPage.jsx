@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiUrl, authFetch } from '../utils/api';
+import { getCached, setCached, cacheKey } from '../utils/scanPrefetch';
+import RackTabs from '../components/RackTabs.jsx';
 import styles from './TopologyPage.module.css';
 
 const TopologyScene3D = lazy(() => import('./TopologyScene3D.jsx'));
@@ -54,10 +56,26 @@ function heatmapColor(freePct) {
   return '#ef4444';
 }
 
+// ── Embeddable content (used as a tab in ResultsPage) ────────
+export function TopologyContent({ rackId }) {
+  return <TopologyInner rackId={rackId} embedded />;
+}
+
+// ── Standalone page (used by /results/:rackId/topology route) ───
 export default function TopologyPage() {
   const { rackId } = useParams();
+  return <TopologyInner rackId={rackId} embedded={false} />;
+}
+
+function TopologyInner({ rackId, embedded }) {
   const navigate = useNavigate();
-  const [topo, setTopo] = useState(null);
+  // Hydrate from the prefetch cache so that a tab/page switch into
+  // /results/:rackId/topology after a fresh analyze renders the 3D scene
+  // immediately, without the "Loading topology…" spinner. ScanPage fired
+  // prefetchScan(rackId) at analyze time so this is normally already
+  // resolved by the time the user gets here.
+  const cachedTopo = rackId ? getCached(cacheKey.topology(rackId)) : null;
+  const [topo, setTopo] = useState(cachedTopo);
   const [err, setErr] = useState(null);
   const [selected, setSelected] = useState(null); // { kind: 'node'|'edge', id }
   const [view, setView] = useState(() => {
@@ -76,6 +94,8 @@ export default function TopologyPage() {
 
   useEffect(() => {
     if (!rackId) return;
+    // If we already hydrated from the prefetch cache, no fetch needed.
+    if (topo) return;
     let cancelled = false;
     (async () => {
       try {
@@ -85,12 +105,16 @@ export default function TopologyPage() {
           throw new Error(body.error || `HTTP ${r.status}`);
         }
         const data = await r.json();
-        if (!cancelled) setTopo(data);
+        if (!cancelled) {
+          setTopo(data);
+          setCached(cacheKey.topology(rackId), data);
+        }
       } catch (e) {
         if (!cancelled) setErr(e.message);
       }
     })();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rackId]);
 
   // Filtered topology — same shape, just with cables narrowed by the active
@@ -222,6 +246,16 @@ export default function TopologyPage() {
   }, [topo, selected, aggEdges]);
 
   if (err) {
+    if (embedded) {
+      return (
+        <>
+          <div className={styles.error}>Topology is being prepared</div>
+          <div className={styles.errorHint}>
+            The 3D topology for this rack isn't ready yet. Try again in a few seconds, or rescan to regenerate it.
+          </div>
+        </>
+      );
+    }
     return (
       <div className={styles.page}>
         <PageHeader rackId={rackId} onBack={() => navigate(-1)} />
@@ -233,6 +267,7 @@ export default function TopologyPage() {
     );
   }
   if (!topo) {
+    if (embedded) return <div className={styles.loading}>Loading topology…</div>;
     return (
       <div className={styles.page}>
         <PageHeader rackId={rackId} onBack={() => navigate(-1)} />
@@ -241,17 +276,23 @@ export default function TopologyPage() {
     );
   }
 
-  return (
-    <div className={styles.page}>
-      <PageHeader
-        rackId={rackId}
-        onBack={() => navigate(-1)}
-        stats={topo.stats}
-        view={view}
-        setView={(v) => { setView(v); setSelected(null); }}
-        showCables={view === '2d'}
+  const topoBody = (
+    <>
+      {!embedded && (
+        <PageHeader
+          rackId={rackId}
+          onBack={() => navigate(-1)}
+          stats={topo.stats}
+          view={view}
+          setView={(v) => { setView(v); setSelected(null); }}
+          showCables={view === '2d'}
+        />
+      )}
+      <RackBanner
+        topo={topo}
+        view={embedded ? view : null}
+        setView={embedded ? ((v) => { setView(v); setSelected(null); }) : null}
       />
-      <RackBanner topo={topo} />
 
       <Toolbar
         cableFilter={cableFilter}
@@ -318,37 +359,58 @@ export default function TopologyPage() {
           aggEdges={aggEdges}
         />
       </div>
-    </div>
+    </>
   );
+
+  if (embedded) return topoBody;
+  return <div className={styles.page}>{topoBody}</div>;
 }
 
-function RackBanner({ topo }) {
+function RackBanner({ topo, view, setView }) {
   const switches = topo.devices.filter(d => d.in_rack && d.class === 'switch').length;
   const panels   = topo.devices.filter(d => d.in_rack && d.class === 'patch_panel').length;
   const servers  = topo.devices.filter(d => d.in_rack && d.class === 'server').length;
+  const showToggle = !!(view && setView);
   return (
     <div className={styles.rackBanner}>
-      <div className={styles.rackBannerLeft}>
+      <div className={styles.rackBannerHead}>
         <span className={styles.rackBadge}>RACK</span>
         <div className={styles.rackBannerCol}>
           <span className={styles.rackBannerName}>{topo.rackName}</span>
           <span className={styles.rackBannerId}>{topo.rackId}</span>
         </div>
+        {showToggle && (
+          <div className={styles.viewToggle} role="tablist" aria-label="Topology view">
+            <button
+              type="button"
+              className={`${styles.viewBtn} ${view === '2d' ? styles.viewBtnActive : ''}`}
+              onClick={() => setView('2d')}
+              aria-pressed={view === '2d'}
+            >2D</button>
+            <button
+              type="button"
+              className={`${styles.viewBtn} ${view === '3d' ? styles.viewBtnActive : ''}`}
+              onClick={() => setView('3d')}
+              aria-pressed={view === '3d'}
+            >3D</button>
+          </div>
+        )}
       </div>
       <div className={styles.rackBannerStats}>
-        <Stat label="size"     value={`${topo.u_size}U`} />
-        <Stat label="switches" value={switches} />
-        <Stat label="panels"   value={panels} />
-        <Stat label="servers"  value={servers} />
-        <Stat label="cables"   value={topo.stats.edge_count} />
+        <Stat label="size"     value={`${topo.u_size}U`}        tone="size" />
+        <Stat label="switches" value={switches}                  tone="switch" />
+        <Stat label="panels"   value={panels}                    tone="panel" />
+        <Stat label="servers"  value={servers}                   tone="server" />
+        <Stat label="cables"   value={topo.stats.edge_count}     tone="cable" />
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, tone }) {
+  const toneClass = tone ? styles[`bannerStat_${tone}`] : '';
   return (
-    <div className={styles.bannerStat}>
+    <div className={`${styles.bannerStat} ${toneClass}`}>
       <span className={styles.bannerStatValue}>{value}</span>
       <span className={styles.bannerStatLabel}>{label}</span>
     </div>
@@ -360,31 +422,34 @@ function PageHeader({ rackId, onBack, stats, view, setView, showCables = true })
     ? `${rackId} · ${stats.device_count_in_rack} devices${showCables ? ` · ${stats.edge_count} cables` : ''}`
     : rackId;
   return (
-    <header className={styles.header}>
-      <button className={styles.backBtn} onClick={onBack}>← Back</button>
-      <div className={styles.headerCenter}>
-        <h2>Rack Topology</h2>
-        <span className={styles.headerMono}>{subtitle}</span>
-      </div>
-      {view ? (
-        <div className={styles.viewToggle} role="tablist" aria-label="Topology view">
-          <button
-            type="button"
-            className={`${styles.viewBtn} ${view === '2d' ? styles.viewBtnActive : ''}`}
-            onClick={() => setView('2d')}
-            aria-pressed={view === '2d'}
-          >2D</button>
-          <button
-            type="button"
-            className={`${styles.viewBtn} ${view === '3d' ? styles.viewBtnActive : ''}`}
-            onClick={() => setView('3d')}
-            aria-pressed={view === '3d'}
-          >3D</button>
+    <>
+      <header className={styles.header}>
+        <button className={styles.backBtn} onClick={onBack}>← Back</button>
+        <div className={styles.headerCenter}>
+          <h2>Rack Topology</h2>
+          <span className={styles.headerMono}>{subtitle}</span>
         </div>
-      ) : (
-        <div style={{ width: 64 }} />
-      )}
-    </header>
+        {view ? (
+          <div className={styles.viewToggle} role="tablist" aria-label="Topology view">
+            <button
+              type="button"
+              className={`${styles.viewBtn} ${view === '2d' ? styles.viewBtnActive : ''}`}
+              onClick={() => setView('2d')}
+              aria-pressed={view === '2d'}
+            >2D</button>
+            <button
+              type="button"
+              className={`${styles.viewBtn} ${view === '3d' ? styles.viewBtnActive : ''}`}
+              onClick={() => setView('3d')}
+              aria-pressed={view === '3d'}
+            >3D</button>
+          </div>
+        ) : (
+          <div style={{ width: 64 }} />
+        )}
+      </header>
+      <RackTabs rackId={rackId} />
+    </>
   );
 }
 

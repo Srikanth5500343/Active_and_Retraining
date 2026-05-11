@@ -1,4 +1,4 @@
-$ProjectRoot = "D:\Sharing folder\SERVICENOW\dark_mobile"
+$ProjectRoot = "H:\SERVICENOW\SERVICENOW\dark_mobile"
 $urlFile = "$ProjectRoot\current-url.txt"
 
 if (-not (Test-Path $urlFile)) {

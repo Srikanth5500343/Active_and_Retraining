@@ -1,0 +1,20 @@
+[
+  {
+    "vendor_query": "ZyXEL",
+    "model_query": "GS1900-48HPv2",
+    "current_version": "V2.50",
+    "tier": "strong",
+    "vendor_resolved": "ZyXEL",
+    "vendor_url": "https://www.zyxel.com",
+    "model_normalized": "GS1900-48HPV2",
+    "rn_url": "https://www.zyxel.com/us/en-us/support/download?model=gs1900-48hpv2",
+    "rn_followed_from": null,
+    "latest_version": "2.90",
+    "up_to_date": false,
+    "versions_found_count": 0,
+    "changelog_sections": 1,
+    "error": null,
+    "elapsed_sec": 101.6,
+    "verdict": "PASS"
+  }
+]

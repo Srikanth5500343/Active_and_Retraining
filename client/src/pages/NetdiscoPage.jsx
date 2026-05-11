@@ -3,6 +3,27 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiUrl, authFetch } from '../utils/api';
 import styles from './NetdiscoPage.module.css';
 
+// Spot raw protocol-level / Python-level error text leaking from the
+// Netdisco proxy (ECONNREFUSED, JSONDecodeError, tracebacks, generic HTTP
+// numbers, etc.) so we can hide it behind the friendly offline banner
+// instead of dumping it into the UI. Same idea as the CMDB page filter.
+function looksLikeNetdiscoNoise(msg) {
+  if (!msg || typeof msg !== 'string') return false;
+  const m = msg.toLowerCase();
+  return (
+    m.includes('expecting value') ||
+    m.includes('traceback') ||
+    m.includes('jsondecode') ||
+    m.includes('econnrefused') ||
+    m.includes('etimedout') ||
+    m.includes('enotfound') ||
+    m.includes('fetch failed') ||
+    m.includes('failed to fetch') ||
+    m.startsWith('http ') ||
+    /^\d{3}$/.test(m.trim())   // bare status code
+  );
+}
+
 /**
  * Netdisco view scoped to a RackTrack scan.
  *
@@ -16,9 +37,20 @@ import styles from './NetdiscoPage.module.css';
  * Netdisco database, not just this rack — useful for "where did this MAC
  * end up?" questions while looking at the rack.
  */
+// ── Embeddable content (used as a tab in ResultsPage) ────────
+export function NetdiscoContent({ rackId }) {
+  return <NetdiscoInner rackId={rackId} embedded />;
+}
+
 export default function NetdiscoPage() {
   const navigate = useNavigate();
   const { rackId } = useParams();
+
+  return <NetdiscoInner rackId={rackId} embedded={false} />;
+}
+
+function NetdiscoInner({ rackId, embedded }) {
+  const navigate = useNavigate();
 
   const [health, setHealth]       = useState(null);
   const [match, setMatch]         = useState(null);
@@ -59,15 +91,28 @@ export default function NetdiscoPage() {
     setMatchError(null);
     try {
       const r = await authFetch(apiUrl(`/api/netdisco/scan/${rackId}/match`));
-      const data = await r.json();
-      if (!r.ok) {
-        setMatchError(data.error || `HTTP ${r.status}`);
-        setMatch(null);
+      // Defensive parse: Netdisco's proxy can return empty body on cold
+      // start, which would otherwise throw "Unexpected end of JSON input"
+      // straight into the UI.
+      const text = await r.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { /* not JSON */ }
+      if (!r.ok || !data) {
+        // Suppress raw protocol-level chatter (ECONNREFUSED, traceback,
+        // JSONDecodeError, etc.) — the on-screen "backend is unreachable"
+        // banner already says what the user needs to know.
+        const msg = data?.error || '';
+        setMatchError(looksLikeNetdiscoNoise(msg) ? null : (msg || null));
+        setMatch(data || { netdisco_reachable: false });
       } else {
         setMatch(data);
       }
     } catch (err) {
-      setMatchError(err.message);
+      // Network failure (proxy down, etc.) — render the friendly offline
+      // state rather than the raw "Failed to fetch" exception text.
+      setMatchError(null);
+      setMatch({ netdisco_reachable: false });
+      void err;
     } finally {
       setMatchLoading(false);
     }
@@ -146,24 +191,8 @@ export default function NetdiscoPage() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────
-  return (
-    <div className={styles.page}>
-      <div className={styles.amb} />
-
-      <header className={styles.header}>
-        <button className="btn btn-ghost btn-icon" onClick={() => navigate(-1)}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-          </svg>
-        </button>
-        <div className={styles.headerCenter}>
-          <h2 className={styles.headerTitle}>Network View</h2>
-          <span className={styles.headerMono}>{rackId} · live network view</span>
-        </div>
-        <HealthPill health={health} />
-      </header>
-
-      <main className={styles.main}>
+  const mainContent = (
+    <main className={embedded ? undefined : styles.main}>
 
         {/* ── Devices in this rack ────────────────────────────────────── */}
         <section className={styles.section}>
@@ -204,14 +233,32 @@ export default function NetdiscoPage() {
 
           {match && match.netdisco_reachable === false && (
             <div className={styles.warn}>
-              Network View backend is unreachable{match.error ? ` (${stripPrefix(match.error, 'Netdisco unreachable:')})` : ''}.
-              <br />Make sure the discovery service is running, then refresh.
+              <strong>Network View is offline.</strong>
+              <br />Start Docker Desktop, then run{' '}
+              <code style={{
+                background: 'rgba(0,0,0,0.06)',
+                padding: '1px 5px',
+                borderRadius: 3,
+                fontFamily: 'ui-monospace, Menlo, monospace',
+                fontSize: '0.92em',
+              }}>
+                docker compose up -d
+              </code>{' '}
+              from <code style={{
+                background: 'rgba(0,0,0,0.06)',
+                padding: '1px 5px',
+                borderRadius: 3,
+                fontFamily: 'ui-monospace, Menlo, monospace',
+                fontSize: '0.92em',
+              }}>netdisco-docker/</code>, then refresh.
             </div>
           )}
 
           {match && match.netdisco_reachable !== false && match.matches?.length > 0 && (
             <div className={styles.deviceList}>
-              {match.matches.map((m, i) => (
+              {match.matches
+                .filter(m => m.scan.class_name !== 'Patch Panel')
+                .map((m, i) => (
                 <DeviceCard
                   key={i}
                   m={m}
@@ -226,77 +273,30 @@ export default function NetdiscoPage() {
           )}
         </section>
 
-        {/* ── MAC lookup (compact, secondary) ─────────────────────────── */}
-        <section className={styles.macSection}>
-          <form onSubmit={runMacLookup} className={styles.macForm}>
-            <span className={styles.macLabel}>MAC</span>
-            <input
-              type="text"
-              placeholder="aa:bb:cc:dd:ee:ff"
-              value={macInput}
-              onChange={(e) => setMacInput(e.target.value)}
-              className={styles.macInput}
-            />
-            <button type="submit" disabled={macLoading || !macInput.trim()} className={styles.macBtn}>
-              {macLoading ? '…' : 'Look up'}
-            </button>
-          </form>
-
-          {macError && <div className={styles.error}>{macError}</div>}
-
-          {macReport && macReport.sighting_count === 0 && (
-            <div className={styles.empty}>MAC <code>{macReport.mac}</code> not found in Network View.</div>
-          )}
-
-          {macReport && macReport.sighting_count > 0 && (
-            <div className={styles.macReport}>
-              {macReport.current && (
-                <div className={styles.currentLoc}>
-                  <span className={styles.currentLabel}>
-                    {macReport.current.active ? 'Currently on' : 'Most recently on'}
-                  </span>
-                  <strong>{macReport.current.switch || '—'}</strong>
-                  <span className={styles.subtle}>port {macReport.current.port}</span>
-                  {macReport.current.vlan && <span className={styles.subtle}>vlan {macReport.current.vlan}</span>}
-                </div>
-              )}
-
-              {macReport.ips?.length > 0 && (
-                <>
-                  <div className={styles.subhead}>IP history</div>
-                  <div className={styles.miniTable}>
-                    {macReport.ips.slice(0, 10).map((ip, i) => (
-                      <div key={i} className={styles.miniRow}>
-                        <strong>{ip.ip}</strong>
-                        <span className={styles.subtle}>{fmtTime(ip.time_first)} → {fmtTime(ip.time_last)}</span>
-                        <span className={ip.active ? styles.dotActive : styles.dotIdle} />
-                        <span className={styles.subtle}>{ip.active ? 'active' : 'archived'}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              <div className={styles.subhead}>
-                Switch / port sightings ({macReport.sighting_count})
-              </div>
-              <div className={styles.miniTable}>
-                {macReport.sightings.slice(0, 15).map((s, i) => (
-                  <div key={i} className={styles.miniRow}>
-                    <strong>{s.switch}</strong>
-                    <span className={styles.subtle}>{s.port}</span>
-                    {s.vlan && <span className={styles.subtle}>vlan {s.vlan}</span>}
-                    <span className={styles.subtle}>last {fmtTime(s.time_last)}</span>
-                    <span className={s.active ? styles.dotActive : styles.dotIdle} />
-                    <span className={styles.subtle}>{s.active ? 'active' : 'archived'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
 
       </main>
+  );
+
+  if (embedded) return mainContent;
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.amb} />
+
+      <header className={styles.header}>
+        <button className="btn btn-ghost btn-icon" onClick={() => navigate(-1)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+        </button>
+        <div className={styles.headerCenter}>
+          <h2 className={styles.headerTitle}>Network View</h2>
+          <span className={styles.headerMono}>{rackId} · live network view</span>
+        </div>
+        <HealthPill health={health} />
+      </header>
+
+      {mainContent}
     </div>
   );
 }

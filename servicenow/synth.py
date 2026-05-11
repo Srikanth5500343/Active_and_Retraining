@@ -234,6 +234,95 @@ def load_override(rack_id: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# OCR-derived hints. pipeline/ocr_devices.py runs EasyOCR on each device's
+# crop and writes outputs/<rackId>/ocr_devices.json. When present, those
+# entries are the highest-priority "real-data" source short of an override
+# file. Returns a dict keyed by CMDB name (SW-Uxx) for fast lookup.
+#
+# We only trust OCR results that yielded a make+model OR a make alone with
+# match_conf above the floor below — anything else gets discarded so the
+# synth fallback path takes over and we don't push noisy junk into CMDB.
+# ─────────────────────────────────────────────────────────────────────────────
+
+OCR_MIN_MATCH_CONF = 0.35   # raise to be stricter; lower to accept more
+
+
+def load_ocr_devices(rack_id: str) -> dict[str, dict]:
+    """Returns { 'SW-U10': { make, model, version, source, match_conf, ... }, ... }
+    keyed by the same CMDB name pattern build_inventory uses."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(here)
+    path = os.path.join(repo_root, "outputs", rack_id, "ocr_devices.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+    except Exception:
+        return {}
+    if not doc.get("ok"):
+        return {}
+    out: dict[str, dict] = {}
+    for d in doc.get("devices") or []:
+        cls = d.get("class_name")
+        pos = d.get("position") or ""
+        m = re.match(r"U0*(\d+)", pos.upper())
+        if not m:
+            continue
+        u = int(m.group(1))
+        if cls == "Switch":             name = f"SW-U{u:02d}"
+        elif cls == "Patch Panel":      name = f"PP-U{u:02d}"
+        elif cls == "Server":           name = f"SRV-U{u:02d}"
+        elif cls == "Aggregation Core": name = f"AGG-U{u:02d}"
+        else: continue
+        if (d.get("source") or "") not in ("ocr_full", "ocr_make_only"):
+            continue
+        if float(d.get("match_conf") or 0) < OCR_MIN_MATCH_CONF:
+            continue
+        out[name] = d
+    return out
+
+
+def apply_ocr_to_switch(synth_dev: dict, ocr: dict) -> dict:
+    """Merge a single OCR record into a synthesized switch dict in place,
+    preserving any synth fields the OCR didn't supply (IP, MAC, etc.) but
+    overwriting model_number / os when OCR gave us real values.
+
+    The result keeps `_synthetic: True` if any synth field remains — but
+    `_synthetic_fields` is updated to reflect what's now real, and a new
+    `discovery_source` field tags the record:
+       'ocr_full'      — both make and model from OCR
+       'ocr_make_only' — only the make was readable; model still synth
+    """
+    out = dict(synth_dev)
+    src = ocr.get("source") or "synth"
+    out["discovery_source"] = src
+    out["ocr_make"]    = ocr.get("make")
+    out["ocr_model"]   = ocr.get("model")
+    out["ocr_version"] = ocr.get("version")
+    out["ocr_conf"]    = ocr.get("match_conf")
+    out["ocr_raw"]     = (ocr.get("raw_text") or "")[:200]
+
+    syn_fields = list(out.get("_synthetic_fields") or [])
+    if ocr.get("model"):
+        out["model_number"] = ocr["model"]
+        syn_fields = [f for f in syn_fields if f != "model_number"]
+    if ocr.get("version"):
+        out["os"] = ocr["version"]
+        syn_fields = [f for f in syn_fields if f != "os"]
+    out["_synthetic_fields"] = syn_fields
+
+    # Append a provenance line into short_description so anyone browsing
+    # the CMDB UI directly can see where this row's model/firmware came from.
+    base = (out.get("short_description") or "").rstrip("; ")
+    out["short_description"] = (
+        f"{base}; discovery={src}; ocr_make={ocr.get('make') or '-'}; "
+        f"ocr_conf={ocr.get('match_conf')}"
+    )
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Per-port detail loader. The scan model already detects which port indices
 # are connected vs empty (with image bboxes) — we just have to read it.
 #   device_unit_map.json carries:
@@ -367,6 +456,11 @@ def build_inventory(rack_id: str, scan: dict, override: dict | None = None) -> d
     rack_meta        = override.get("rack_meta") or synthesize_rack_meta(rack_id, rack_name)
     u_size           = override.get("u_size") or _u_size_from_scan(scan) or 18
 
+    # Priority: override file > OCR result > pure synth. OCR can promote a
+    # synth row by replacing the model/firmware fields; an explicit override
+    # always wins (user-provided real data trumps machine OCR).
+    ocr_index = load_ocr_devices(rack_id)
+
     switches: dict[str, dict] = {}
     panels:   dict[str, dict] = {}
     server:   dict | None     = None
@@ -380,7 +474,16 @@ def build_inventory(rack_id: str, scan: dict, override: dict | None = None) -> d
         cls = d.get("class_name")
         if cls == "Switch":
             ov = over_switches.get(name)
-            switches[name] = ov if ov else synthesize_switch(rack_id, name, u, d)
+            if ov:
+                row = dict(ov)
+                row.setdefault("discovery_source", "override")
+                switches[name] = row
+            else:
+                base = synthesize_switch(rack_id, name, u, d)
+                ocr = ocr_index.get(name)
+                switches[name] = apply_ocr_to_switch(base, ocr) if ocr else (
+                    {**base, "discovery_source": "synth"}
+                )
         elif cls == "Patch Panel":
             ov = over_panels.get(name)
             panels[name] = ov if ov else synthesize_patch_panel(rack_id, name, d)

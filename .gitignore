@@ -29,14 +29,6 @@ server/uploads/*
 .env.*.local
 .env.key
 
-# Secrets and runtime auth data
-server/data/
-server/data/jwt.secret
-server/data/auth.db
-server/data/auth.db-shm
-server/data/auth.db-wal
-server/data/last-hosts/
-
 # Editor
 .vscode/
 .idea/
@@ -50,14 +42,3 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
-
-# External git checkouts (kept locally, not vendored)
-netdisco-docker/
-
-# MSAL/runtime auth caches (contain live OAuth tokens)
-pipeline/*_cache.json
-pipeline/*_teams_cache.json
-pipeline/*_outlook_cache.json
-pipeline/.msal_cache*
-pipeline/shankar_teams_cache.json
-pipeline/shanakr_outlook_cache.json

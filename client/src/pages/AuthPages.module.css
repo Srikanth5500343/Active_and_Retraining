@@ -1,4 +1,4 @@
-/* Auth pages — minimal & confident.
+﻿/* Auth pages — minimal & confident.
    One large blurred orb behind the page. No HUD chrome.
    Underline-only inputs with floating labels. */
 
@@ -399,91 +399,91 @@
    ══════════════════════════════════════════════════════════════════════ */
 
 :global([data-theme='light']) .authPage {
-  background: #F0EFF5;
-  color: #1A1A2E;
+  background: #F5F5F7;
+  color: #111827;
 }
 :global([data-theme='light']) .orb {
   background: radial-gradient(circle at 30% 30%,
-    rgba(123, 117, 192, 0.30) 0%,
-    rgba(91, 84, 176, 0.18) 30%,
-    rgba(75, 69, 160, 0.14) 55%,
+    rgba(129, 140, 248, 0.30) 0%,
+    rgba(99, 102, 241, 0.18) 30%,
+    rgba(99, 102, 241, 0.14) 55%,
     transparent 75%);
 }
 :global([data-theme='light']) .orb::after {
-  background: radial-gradient(circle at 65% 65%, rgba(123, 117, 192, 0.18) 0%, transparent 50%);
+  background: radial-gradient(circle at 65% 65%, rgba(129, 140, 248, 0.18) 0%, transparent 50%);
 }
 :global([data-theme='light']) .grain {
-  background-image: radial-gradient(rgba(75, 69, 160, 0.30) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(99, 102, 241, 0.30) 1px, transparent 1px);
 }
 
 :global([data-theme='light']) .authBack {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .authBack:hover {
-  background: rgba(91, 84, 176, 0.08);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4F46E5;
 }
 
 :global([data-theme='light']) .stepDot {
-  background: #DDDBE8;
+  background: #EFEFF2;
 }
 :global([data-theme='light']) .stepDotActive {
-  background: linear-gradient(90deg, #5B54B0, #7B75C0);
+  background: linear-gradient(90deg, #6366F1, #818CF8);
 }
 :global([data-theme='light']) .stepDotDone {
-  background: rgba(91, 84, 176, 0.55);
+  background: rgba(99, 102, 241, 0.55);
 }
 
 :global([data-theme='light']) .heading {
-  color: #1A1A2E;
+  color: #111827;
 }
 :global([data-theme='light']) .heading::after {
-  background: linear-gradient(135deg, #4B45A0, #7B75C0);
+  background: linear-gradient(135deg, #4F46E5, #818CF8);
   -webkit-background-clip: text;
   background-clip: text;
 }
 :global([data-theme='light']) .subheading {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 
 /* Inputs — underline style with light variants */
 :global([data-theme='light']) .input {
-  border-bottom: 1.5px solid #C8C4E4;
-  color: #1A1A2E;
-  caret-color: #5B54B0;
+  border-bottom: 1.5px solid #E5E7EB;
+  color: #111827;
+  caret-color: #6366F1;
 }
 :global([data-theme='light']) .input:focus {
-  border-bottom-color: #5B54B0;
+  border-bottom-color: #6366F1;
 }
 :global([data-theme='light']) .label {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .input:focus + .label,
 :global([data-theme='light']) .input:not(:placeholder-shown) + .label {
-  color: #5B54B0;
+  color: #6366F1;
 }
 :global([data-theme='light']) .field::after {
-  background: linear-gradient(90deg, #5B54B0, #7B75C0);
-  box-shadow: 0 0 6px rgba(91, 84, 176, 0.45);
+  background: linear-gradient(90deg, #6366F1, #818CF8);
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.45);
 }
 
 :global([data-theme='light']) .eyeBtn {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .eyeBtn:hover {
-  color: #5B54B0;
+  color: #6366F1;
 }
 
 /* Strength bar */
 :global([data-theme='light']) .strengthTrack {
-  background: #DDDBE8;
+  background: #EFEFF2;
 }
 :global([data-theme='light']) .strengthHint {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .strengthHintOk { color: #16A34A; }
 
-:global([data-theme='light']) .matchHint { color: #4A4A5A; }
+:global([data-theme='light']) .matchHint { color: #6B7280; }
 :global([data-theme='light']) .matchOk   { color: #16A34A; }
 :global([data-theme='light']) .matchBad  { color: #DC2626; }
 
@@ -494,58 +494,58 @@
   color: #DC2626;
 }
 :global([data-theme='light']) .infoBox {
-  background: rgba(91, 84, 176, 0.08);
-  border-color: rgba(91, 84, 176, 0.30);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.30);
+  color: #4F46E5;
 }
 
 /* Primary button — solid indigo per palette spec */
 :global([data-theme='light']) .primaryBtn {
-  background: #4B45A0;
+  background: #4F46E5;
   color: #FFFFFF;
   box-shadow:
-    0 8px 22px rgba(75, 69, 160, 0.32),
+    0 8px 22px rgba(99, 102, 241, 0.32),
     0 1px 0 rgba(255, 255, 255, 0.18) inset;
 }
 :global([data-theme='light']) .primaryBtn:hover:not(:disabled) {
-  background: #5B54B0;
+  background: #6366F1;
   box-shadow:
-    0 12px 28px rgba(75, 69, 160, 0.42),
+    0 12px 28px rgba(99, 102, 241, 0.42),
     0 1px 0 rgba(255, 255, 255, 0.22) inset;
 }
 :global([data-theme='light']) .primaryBtn:disabled {
-  background: #C8C4E4;
+  background: #E5E7EB;
 }
 
 /* Alt link */
-:global([data-theme='light']) .altRow { color: #4A4A5A; }
-:global([data-theme='light']) .altLink { color: #4B45A0; }
+:global([data-theme='light']) .altRow { color: #6B7280; }
+:global([data-theme='light']) .altLink { color: #4F46E5; }
 
 /* Code cells (verify) */
 :global([data-theme='light']) .codeCell {
   background: #FFFFFF;
-  border: 1.5px solid #C8C4E4;
-  color: #1A1A2E;
-  box-shadow: 0 1px 2px rgba(75, 69, 160, 0.04);
+  border: 1.5px solid #E5E7EB;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.04);
 }
 :global([data-theme='light']) .codeCell:focus {
-  border-color: #5B54B0;
-  background: #F0EFF5;
+  border-color: #6366F1;
+  background: #F5F5F7;
   box-shadow:
-    0 0 0 3px rgba(91, 84, 176, 0.18),
-    0 4px 14px rgba(75, 69, 160, 0.18);
+    0 0 0 3px rgba(99, 102, 241, 0.18),
+    0 4px 14px rgba(99, 102, 241, 0.18);
 }
 :global([data-theme='light']) .codeCellFilled {
-  background: linear-gradient(135deg, rgba(91, 84, 176, 0.10), rgba(123, 117, 192, 0.10));
-  border-color: #5B54B0;
-  color: #4B45A0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.10), rgba(129, 140, 248, 0.10));
+  border-color: #6366F1;
+  color: #4F46E5;
   text-shadow: none;
 }
 
 :global([data-theme='light']) .sentTo {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .sentToEmail {
-  color: #1A1A2E;
-  border-bottom: 1px dashed rgba(91, 84, 176, 0.45);
+  color: #111827;
+  border-bottom: 1px dashed rgba(99, 102, 241, 0.45);
 }

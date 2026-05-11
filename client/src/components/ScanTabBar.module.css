@@ -1,0 +1,222 @@
+﻿/* ══════════════════════════════════════════════════════════════════════
+   ScanTabBar — matches the app's BottomNav DNA:
+   gradient-lit active icon · bouncy spring transitions · breathing halo
+   ══════════════════════════════════════════════════════════════════════ */
+
+.tabBar {
+  flex-shrink: 0;
+  z-index: 55;
+  background: linear-gradient(180deg, rgba(2,8,28,0.94), rgba(4,12,36,0.82));
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border-bottom: 1px solid rgba(59,130,246,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+/* ── Scroll wrapper ── */
+.tabScroll {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 8px 4px 6px;
+}
+.tabScroll::-webkit-scrollbar { display: none; }
+
+/* ── Individual tab ── */
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0 2px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  font-family: inherit;
+  cursor: pointer;
+  flex: 1 0 0;
+  min-width: 50px;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+/* ── Icon container ── */
+.tabIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: rgba(255,255,255,0.45);
+  transition:
+    transform   0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background  0.22s ease,
+    color       0.22s ease,
+    box-shadow  0.34s ease,
+    border-radius 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Active icon — gradient-filled circle with glow ── */
+.tabActive .tabIcon {
+  background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
+  color: #fff;
+  border-radius: 50%;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 6px 18px rgba(59,130,246,0.4),
+    0 2px 8px rgba(124,58,237,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* Breathing halo behind active icon */
+.tabActive .tabIcon::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 52px; height: 52px;
+  margin: -26px 0 0 -26px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,58,237,0.28) 0%, rgba(59,130,246,0.1) 55%, transparent 72%);
+  z-index: -1;
+  pointer-events: none;
+  animation: haloBreathe 3s ease-in-out infinite;
+}
+
+@keyframes haloBreathe {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 0.9;  transform: scale(1.12); }
+}
+
+/* Hover on inactive */
+.tab:not(.tabActive):hover .tabIcon {
+  color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+
+/* Tap feedback */
+.tabActive:active .tabIcon {
+  transform: translateY(-2px) scale(0.92);
+}
+.tab:not(.tabActive):active .tabIcon {
+  transform: scale(0.92);
+}
+
+/* ── Label ── */
+.tabLabel {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: rgba(255,255,255,0.4);
+  transition: color 0.22s ease, transform 0.22s ease;
+  position: relative;
+}
+
+/* Gradient underline dot on active label */
+.tabLabel::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%) scaleX(0);
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tabActive .tabLabel {
+  color: #fff;
+  transform: translateY(-1px);
+}
+.tabActive .tabLabel::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+/* ── Badge ── */
+.tabBadge {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 100px;
+  background: linear-gradient(135deg, #3b82f6, #7c3aed);
+  color: #fff;
+  font-size: .48rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.35);
+  animation: badgePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT THEME
+   ══════════════════════════════════════════════════════════════════════ */
+
+:global([data-theme='light']) .tabBar {
+  background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(248,247,251,0.94));
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  border-bottom-color: rgba(229, 231, 235,0.4);
+  box-shadow: 0 4px 16px rgba(99, 102, 241,0.08);
+}
+
+:global([data-theme='light']) .tab {
+  color: rgba(74,74,90,0.5);
+}
+
+:global([data-theme='light']) .tabIcon {
+  color: #8B87B0;
+}
+
+:global([data-theme='light']) .tabActive .tabIcon {
+  background: linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
+  color: #fff;
+  box-shadow:
+    0 6px 16px rgba(99, 102, 241,0.32),
+    0 2px 6px rgba(129, 140, 248,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.35);
+}
+
+:global([data-theme='light']) .tabActive .tabIcon::before {
+  background: radial-gradient(circle, rgba(129, 140, 248,0.24) 0%, rgba(99, 102, 241,0.08) 55%, transparent 72%);
+}
+
+:global([data-theme='light']) .tab:not(.tabActive):hover .tabIcon {
+  color: #6366F1;
+  background: rgba(99, 102, 241,0.08);
+}
+
+:global([data-theme='light']) .tabLabel {
+  color: rgba(74,74,90,0.45);
+}
+
+:global([data-theme='light']) .tabActive .tabLabel {
+  color: #4F46E5;
+}
+:global([data-theme='light']) .tabActive .tabLabel::after {
+  background: linear-gradient(90deg, #6366F1, #818CF8);
+}
+
+:global([data-theme='light']) .tabBadge {
+  background: linear-gradient(135deg, #6366F1, #818CF8);
+  box-shadow: 0 2px 6px rgba(99, 102, 241,0.25);
+}

@@ -73,60 +73,60 @@
    Re-maps existing variables so most components inherit automatically.
    ══════════════════════════════════════════════════════════════════════ */
 [data-theme='light'] {
-  /* Backgrounds — cool lavender tones */
-  --bg:  #F0EFF5;
-  --bg2: #E8E6EF;
-  --bg3: #DDDBE8;
+  /* Backgrounds — Meter near-white, neutral (no lavender tint) */
+  --bg:  #F5F5F7;
+  --bg2: #FFFFFF;
+  --bg3: #EFEFF2;
 
-  /* Cards — white with subtle elevation */
+  /* Cards — pure white with very soft elevation */
   --card:  #FFFFFF;
-  --card2: #F8F7FB;
+  --card2: #FAFAFC;
 
-  /* Brand — indigo / purple */
-  --c1: #5B54B0;
-  --c2: #7B75C0;
-  --c3: #4B45A0;
-  --cg:  rgba(91, 84, 176, 0.32);
-  --cg2: rgba(91, 84, 176, 0.10);
+  /* Brand — Meter indigo (#6366f1 family) */
+  --c1: #6366F1;
+  --c2: #818CF8;
+  --c3: #4F46E5;
+  --cg:  rgba(99, 102, 241, 0.32);
+  --cg2: rgba(99, 102, 241, 0.10);
 
-  /* Secondary accent — info blue */
-  --cyan:  #3B82F6;
-  --cyan2: #5B54B0;
-  --cyg:   rgba(59, 130, 246, 0.22);
+  /* Secondary accent — same indigo family for cohesion */
+  --cyan:  #6366F1;
+  --cyan2: #818CF8;
+  --cyg:   rgba(99, 102, 241, 0.22);
 
-  /* Purple — same family as brand */
-  --p1: #4B45A0;
-  --p2: #7B75C0;
-  --pg: rgba(75, 69, 160, 0.22);
+  /* Purple — same indigo family */
+  --p1: #4F46E5;
+  --p2: #818CF8;
+  --pg: rgba(79, 70, 229, 0.22);
 
-  /* Gradients — indigo family */
-  --grad:     linear-gradient(135deg, #5B54B0 0%, #7B75C0 100%);
-  --grad-btn: linear-gradient(135deg, #5B54B0 0%, #4B45A0 100%);
+  /* Gradients — flatten to single indigo (Meter is mostly flat) */
+  --grad:     linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
+  --grad-btn: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
   --grad-r:   linear-gradient(135deg, #EF4444 0%, #F97316 100%);
 
-  /* Status — palette spec */
+  /* Status */
   --green:  #22C55E;
   --orange: #F59E0B;
   --red:    #EF4444;
   --rg: rgba(239, 68, 68, 0.22);
   --gg: rgba(34, 197, 94, 0.22);
 
-  /* Glass borders — lavender-tinted */
-  --glass:  rgba(255, 255, 255, 0.7);
-  --glass2: rgba(255, 255, 255, 0.5);
-  --gb:  rgba(200, 196, 228, 0.55);
-  --gbc: rgba(91, 84, 176, 0.45);
+  /* Borders — neutral gray (Meter uses thin gray dividers) */
+  --glass:  #FFFFFF;
+  --glass2: #FAFAFC;
+  --gb:  #E5E7EB;
+  --gbc: rgba(99, 102, 241, 0.45);
   --gbr: rgba(239, 68, 68, 0.35);
-  --gbw: rgba(75, 69, 160, 0.14);
+  --gbw: rgba(99, 102, 241, 0.14);
 
-  /* Text — slight blue-purple undertone */
-  --t1: #1A1A2E;
-  --t2: #4A4A5A;
-  --t3: rgba(74, 74, 90, 0.82);
+  /* Text — near-black headings, mid-gray body (Meter palette) */
+  --t1: #111827;
+  --t2: #6B7280;
+  --t3: rgba(107, 114, 128, 0.85);
 
   /* Aliases used by inline-styled JSX */
-  --text:  #1A1A2E;
-  --muted: #4A4A5A;
+  --text:  #111827;
+  --muted: #6B7280;
 }
 
 html {
@@ -363,93 +363,90 @@ body {
    ══════════════════════════════════════════════════════════════════════ */
 
 [data-theme='light'] body {
-  background:
-    radial-gradient(ellipse at top, rgba(123, 117, 192, 0.08) 0%, transparent 55%),
-    var(--bg);
+  background: var(--bg);
 }
 
 [data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: rgba(91, 84, 176, 0.22);
+  background: rgba(99, 102, 241, 0.22);
 }
 
-/* Gradient text — re-tint to indigo family */
+/* Gradient text — flatten to near-black for Meter's strong heading look */
 [data-theme='light'] .gt,
 [data-theme='light'] .title-grad {
-  background: linear-gradient(135deg, #5B54B0 0%, #4B45A0 50%, #7B75C0 100%);
+  background: linear-gradient(135deg, #111827 0%, #1F2937 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Cards — white with soft lavender shadow, subtle elevation */
+/* Cards — pure white with very soft neutral shadow */
 [data-theme='light'] .glass {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
+  border: 1px solid #E5E7EB;
   border-radius: var(--r4);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow:
-    0 1px 2px rgba(75, 69, 160, 0.06),
-    0 8px 24px rgba(75, 69, 160, 0.08);
+    0 1px 2px rgba(17, 24, 39, 0.04),
+    0 4px 16px rgba(17, 24, 39, 0.04);
 }
 
 [data-theme='light'] .glass-blue {
-  background: linear-gradient(145deg, #FFFFFF 0%, #F8F7FB 100%);
-  border: 1px solid #C8C4E4;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
   border-radius: var(--r4);
   box-shadow:
-    0 1px 2px rgba(75, 69, 160, 0.08),
-    0 12px 32px rgba(75, 69, 160, 0.10);
+    0 1px 2px rgba(17, 24, 39, 0.05),
+    0 8px 24px rgba(17, 24, 39, 0.06);
 }
 
-/* Buttons — pill-shaped per palette spec */
+/* Buttons — pill-shaped (Meter-style) */
 [data-theme='light'] .btn {
   border-radius: var(--r-pill);
 }
 
-/* Primary — filled indigo */
+/* Primary — solid indigo (Meter's "Get a demo" button) */
 [data-theme='light'] .btn-primary {
-  background: #4B45A0;
+  background: #6366F1;
   color: #FFFFFF;
-  border-color: #4B45A0;
+  border-color: #6366F1;
   box-shadow:
-    0 4px 14px rgba(75, 69, 160, 0.28),
-    0 1px 0 rgba(255, 255, 255, 0.18) inset;
+    0 1px 2px rgba(99, 102, 241, 0.10),
+    0 4px 12px rgba(99, 102, 241, 0.20);
 }
 [data-theme='light'] .btn-primary:hover {
-  background: #5B54B0;
-  border-color: #5B54B0;
+  background: #4F46E5;
+  border-color: #4F46E5;
   box-shadow:
-    0 6px 18px rgba(75, 69, 160, 0.36),
-    0 1px 0 rgba(255, 255, 255, 0.22) inset;
+    0 2px 4px rgba(99, 102, 241, 0.12),
+    0 6px 16px rgba(99, 102, 241, 0.28);
   transform: translateY(-1px);
 }
 
-/* Secondary — outlined pill */
+/* Secondary — soft indigo pill (Meter's "Pricing"/"Meter Network" buttons) */
 [data-theme='light'] .btn-secondary {
-  background: #FFFFFF;
-  color: #4B45A0;
-  border: 1px solid #C8C4E4;
+  background: #EEF0FE;
+  color: #4F46E5;
+  border: 1px solid transparent;
   backdrop-filter: none;
-  box-shadow: 0 2px 6px rgba(75, 69, 160, 0.06);
+  box-shadow: none;
 }
 [data-theme='light'] .btn-secondary:hover {
-  background: #F0EFF5;
-  border-color: #7B75C0;
-  color: #5B54B0;
-  box-shadow: 0 4px 12px rgba(75, 69, 160, 0.12);
+  background: #E0E3FC;
+  color: #4338CA;
+  box-shadow: none;
 }
 
-/* Ghost — transparent with indigo text */
+/* Ghost — transparent with neutral border */
 [data-theme='light'] .btn-ghost {
   background: transparent;
-  color: #4A4A5A;
-  border: 1px solid #C8C4E4;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
 }
 [data-theme='light'] .btn-ghost:hover {
-  color: #4B45A0;
-  border-color: #7B75C0;
-  background: rgba(91, 84, 176, 0.06);
+  color: #4F46E5;
+  border-color: #C7D2FE;
+  background: rgba(99, 102, 241, 0.04);
   box-shadow: none;
 }
 
@@ -457,37 +454,36 @@ body {
 [data-theme='light'] .dot-green  { background: #22C55E; box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
 [data-theme='light'] .dot-orange { background: #F59E0B; box-shadow: 0 0 6px rgba(245, 158, 11, 0.4); }
 [data-theme='light'] .dot-red    { background: #EF4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.45); }
-[data-theme='light'] .dot-cyan   { background: #5B54B0; box-shadow: 0 0 6px rgba(91, 84, 176, 0.4); }
-[data-theme='light'] .dot-dim    { background: rgba(91, 84, 176, 0.32); }
+[data-theme='light'] .dot-cyan   { background: #6366F1; box-shadow: 0 0 6px rgba(99, 102, 241, 0.4); }
+[data-theme='light'] .dot-dim    { background: rgba(99, 102, 241, 0.32); }
 
 /* Badges */
 [data-theme='light'] .badge-red    { background: rgba(239, 68, 68, 0.10); color: #DC2626;  border: 1px solid rgba(239, 68, 68, 0.30); box-shadow: none; }
 [data-theme='light'] .badge-green  { background: rgba(34, 197, 94, 0.10); color: #16A34A;  border: 1px solid rgba(34, 197, 94, 0.30); box-shadow: none; }
 [data-theme='light'] .badge-orange { background: rgba(245, 158, 11, 0.10); color: #B45309; border: 1px solid rgba(245, 158, 11, 0.30); box-shadow: none; }
-[data-theme='light'] .badge-cyan   { background: rgba(91, 84, 176, 0.10);  color: #4B45A0; border: 1px solid rgba(91, 84, 176, 0.30); box-shadow: none; }
+[data-theme='light'] .badge-cyan   { background: rgba(99, 102, 241, 0.10);  color: #4F46E5; border: 1px solid rgba(99, 102, 241, 0.30); box-shadow: none; }
 
-/* Input — white with indigo focus */
+/* Input — white with indigo focus ring */
 [data-theme='light'] .input {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #1A1A2E;
+  border: 1px solid #E5E7EB;
+  color: #111827;
   backdrop-filter: none;
-  box-shadow: 0 1px 2px rgba(75, 69, 160, 0.04) inset;
+  box-shadow: none;
 }
 [data-theme='light'] .input:focus {
-  border-color: #7B75C0;
+  border-color: #6366F1;
   box-shadow:
-    0 0 0 3px rgba(123, 117, 192, 0.18),
-    0 1px 2px rgba(75, 69, 160, 0.06) inset;
+    0 0 0 3px rgba(99, 102, 241, 0.18);
 }
-[data-theme='light'] .input::placeholder { color: #4A4A5A; }
+[data-theme='light'] .input::placeholder { color: #9CA3AF; }
 
 /* Section label */
-[data-theme='light'] .sl { color: #5B54B0; opacity: 0.85; }
+[data-theme='light'] .sl { color: #6B7280; opacity: 1; }
 
-/* Shimmer — lavender shimmer */
+/* Shimmer — neutral gray shimmer */
 [data-theme='light'] .shimmer {
-  background: linear-gradient(90deg, rgba(91, 84, 176, 0.04) 25%, rgba(91, 84, 176, 0.10) 50%, rgba(91, 84, 176, 0.04) 75%);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.04) 25%, rgba(99, 102, 241, 0.10) 50%, rgba(99, 102, 241, 0.04) 75%);
   background-size: 200% 100%;
 }
 
@@ -506,10 +502,10 @@ select option:hover {
 }
 [data-theme='light'] select option {
   background-color: #ffffff;
-  color: #1A1A2E;
+  color: #111827;
 }
 [data-theme='light'] select option:checked,
 [data-theme='light'] select option:hover {
-  background-color: #EAE8F2;
-  color: #1A1A2E;
+  background-color: #EEF0FE;
+  color: #111827;
 }

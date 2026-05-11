@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 // Manage SSH credentials stored in server/.env as an AES-256-GCM blob.
 //
+// Logging: this is an interactive CLI, so we keep human-readable console
+// output for prompts/feedback the operator types against; the structured
+// logger is also called for any error/warn so audit pipelines see ops
+// run from this tool.
+//
 // Usage:
 //   node encrypt-creds.js init
 //       Create a new key in server/.env.key if one does not already exist.

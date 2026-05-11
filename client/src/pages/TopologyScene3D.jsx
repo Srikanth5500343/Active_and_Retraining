@@ -1,7 +1,63 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Text, QuadraticBezierLine, Grid, Environment } from '@react-three/drei';
 import * as THREE from 'three';
+
+// ── Scene palettes ──────────────────────────────────────────────────────────
+// Two palettes, picked per the app's [data-theme] attribute (set by
+// ThemeContext). Exported so MultiRackTopologyPage can use the same
+// colors for its shared floor / fog.
+export const SCENE_PALETTES = {
+  dark: {
+    bg:           '#0e1830',
+    fog:          '#0e1830',
+    floor:        '#0c1428',
+    floorOpacity:  0.88,
+    gridCell:     '#2e4a78',
+    gridSection:  '#5388c8',
+    poolColor:    '#2a4f9e',
+    poolOpacity:   0.22,
+    cableJacket:  '#e6ebf2',  // off-white — pops on dark
+    environment:  'warehouse',
+    envIntensity:  0.55,
+    ambientBoost:  1.0,
+  },
+  light: {
+    bg:           '#f4f6fb',
+    fog:          '#eef1f7',
+    floor:        '#dde3ee',
+    floorOpacity:  0.95,
+    gridCell:     '#9aa6bd',
+    gridSection:  '#4b5b7a',
+    poolColor:    '#7ca0d6',
+    poolOpacity:   0.20,
+    cableJacket:  '#1f2937',  // dark slate — pops on light
+    environment:  'apartment',
+    envIntensity:  0.85,
+    ambientBoost:  1.15,
+  },
+};
+
+// Read the current scene palette from the document theme. Re-evaluates
+// when the theme attribute changes so the canvas swaps palette live.
+export function useScenePalette() {
+  const read = () => {
+    const t = typeof document !== 'undefined'
+      ? document.documentElement.getAttribute('data-theme')
+      : 'dark';
+    return SCENE_PALETTES[t === 'light' ? 'light' : 'dark'];
+  };
+  const [palette, setPalette] = useState(read);
+  useEffect(() => {
+    if (typeof MutationObserver === 'undefined') return;
+    const mo = new MutationObserver(() => setPalette(read()));
+    mo.observe(document.documentElement, {
+      attributes: true, attributeFilter: ['data-theme'],
+    });
+    return () => mo.disconnect();
+  }, []);
+  return palette;
+}
 
 const TIER_COLOR = {
   core:         '#f59e0b',
@@ -33,13 +89,19 @@ function tierOf(dev) {
 }
 
 // World-unit constants
-const U_HEIGHT   = 0.42;
-const DEV_DEPTH  = 1.4;
-const DEV_WIDTH  = 3.0;
+export const U_HEIGHT   = 0.42;
+export const DEV_DEPTH  = 1.4;
+export const DEV_WIDTH  = 3.0;
 const FRAME_THK  = 0.07;
 const FRONT_Z    = DEV_DEPTH / 2;
-const FOV_DEG    = 42;
+export const FOV_DEG    = 42;
 const SHELF_GAP  = 0.5;   // U-units of empty space between top of rack and uplink shelf
+
+// World-X distance between centers of adjacent racks in a multi-rack scene.
+// DEV_WIDTH is the chassis width; the gap is a constant breathing space so
+// cables/labels never collide between neighboring racks.
+export const RACK_GAP     = 1.6;
+export const RACK_SPACING = DEV_WIDTH + RACK_GAP;
 
 // Convert an integer-or-half U position to a chassis-relative Y.
 // uPos=1 is the bottom slot, uPos=chassisU is the top slot.
@@ -132,7 +194,9 @@ function CableArm({ side, totalH, totalD, totalW }) {
   const x = side === 'left' ? -totalW/2 + 0.06 : totalW/2 - 0.06;
   const z = -totalD/2 + 0.07;
   const armH = totalH - 0.4;
-  const bandColors = ['#22d3ee', '#fbbf24', '#a78bfa'];
+  // Velcro band colors match the realistic cable jacket palette:
+  // copper-blue, fiber-MM-aqua, fiber-SM-yellow.
+  const bandColors = ['#2563eb', '#22d3b8', '#fbbf24'];
   return (
     <group position={[x, 0, z]}>
       {/* Main bundle */}
@@ -151,6 +215,35 @@ function CableArm({ side, totalH, totalD, totalW }) {
           </mesh>
         );
       })}
+    </group>
+  );
+}
+
+// Front vertical cable manager — a thin recessed channel rail running
+// floor-to-ceiling on each side of the rack. Just the channel itself, no
+// floating "finger" bars — those read as visual noise rather than as real
+// cable management. Cables route inside the channel (matches CABLE_X /
+// CABLE_Z used in PortCables).
+function CableManagerFront({ side, totalH }) {
+  const sign = side === 'left' ? -1 : 1;
+  const x = sign * (DEV_WIDTH / 2 + 0.18);
+  const z = FRONT_Z + 0.10;
+  const railH = totalH - 0.20;
+  return (
+    <group position={[x, 0, z]}>
+      {/* Outer rail — narrow dark anodized strip, sits flush against
+          the rack post. Same metal finish as the chassis so it reads as
+          part of the frame, not a separate gadget. */}
+      <mesh>
+        <boxGeometry args={[0.08, railH, 0.04]} />
+        <meshStandardMaterial color="#0d1322" metalness={0.6} roughness={0.5} />
+      </mesh>
+      {/* Recessed gutter — slightly inset darker channel where cables drop
+          in. Reads as a cable-routing slot rather than a solid bar. */}
+      <mesh position={[0, 0, 0.022]}>
+        <boxGeometry args={[0.04, railH - 0.06, 0.012]} />
+        <meshStandardMaterial color="#04081a" metalness={0.3} roughness={0.85} />
+      </mesh>
     </group>
   );
 }
@@ -206,14 +299,15 @@ function RackChassis({ totalU, chassisU, rackName, hasShelf, leftOpen, rightOpen
   const totalD = DEV_DEPTH + 0.30;
   const POST_W = FRAME_THK * 1.4;       // a touch chunkier — reads as real metal
 
-  // Dark anodized aluminum — high metalness so the IBL probe still gives the
-  // chassis a polished sheen instead of flat-black plastic.
+  // Anodized aluminum — mid-dark so the rack frame reads as a real metal
+  // chassis against the navy backdrop. High metalness so the IBL probe
+  // gives it a polished specular sheen instead of flat plastic.
   const bodyMat = (
     <meshStandardMaterial
-      color="#0e1630"
-      metalness={0.9}
-      roughness={0.28}
-      emissive="#1a2547"
+      color="#2a3358"
+      metalness={0.85}
+      roughness={0.34}
+      emissive="#3a4570"
       emissiveIntensity={0.10}
     />
   );
@@ -342,6 +436,11 @@ function RackChassis({ totalU, chassisU, rackName, hasShelf, leftOpen, rightOpen
       <CableArm side="left"  totalH={totalH} totalD={totalD} totalW={totalW} />
       <CableArm side="right" totalH={totalH} totalD={totalD} totalW={totalW} />
 
+      {/* Front vertical cable managers — recessed channel rails on each side
+          rail that the per-port cables route through. Visible from the front. */}
+      <CableManagerFront side="left"  totalH={totalH} />
+      <CableManagerFront side="right" totalH={totalH} />
+
       {/* Rack nameplate — small brushed-metal badge above the rack */}
       <group position={[0, totalH/2 + 0.16, totalD/2 + 0.04]}>
         <mesh position={[0, 0.10, 0]}>
@@ -372,12 +471,27 @@ function RackChassis({ totalU, chassisU, rackName, hasShelf, leftOpen, rightOpen
 }
 
 // ── Cable color by physical type ───────────────────────────────────────────
+// Real datacenter cable jacket colors — TIA-598 fiber color codes for the
+// optics, common-practice colors for copper. We match by class first
+// (most-specific keyword wins) then fall back to family defaults so
+// generic strings like "fiber" or "cat6" still resolve.
 function cableColor(cable_type) {
   const t = (cable_type || '').toLowerCase();
-  if (t.includes('fiber') || t.includes('mm') || t.includes('sm')) return '#fbbf24';
-  if (t.includes('dac')   || t.includes('twinax'))                 return '#a78bfa';
-  if (t.startsWith('cat'))                                          return '#22d3ee';
-  return '#60a5fa';
+  // Single-mode fiber (OS1/OS2) — yellow jacket
+  if (t.includes('sm') || t.includes('single') ||
+      t.includes('os1') || t.includes('os2'))                       return '#fbbf24';
+  // OM5 wideband multi-mode — lime green jacket
+  if (t.includes('om5'))                                             return '#a3e635';
+  // OM3 / OM4 multi-mode — aqua jacket
+  if (t.includes('om3') || t.includes('om4') || t.includes('mm'))   return '#22d3b8';
+  // Generic fiber default → aqua (most common datacenter MMF)
+  if (t.includes('fiber') || t.includes('fibre'))                   return '#22d3b8';
+  // Direct-attach copper / twinax — black jacket with metal connectors
+  if (t.includes('dac') || t.includes('twinax'))                    return '#475569';
+  // Copper Ethernet (Cat5e/Cat6/Cat6a/Cat7) — datacenter blue
+  if (t.startsWith('cat'))                                          return '#2563eb';
+  // Unknown → muted slate so it stays readable but doesn't pretend a type
+  return '#64748b';
 }
 
 // ── Port layout: returns Map<portName, [relX, relY]> on the device front face.
@@ -567,22 +681,44 @@ function DeviceBox({ dev, uPos, sizeU, chassisU, color, dimmed, selected, isCore
   const isSwitch = dev.class === 'switch';
   const isPanel  = dev.class === 'patch_panel';
 
-  // Tier-tinted body + faceplate colors (memoized so we don't churn allocations).
-  // Mid-tone bases + stronger lerp so devices read as actually-tier-colored
-  // metal in a lit room — not nearly-black silhouettes.
-  const { bodyColor, faceColor } = useMemo(() => {
-    const tier  = new THREE.Color(color);
-    const bBase = new THREE.Color('#1c2a4a');
-    const fBase = new THREE.Color('#26345e');
+  // Real datacenter equipment is dark anodized aluminum or matte black —
+  // switches, patch panels, servers all live in shades of charcoal with
+  // brand/status colors confined to small LEDs and accent strips. Tier
+  // color is no longer used as a body tint; it stays as the LED rim, edge
+  // trim, and brand stripe so the tier is still readable at a glance.
+  const { bodyColor, faceColor, bodyMetalness, bodyRoughness } = useMemo(() => {
+    if (dev.class === 'patch_panel') {
+      // Matte black powder-coated panel — most patch panels look like this.
+      // Lifted enough that ports + labels remain readable against the rack.
+      return {
+        bodyColor: new THREE.Color('#1a2138'),
+        faceColor: new THREE.Color('#222a44'),
+        bodyMetalness: 0.35,
+        bodyRoughness: 0.72,
+      };
+    }
+    if (dev.class === 'server') {
+      // Server chassis — light charcoal, metallic brushed finish
+      return {
+        bodyColor: new THREE.Color('#2c3450'),
+        faceColor: new THREE.Color('#363f5c'),
+        bodyMetalness: 0.78,
+        bodyRoughness: 0.36,
+      };
+    }
+    // Default: switch — anodized aluminum, mid-dark so it reads as metal
     return {
-      bodyColor: bBase.clone().lerp(tier, 0.22),
-      faceColor: fBase.clone().lerp(tier, 0.40),
+      bodyColor: new THREE.Color('#252e48'),
+      faceColor: new THREE.Color('#2f3a58'),
+      bodyMetalness: 0.72,
+      bodyRoughness: 0.38,
     };
-  }, [color]);
+  }, [dev.class]);
 
   return (
     <group position={[0, y, 0]}>
-      {/* Body — dark anodized with a hint of tier color */}
+      {/* Body — dark anodized chassis. Tier emissive stays subtle so the
+          device reads as metal first, status indicator second. */}
       <mesh
         onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
         onPointerOver={(e) => { e.stopPropagation(); onHoverIn && onHoverIn(); }}
@@ -592,61 +728,63 @@ function DeviceBox({ dev, uPos, sizeU, chassisU, color, dimmed, selected, isCore
         <meshStandardMaterial
           ref={matRef}
           color={bodyColor}
-          metalness={0.7}
-          roughness={0.42}
+          metalness={bodyMetalness}
+          roughness={bodyRoughness}
           emissive={color}
-          emissiveIntensity={baseEmissive * 0.45}
+          emissiveIntensity={baseEmissive * 0.18}
           transparent
           opacity={opacity}
         />
       </mesh>
 
-      {/* Faceplate — tier-tinted brushed-metal panel, raised proud of the body */}
+      {/* Faceplate — slightly lighter dark panel, raised proud of the body */}
       <mesh position={[0, 0, faceZ]}>
         <boxGeometry args={[faceW, faceH, FACE_DEPTH]} />
         <meshStandardMaterial
           color={faceColor}
-          metalness={0.55}
-          roughness={0.45}
+          metalness={0.50}
+          roughness={0.50}
           emissive={color}
-          emissiveIntensity={selected ? 0.18 : 0.08}
+          emissiveIntensity={selected ? 0.14 : 0.04}
           transparent
           opacity={opacity}
         />
       </mesh>
 
-      {/* Brushed-metal highlight — bright thin line across the top of the face,
-          fakes a directional sheen and gives the device a premium feel */}
+      {/* Brushed-metal highlight — narrow soft line across the top edge of
+          the faceplate, simulates a single directional reflection. Subtle,
+          not a bright bar. */}
       <mesh position={[0, faceH/2 - 0.012, d/2 + FACE_DEPTH + 0.002]}>
-        <planeGeometry args={[faceW * 0.96, 0.006]} />
-        <meshBasicMaterial color="#e6f0ff" transparent
-                           opacity={dimmed ? 0.10 : 0.32} />
+        <planeGeometry args={[faceW * 0.92, 0.003]} />
+        <meshBasicMaterial color="#a5b4cf" transparent
+                           opacity={dimmed ? 0.06 : 0.18} />
       </mesh>
 
-      {/* Soft tier-color halo behind faceplate edges (rim) */}
-      <mesh position={[0, 0, d/2 + 0.001]}>
-        <planeGeometry args={[w * 0.998, h * 0.97]} />
+      {/* Tier indicator — tiny LED-style dot on the right edge of the face.
+          Replaces the previous full-device halo: real switches don't glow,
+          they just have status lights. Highlights when the device is
+          selected, otherwise sits as an unobtrusive accent. */}
+      <mesh position={[w/2 - 0.06, h * 0.28, d/2 + FACE_DEPTH + 0.003]}>
+        <circleGeometry args={[Math.min(0.022, h * 0.06), 12]} />
         <meshBasicMaterial color={color} transparent
-                           opacity={dimmed ? 0.10 : (selected ? 0.42 : 0.18)} />
+                           opacity={dimmed ? 0.25 : (selected ? 1 : 0.85)} />
       </mesh>
 
-      {/* Top + bottom tier-color trim lines on the faceplate edges */}
-      <mesh position={[0, faceH/2 - 0.005, d/2 + FACE_DEPTH + 0.002]}>
-        <planeGeometry args={[faceW * 0.985, 0.012]} />
-        <meshBasicMaterial color={color} transparent
-                           opacity={dimmed ? 0.30 : (selected ? 1 : 0.70)} />
-      </mesh>
+      {/* Bottom tier-color trim — single thin LED line at the base of the
+          faceplate (the rack-rail "activity strip"). Top trim removed to
+          reduce visual noise. */}
       <mesh position={[0, -faceH/2 + 0.005, d/2 + FACE_DEPTH + 0.002]}>
-        <planeGeometry args={[faceW * 0.985, 0.012]} />
+        <planeGeometry args={[faceW * 0.92, 0.005]} />
         <meshBasicMaterial color={color} transparent
-                           opacity={dimmed ? 0.30 : (selected ? 1 : 0.70)} />
+                           opacity={dimmed ? 0.18 : (selected ? 0.85 : 0.40)} />
       </mesh>
 
-      {/* Vertical brand stripe — wider, brighter, the focal "tier badge" */}
-      <mesh position={[-w/2 + 0.045, 0, d/2 + FACE_DEPTH + 0.003]}>
-        <planeGeometry args={[0.045, h * 0.78]} />
+      {/* Brand stripe — narrow vertical accent on the left edge, like the
+          colored badge most switches have at the corner. Thin, not a bar. */}
+      <mesh position={[-w/2 + 0.030, 0, d/2 + FACE_DEPTH + 0.003]}>
+        <planeGeometry args={[0.014, h * 0.55]} />
         <meshBasicMaterial color={color} transparent
-                           opacity={dimmed ? 0.35 : (selected ? 1 : 0.95)} />
+                           opacity={dimmed ? 0.20 : (selected ? 0.90 : 0.55)} />
       </mesh>
 
       {/* Port-bank recess — subtle strip behind the port rows. Light enough
@@ -755,7 +893,7 @@ function hash01(s) {
 // drawn from the exact src-port position to the exact dst-port position.
 // Lines colored by cable_type (Cat6a / Fiber / DAC). Each cable has a small
 // hash-based bow offset so a 24-cable trunk fans out instead of overlapping.
-function PortCables({ selected, topo, positions, traceEdgeKeys, setSelected }) {
+function PortCables({ selected, topo, positions, traceEdgeKeys, setSelected, cableJacketColor = '#e6ebf2' }) {
   const groupRef = useRef();
 
   useFrame((state) => {
@@ -766,25 +904,45 @@ function PortCables({ selected, topo, positions, traceEdgeKeys, setSelected }) {
 
   const cables = useMemo(() => {
     const out = [];
-    const includeAll  = traceEdgeKeys && traceEdgeKeys.size > 0;
-    const selDev      = selected?.kind === 'node' ? selected.id : null;
+    const traceMode = traceEdgeKeys && traceEdgeKeys.size > 0;
+    const selDev    = selected?.kind === 'node' ? selected.id : null;
     // When a single cable is selected, render the whole trunk between the
     // two devices it spans — so the user sees its siblings + the chosen one.
-    const selCable    = selected?.kind === 'cable'
+    const selCable  = selected?.kind === 'cable'
       ? topo.edges.find(e => e.cable_id === selected.id)
       : null;
-    const trunkPair   = selCable
+    const trunkPair = selCable
       ? [selCable.src.device, selCable.dst.device].sort().join('::')
       : null;
-    if (!includeAll && !selDev && !trunkPair) return out;
+
+    // Default mode (no selection, no trace): render every cable at a subtle
+    // ambient opacity so the wiring is visible from the start. Selection /
+    // trace still classifies cables as focused vs background, but the
+    // background ones stay rendered (just dimmer) so the rack never looks
+    // bare again once you pan away.
+    const hasFocus = !!(traceMode || selDev || trunkPair);
+
+    // Vertical cable-manager channels live just outside each rack rail.
+    // Cables exit a port → run forward briefly → drop into the channel →
+    // travel vertically → re-enter the destination port. This mimics how
+    // patch cords physically route in a real rack instead of bowing forward
+    // through the air.
+    const CHANNEL_X = DEV_WIDTH / 2 + 0.18;  // x of the side rail manager
+    const CHANNEL_Z = FRONT_Z + 0.16;         // depth at which cables run
+    const PORT_EXIT_Z = FRONT_Z + 0.09;       // how far the cable sticks out of the jack
 
     for (const e of topo.edges) {
       const a = e.src.device, b = e.dst.device;
       const key = a < b ? `${a}::${b}` : `${b}::${a}`;
-      const inTrace = includeAll && traceEdgeKeys.has(key);
-      const inSel   = !includeAll && (a === selDev || b === selDev);
+      const inTrace = traceMode && traceEdgeKeys.has(key);
+      const inSel   = !traceMode && selDev && (a === selDev || b === selDev);
       const inTrunk = trunkPair && key === trunkPair;
-      if (!inTrace && !inSel && !inTrunk) continue;
+      const focused = inTrace || inSel || inTrunk;
+
+      // In trace mode the user is asking for a *single* path — hide the rest
+      // so the routed path stands out unambiguously. Outside trace mode we
+      // always render every edge (focused or not).
+      if (traceMode && !focused) continue;
 
       const srcDev = positions.get(a);
       const dstDev = positions.get(b);
@@ -796,15 +954,47 @@ function PortCables({ selected, topo, positions, traceEdgeKeys, setSelected }) {
 
       const startV = new THREE.Vector3(srcRel[0], srcDev.centerY + srcRel[1], FRONT_Z + 0.025);
       const endV   = new THREE.Vector3(dstRel[0], dstDev.centerY + dstRel[1], FRONT_Z + 0.025);
-      const mid    = startV.clone().add(endV).multiplyScalar(0.5);
-      const dy = Math.abs(endV.y - startV.y);
-      const jitter = hash01(e.cable_id) * 0.6 - 0.3;
-      mid.z += 0.55 + Math.min(2.2, dy * 0.5) + jitter;
-      mid.x += (endV.x - startV.x) * 0.05 + (hash01(e.cable_id + 'x') - 0.5) * 0.18;
 
-      const curve = new THREE.QuadraticBezierCurve3(startV, mid, endV);
+      // Pick a routing side per cable. Strategy:
+      //   * If both ports are clearly on the same half of the device,
+      //     route via that side's manager — keeps natural runs short.
+      //   * Otherwise (cable spans the device), use a stable per-cable
+      //     hash so consecutive cables in a trunk fan evenly between
+      //     the left and right rails instead of all bunching on one side.
+      const sideThresh = DEV_WIDTH * 0.10;
+      let sideDir;
+      if (srcRel[0] < -sideThresh && dstRel[0] < -sideThresh)      sideDir = -1;
+      else if (srcRel[0] > sideThresh && dstRel[0] > sideThresh)   sideDir = 1;
+      else  sideDir = hash01(e.cable_id + 'side') >= 0.5 ? 1 : -1;
+
+      // Small per-cable jitter so a 24-cable trunk fans across the channel
+      // depth instead of overlapping into a single line.
+      const jx = (hash01(e.cable_id + 'x') - 0.5) * 0.08;
+      const jz = (hash01(e.cable_id + 'z') - 0.5) * 0.05;
+      const channelX = sideDir * (CHANNEL_X + Math.abs(jx));
+      const channelZ = CHANNEL_Z + jz;
+
+      // Cable path: jack → forward exit → channel entry → channel sag mid →
+      // channel exit → forward at destination → jack. CatmullRom gives smooth
+      // bends without overshoot.
+      const exitA = new THREE.Vector3(startV.x, startV.y, PORT_EXIT_Z);
+      const exitB = new THREE.Vector3(endV.x,   endV.y,   PORT_EXIT_Z);
+      const chA   = new THREE.Vector3(channelX, startV.y, channelZ);
+      const chB   = new THREE.Vector3(channelX, endV.y,   channelZ);
+      // Sag: longer vertical runs droop slightly forward in the channel
+      const dy = Math.abs(endV.y - startV.y);
+      const sagZ = channelZ + Math.min(0.10, dy * 0.025);
+      const chMid = new THREE.Vector3(
+        channelX, (startV.y + endV.y) / 2, sagZ
+      );
+      const points = [startV, exitA, chA, chMid, chB, exitB, endV];
+
+      const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
       out.push({
         edge: e, curve, color: cableColor(e.cable_type),
+        focused, hasFocus,
+        // Endpoints + tangent for connector orientation
+        startV, endV,
       });
     }
     return out;
@@ -818,22 +1008,80 @@ function PortCables({ selected, topo, positions, traceEdgeKeys, setSelected }) {
     <group ref={groupRef}>
       {cables.map((c) => {
         const isSelected = selCableId === c.edge.cable_id;
-        const radius = isSelected ? 0.026 : 0.013;
-        const color  = isSelected ? '#ffffff' : c.color;
-        const opacity = isSelected ? 1 : (selCableId ? 0.45 : 0.85);
+        // All cables render as off-white PVC jackets. Type-color stays on
+        // the strain-relief band of each connector boot so cable type can
+        // still be read end-on. Visual tiers:
+        //   selected → thick + bright white
+        //   focused → normal white
+        //   background (something IS selected) → thin + low alpha
+        //   default ambient (no selection) → standard
+        let radius, opacity, transparent;
+        const cableHex = cableJacketColor;   // theme-driven jacket color
+        if (isSelected) {
+          radius = 0.026; opacity = 1;    transparent = false;
+        } else if (c.focused) {
+          radius = 0.018; opacity = 1;    transparent = false;
+        } else if (c.hasFocus) {
+          radius = 0.011; opacity = 0.22; transparent = true;
+        } else {
+          radius = 0.014; opacity = 1;    transparent = false;
+        }
+        // Connector boots sit at each port — small dark blocks that anchor
+        // the cable into the jack. The strain-relief band carries the
+        // cable-type color so type can be read at the connector even though
+        // the cable jacket is white.
+        const connDim = (isSelected || c.focused) ? 0.038 : 0.026;
+        const connBandOpacity = isSelected ? 1 : (c.focused ? 0.85 : (c.hasFocus ? 0.18 : 0.55));
+        const connBandColor = isSelected ? '#ffffff' : c.color;
+        const connBodyOpacity = c.hasFocus && !c.focused && !isSelected ? 0.25 : 0.9;
         return (
-          <mesh
-            key={c.edge.cable_id}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelected && setSelected({ kind: 'cable', id: c.edge.cable_id });
-            }}
-            onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-            onPointerOut={() => { document.body.style.cursor = ''; }}
-          >
-            <tubeGeometry args={[c.curve, 18, radius, 8, false]} />
-            <meshBasicMaterial color={color} transparent opacity={opacity} />
-          </mesh>
+          <group key={c.edge.cable_id}>
+            <mesh
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelected && setSelected({ kind: 'cable', id: c.edge.cable_id });
+              }}
+              onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+              onPointerOut={() => { document.body.style.cursor = ''; }}
+            >
+              <tubeGeometry args={[c.curve, 40, radius, 12, false]} />
+              {/* meshStandardMaterial responds to lighting — gives the tube
+                  a proper rounded shading falloff so it reads as a physical
+                  cable jacket instead of a flat line. Low metalness +
+                  medium roughness mimics PVC. */}
+              <meshStandardMaterial
+                color={cableHex}
+                metalness={0.08}
+                roughness={0.55}
+                transparent={transparent}
+                opacity={opacity}
+              />
+            </mesh>
+            {/* Connector boot at each end — body + color band */}
+            {[c.startV, c.endV].map((p, i) => (
+              <group key={i} position={[p.x, p.y, p.z + connDim * 0.5 + 0.003]}>
+                <mesh>
+                  <boxGeometry args={[connDim * 1.3, connDim * 0.9, connDim]} />
+                  <meshStandardMaterial
+                    color="#0a1020"
+                    metalness={0.45}
+                    roughness={0.55}
+                    transparent
+                    opacity={connBodyOpacity}
+                  />
+                </mesh>
+                {/* Strain-relief color band on the cable side */}
+                <mesh position={[0, 0, connDim * 0.5 + 0.003]}>
+                  <boxGeometry args={[connDim * 1.32, connDim * 0.94, 0.008]} />
+                  <meshBasicMaterial
+                    color={connBandColor}
+                    transparent
+                    opacity={connBandOpacity}
+                  />
+                </mesh>
+              </group>
+            ))}
+          </group>
         );
       })}
     </group>
@@ -844,53 +1092,64 @@ function PortCables({ selected, topo, positions, traceEdgeKeys, setSelected }) {
 // Symmetric setup so the rack lights uniformly — no more "half violet, half
 // cyan" split. The colored rim lights are balanced with matching siblings
 // across the rack centerline.
-function Lights({ chassisU }) {
+function Lights({ chassisU, ambientBoost = 1 }) {
   const topY = chassisU * U_HEIGHT / 2 + 1.2;
   return (
     <>
-      <ambientLight intensity={0.85} />
-      <directionalLight position={[ 6, 7,  5]} intensity={0.7} color="#e8efff" />
-      <directionalLight position={[-6, 7,  5]} intensity={0.7} color="#e8efff" />
-      {/* Bright key from above — clearly lights the front of the rack */}
+      {/* Generous ambient so devices read as lit, not silhouetted in shadow.
+          The rack still pops because the key + rim lights are stronger.
+          ambientBoost is bumped on light themes to keep dark chassis legible. */}
+      <ambientLight intensity={1.05 * ambientBoost} />
+      <directionalLight position={[ 6, 7,  5]} intensity={1.0} color="#f3f6ff" />
+      <directionalLight position={[-6, 7,  5]} intensity={1.0} color="#f3f6ff" />
+      {/* Bright key from front-above — main illumination on the faceplate */}
       <spotLight
         position={[0, topY + 4, 2.6]}
         angle={0.6}
-        penumbra={0.6}
-        intensity={1.9}
+        penumbra={0.55}
+        intensity={2.6}
         distance={22}
-        color="#f0f4ff"
+        color="#f4f7ff"
       />
-      {/* Cool fill across both sides — same color/intensity, no split */}
-      <pointLight position={[-5, 1.2, 4]} intensity={0.45} color="#cbd5f5" distance={14} />
-      <pointLight position={[ 5, 1.2, 4]} intensity={0.45} color="#cbd5f5" distance={14} />
-      {/* Subtle warm accent from behind so the chassis silhouette pops */}
-      <pointLight position={[0, topY - 1, -3]} intensity={0.40} color="#f59e0b" distance={12} />
+      {/* Front fills — closer to the rack so port detail reads clearly */}
+      <pointLight position={[-3.5, 1.2, 4]} intensity={0.7} color="#dbe4f7" distance={14} />
+      <pointLight position={[ 3.5, 1.2, 4]} intensity={0.7} color="#dbe4f7" distance={14} />
+      {/* Cyan rim from above-behind — outlines the rack silhouette against
+          the backdrop, same role as a stage rim light. */}
+      <pointLight position={[ 0, topY - 0.5, -4.2]} intensity={1.0} color="#22d3ee" distance={11} />
+      {/* Warm low backlight — soft amber kick behind the base, gives depth */}
+      <pointLight position={[ 0, -topY + 2, -2.8]} intensity={0.45} color="#f59e0b" distance={10} />
     </>
   );
 }
 
 // ── Floor: lifted mid-tone with a brighter cyan grid ───────────────────────
-function DataCenterFloor({ chassisU }) {
+function DataCenterFloor({ chassisU, palette }) {
   const y = -chassisU * U_HEIGHT / 2 - 0.4;
+  const pal = palette || SCENE_PALETTES.dark;
   return (
     <group position={[0, y, 0]}>
-      {/* Lifted backing — mid navy with a violet tint so the grid pops */}
+      {/* Floor backing — slightly darker than bg so the rack still reads as
+          the brightest element, but light enough that the grid lines and
+          any reflections are visible. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[40, 40]} />
-        <meshStandardMaterial color="#0e1735" metalness={0.5} roughness={0.7}
-                              transparent opacity={0.88} />
+        <meshStandardMaterial color={pal.floor} metalness={0.5} roughness={0.65}
+                              transparent opacity={pal.floorOpacity} />
       </mesh>
+      {/* Per-rack pool of light is now painted by <RackContent>, so each
+          rack in a multi-rack scene gets its own pool that travels with it. */}
       <Grid
-        position={[0, 0.001, 0]}
+        position={[0, 0.003, 0]}
         args={[40, 40]}
         cellSize={0.5}
         cellThickness={0.7}
-        cellColor="#3a5a8c"
+        cellColor={pal.gridCell}
         sectionSize={3}
-        sectionThickness={1.4}
-        sectionColor="#67e8f9"
+        sectionThickness={1.3}
+        sectionColor={pal.gridSection}
         fadeDistance={22}
-        fadeStrength={1.2}
+        fadeStrength={1.3}
         infiniteGrid
         followCamera={false}
       />
@@ -928,65 +1187,87 @@ function AutoPanCursor({ panThreshold = 9 }) {
   return null;
 }
 
-export default function TopologyScene3D({
-  topo, selected, setSelected, heatmap, freePctByDevice,
+// Pure layout: turn a topology JSON into per-device positions, chassis size,
+// and the "has uplink shelf" flag. Module-scope so single- and multi-rack
+// scenes share one source of truth.
+export function computeRackLayout(topo, totalU) {
+  const map    = new Map();
+  const inRack = [];
+  const cores  = [];
+  for (const d of topo.devices) {
+    const tier = tierOf(d);
+    if (!tier) continue;
+    if (d.in_rack) inRack.push({ d, tier });
+    else           cores.push({ d, tier });
+  }
+  const coreCount = cores.length;
+  const shelfU    = coreCount > 0 ? coreCount + SHELF_GAP : 0;
+  const chassisU  = totalU + shelfU;
+
+  for (const { d, tier } of inRack) {
+    const u  = d.u_position || 1;
+    const sz = d.u_size     || 1;
+    const cy = uCenterY(u, sz, chassisU);
+    const h  = sz * U_HEIGHT * 0.92;
+    map.set(d.name, {
+      uPos: u, sizeU: sz, isCore: false,
+      centerY: cy,
+      attach: [0, cy, FRONT_Z + 0.02],
+      portMap: computePortPositions(d, h),
+      tier, dev: d,
+    });
+  }
+  cores.forEach(({ d, tier }, i) => {
+    // First core sits at u = totalU + 1 + SHELF_GAP (e.g. 19.5),
+    // each subsequent core stacked one U above.
+    const u  = totalU + 1 + SHELF_GAP + i;
+    const sz = 1;
+    const cy = uCenterY(u, sz, chassisU);
+    const h  = sz * U_HEIGHT * 0.92;
+    map.set(d.name, {
+      uPos: u, sizeU: sz, isCore: true,
+      centerY: cy,
+      attach: [0, cy, FRONT_Z + 0.02],
+      portMap: computePortPositions(d, h),
+      tier, dev: d,
+    });
+  });
+  return { positions: map, chassisU, hasShelf: coreCount > 0 };
+}
+
+// One rack's scene contents — chassis + devices + cables + neighbor ghosts —
+// inside a positioned <group>. Used twice: directly inside this file's
+// single-rack <Canvas>, and from MultiRackTopologyPage.jsx which renders
+// N of these side-by-side in one shared <Canvas>.
+export function RackContent({
+  topo, xOffset = 0,
+  selected, setSelected, heatmap, freePctByDevice,
   traceMode, traceA, traceB, tracePathSet, traceEdgeKeys,
   onHoverDevice,
+  showNeighbors = true,
+  showFloorPool = true,
+  // World-Y of the shared scene floor. When a multi-rack scene packs
+  // several RackContent instances together, every rack's bottom should
+  // land on the SAME floor — but each rack's chassisU may differ. By
+  // default we don't shift (single-rack case where the floor is sized
+  // to this rack); when a parent scene passes in floorY, we compute a
+  // group-Y offset so rack-bottom = floorY + clearance regardless of
+  // chassisU.
+  floorY = null,
+  // Optional theme palette override. When omitted, uses the live theme.
+  palette = null,
 }) {
+  const livePalette = useScenePalette();
+  const pal = palette || livePalette;
   const totalU = topo.u_size || 18;
   const traceActive = traceMode && tracePathSet && tracePathSet.size > 0;
   const [leftOpen,  setLeftOpen]  = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
 
-  // Layout: in-rack devices at their actual U positions, cores stacked above
-  // a SHELF_GAP separator. The chassis grows to enclose both regions.
-  const { positions, chassisU, hasShelf } = useMemo(() => {
-    const map    = new Map();
-    const inRack = [];
-    const cores  = [];
-    for (const d of topo.devices) {
-      const tier = tierOf(d);
-      if (!tier) continue;
-      if (d.in_rack) inRack.push({ d, tier });
-      else           cores.push({ d, tier });
-    }
-    const coreCount = cores.length;
-    const shelfU    = coreCount > 0 ? coreCount + SHELF_GAP : 0;
-    const chassisU  = totalU + shelfU;
+  const { positions, chassisU, hasShelf } = useMemo(
+    () => computeRackLayout(topo, totalU), [topo, totalU]);
 
-    for (const { d, tier } of inRack) {
-      const u  = d.u_position || 1;
-      const sz = d.u_size     || 1;
-      const cy = uCenterY(u, sz, chassisU);
-      const h  = sz * U_HEIGHT * 0.92;
-      map.set(d.name, {
-        uPos: u, sizeU: sz, isCore: false,
-        centerY: cy,
-        attach: [0, cy, FRONT_Z + 0.02],
-        portMap: computePortPositions(d, h),
-        tier, dev: d,
-      });
-    }
-    cores.forEach(({ d, tier }, i) => {
-      // First core sits at u = totalU + 1 + SHELF_GAP (e.g. 19.5),
-      // each subsequent core stacked one U above.
-      const u  = totalU + 1 + SHELF_GAP + i;
-      const sz = 1;
-      const cy = uCenterY(u, sz, chassisU);
-      const h  = sz * U_HEIGHT * 0.92;
-      map.set(d.name, {
-        uPos: u, sizeU: sz, isCore: true,
-        centerY: cy,
-        attach: [0, cy, FRONT_Z + 0.02],
-        portMap: computePortPositions(d, h),
-        tier, dev: d,
-      });
-    });
-    return { positions: map, chassisU, hasShelf: coreCount > 0 };
-  }, [topo, totalU]);
-
-  // When a device is selected, mark which of its ports actually have cables
-  // (so PortGrid can light them up — gives the "ports + cables exact" feel).
+  // When a device is selected, mark which of its ports actually have cables.
   const highlightedPortsByDevice = useMemo(() => {
     const m = new Map();
     if (selected?.kind !== 'node') return m;
@@ -1013,35 +1294,27 @@ export default function TopologyScene3D({
     return selected?.kind === 'node' && selected.id !== n;
   };
 
-  // Camera framing — fits the entire chassis with margin, using vertical fov.
-  const sceneH    = chassisU * U_HEIGHT + 0.8;
-  const fovRad    = (FOV_DEG * Math.PI) / 180;
-  const baseDist  = (sceneH * 1.05) / (2 * Math.tan(fovRad / 2));
-  const camDist   = Math.max(7.5, baseDist);
-  const cameraInit = [camDist * 0.34, camDist * 0.10, camDist * 0.94];
-  const camTarget  = [0, 0, 0];
+  // Compute the Y-shift this rack's group needs so its chassis BOTTOM
+  // lands on the shared floor. With chassis centered at local y=0 and
+  // half-height = chassisU * U_HEIGHT / 2, the bottom of this rack in
+  // world coords = groupY - chassisU * U_HEIGHT / 2. We want that to
+  // equal floorY + 0.4 (the clearance the single-rack scene already uses).
+  const FLOOR_CLEARANCE = 0.4;
+  const groupY = floorY != null
+    ? floorY + FLOOR_CLEARANCE + chassisU * U_HEIGHT / 2
+    : 0;
 
+  // Floor pool is in *local* coords. After the group's Y shift it lands
+  // at world y = groupY + poolY. We want that = floorY + 0.003. Solve:
+  //   poolY = floorY - groupY + 0.003
+  // For the single-rack case (floorY=null, groupY=0) this collapses to
+  // the original formula -chassisU*U_HEIGHT/2 - 0.4 + 0.003.
+  const poolY = floorY != null
+    ? floorY - groupY + 0.003
+    : -chassisU * U_HEIGHT / 2 - 0.4 + 0.003;
 
   return (
-    <Canvas
-      shadows={false}
-      camera={{ position: cameraInit, fov: FOV_DEG, near: 0.1, far: 120 }}
-      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-      dpr={[1, 2]}
-      onPointerMissed={() => setSelected(null)}
-      style={{ touchAction: 'none' }}
-    >
-      <color attach="background" args={['#0c1530']} />
-      <fog  attach="fog"        args={['#0c1530', 16, 44]} />
-
-      {/* Static image-based lighting — gives the metal chassis real specular
-          reflections so it looks polished, not flat. Not animated. */}
-      <Environment preset="warehouse" background={false} environmentIntensity={0.55} />
-
-      <Lights chassisU={chassisU} />
-
-      <DataCenterFloor chassisU={chassisU} />
-
+    <group position={[xOffset, groupY, 0]}>
       <RackChassis
         totalU={totalU}
         chassisU={chassisU}
@@ -1053,7 +1326,6 @@ export default function TopologyScene3D({
         toggleRight={() => setRightOpen(v => !v)}
       />
 
-      {/* Devices (in-rack + uplink shelf, all inside the enclosure) */}
       {Array.from(positions.entries()).map(([name, p]) => {
         const freePct = freePctByDevice?.get(name);
         const color   = heatmap ? capacityColor(freePct) : TIER_COLOR[p.tier];
@@ -1076,17 +1348,67 @@ export default function TopologyScene3D({
         );
       })}
 
-      {/* Click-driven port-accurate cables — every real cable, src-port → dst-port */}
       <PortCables
         selected={selected}
         setSelected={setSelected}
         topo={topo}
         positions={positions}
         traceEdgeKeys={traceEdgeKeys}
+        cableJacketColor={pal.cableJacket}
       />
 
-      {/* Optional neighbor-rack ghosts when topology carries cross-rack data */}
-      <NeighborRacks topo={topo} chassisU={chassisU} />
+      {showNeighbors && <NeighborRacks topo={topo} chassisU={chassisU} />}
+
+      {/* Per-rack pool of light on the floor — anchors each rack visually
+          even when several share one Canvas in the multi-rack view. */}
+      {showFloorPool && (
+        <mesh position={[0, poolY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[3.6, 48]} />
+          <meshBasicMaterial color={pal.poolColor} transparent opacity={pal.poolOpacity} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+export default function TopologyScene3D(props) {
+  const { topo, setSelected } = props;
+  const totalU = topo.u_size || 18;
+  // Compute chassisU here (independently of RackContent) so we can size
+  // camera + floor + lights to it. computeRackLayout is cheap.
+  const { chassisU } = useMemo(
+    () => computeRackLayout(topo, totalU), [topo, totalU]);
+
+  // Live theme palette — re-renders the Canvas when the user toggles theme
+  // so the bg/floor/cable colors swap without a hard reload.
+  const palette = useScenePalette();
+
+  // Camera framing — fits the entire chassis with margin, using vertical fov.
+  const sceneH    = chassisU * U_HEIGHT + 0.8;
+  const fovRad    = (FOV_DEG * Math.PI) / 180;
+  const baseDist  = (sceneH * 1.05) / (2 * Math.tan(fovRad / 2));
+  const camDist   = Math.max(7.5, baseDist);
+  const cameraInit = [camDist * 0.34, camDist * 0.10, camDist * 0.94];
+  const camTarget  = [0, 0, 0];
+
+  return (
+    <Canvas
+      shadows={false}
+      camera={{ position: cameraInit, fov: FOV_DEG, near: 0.1, far: 120 }}
+      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+      dpr={[1, 2]}
+      onPointerMissed={() => setSelected(null)}
+      style={{ touchAction: 'none' }}
+    >
+      <color attach="background" args={[palette.bg]} />
+      <fog  attach="fog"        args={[palette.fog, 24, 52]} />
+      <Environment preset={palette.environment} background={false} environmentIntensity={palette.envIntensity} />
+      <Lights chassisU={chassisU} ambientBoost={palette.ambientBoost} />
+      <DataCenterFloor chassisU={chassisU} palette={palette} />
+
+      {/* Single-rack: don't double-paint the floor pool — RackContent's
+          per-rack pool already provides the same visual. */}
+      <RackContent {...props} xOffset={0} showFloorPool={true} palette={palette} />
 
       <OrbitControls
         target={camTarget}

@@ -1,4 +1,4 @@
-$ProjectRoot = "D:\Sharing folder\SERVICENOW\dark_mobile"
+$ProjectRoot = "H:\SERVICENOW\SERVICENOW\dark_mobile"
 
 # Kill all existing node + cloudflared (the worker pool spawns child node
 # processes that don't always die with the parent — wipe them all).

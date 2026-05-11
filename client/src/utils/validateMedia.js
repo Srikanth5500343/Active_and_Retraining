@@ -1,7 +1,7 @@
 const MIN_DIM = 480;
 const BLUR_THRESHOLD = 100;
 const MIN_DURATION = 1.0;
-const MAX_DURATION = 60;
+const MAX_DURATION = 120;
 const SAMPLE_MAX_DIM = 512;
 
 const QUALITY_ERROR = 'Please upload a clearer photo of the rack — keep the camera steady and make sure the full rack fits in the frame.';
@@ -55,14 +55,23 @@ async function validateVideo(file) {
   // frames are often black or softened by codec smoothing). The server
   // picks the best frame and re-runs the same letterbox/tilt checks the
   // photo path uses, so on the client we only sanity-check dimensions
-  // and duration here.
+  // and duration here. The server-side splitter uses OpenCV which sees
+  // the file accurately even when the browser <video> element can't —
+  // so when in doubt we let the upload through and let the server decide.
   const video = await loadVideo(file).catch(() => null);
-  if (!video) return { ok: false, error: QUALITY_ERROR };
+  if (!video) {
+    // Browser couldn't decode at all. Still let the server try — multi-rack
+    // splitting uses OpenCV which handles many containers Chrome rejects.
+    return {
+      ok: true,
+      metrics: { skipped: 'browser-decode-failed-deferred-to-server' },
+    };
+  }
 
   const { videoWidth: width, videoHeight: height, duration } = video;
   cleanupVideo(video);
 
-  if (Math.min(width, height) < MIN_DIM) {
+  if (width > 0 && height > 0 && Math.min(width, height) < MIN_DIM) {
     return {
       ok: false,
       kind: 'resolution',
@@ -70,12 +79,35 @@ async function validateVideo(file) {
       error: `Video resolution is low (${width}×${height}). Results may be inaccurate.`,
     };
   }
-  if (!isFinite(duration) || duration < MIN_DURATION || duration > MAX_DURATION) {
-    return { ok: false, error: QUALITY_ERROR };
+
+  // MediaRecorder webm on Chrome often reports duration as Infinity even
+  // after the seek-to-1e9 workaround. Don't reject those — defer to the
+  // server, which reads the file with OpenCV and gets the real duration.
+  if (isFinite(duration)) {
+    if (duration < MIN_DURATION) {
+      return {
+        ok: false,
+        kind: 'duration',
+        retryable: true,
+        error: `Video is too short (${duration.toFixed(1)}s). Record at least ${MIN_DURATION}s panning across the racks.`,
+      };
+    }
+    if (duration > MAX_DURATION) {
+      return {
+        ok: false,
+        kind: 'duration',
+        retryable: true,
+        error: `Video is too long (${duration.toFixed(1)}s). Keep the multi-rack pan under ${MAX_DURATION}s.`,
+      };
+    }
   }
+
   return {
     ok: true,
-    metrics: { width, height, duration: +duration.toFixed(1) },
+    metrics: {
+      width, height,
+      duration: isFinite(duration) ? +duration.toFixed(1) : null,
+    },
   };
 }
 

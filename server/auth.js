@@ -19,6 +19,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const audit = require('./audit');
+const { logger } = require('./lib/observability');
 
 const dataDir   = path.join(__dirname, 'data');
 const dbPath    = path.join(dataDir, 'auth.db');
@@ -40,6 +41,12 @@ const TOKEN_TTL  = '30d';
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.exec(`
+  CREATE TABLE IF NOT EXISTS tenants (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug        TEXT    NOT NULL UNIQUE,
+    name        TEXT    NOT NULL,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
   CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     email         TEXT NOT NULL UNIQUE,
@@ -56,6 +63,131 @@ db.exec(`
     code_expires_at INTEGER NOT NULL
   );
 `);
+
+// ── Tenant migration ─────────────────────────────────────────
+// Adds tenant_id to users (and the same column to other tables that
+// already exist). Idempotent: detects whether the column is already
+// there and skips the ALTER if so. On first run, creates a `default`
+// tenant and backfills every existing user / audit row into it so the
+// app keeps working for legacy data.
+function _hasColumn(table, col) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  return cols.some(c => c.name === col);
+}
+
+function _ensureColumn(table, col, ddl) {
+  if (!_hasColumn(table, col)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
+(function migrateTenants() {
+  // Default tenant exists exactly once
+  let defTenant = db.prepare('SELECT * FROM tenants WHERE slug = ?').get('default');
+  if (!defTenant) {
+    const r = db.prepare(
+      'INSERT INTO tenants (slug, name) VALUES (?, ?)'
+    ).run('default', 'Default');
+    defTenant = { id: r.lastInsertRowid, slug: 'default', name: 'Default' };
+  }
+  const defaultTenantId = defTenant.id;
+
+  // users.tenant_id (per-user tenant membership). Default to the
+  // `default` tenant for any existing users so they don't get locked out.
+  _ensureColumn('users', 'tenant_id',
+    'tenant_id INTEGER REFERENCES tenants(id)');
+  db.prepare('UPDATE users SET tenant_id = ? WHERE tenant_id IS NULL')
+    .run(defaultTenantId);
+
+  // pending_signups.tenant_id — captured at the verify step so a user
+  // can sign up into a specific tenant (invite flow later).
+  _ensureColumn('pending_signups', 'tenant_id',
+    'tenant_id INTEGER REFERENCES tenants(id)');
+
+  // audit_log.tenant_id — every audit row carries the actor's tenant
+  // so org-wide audit queries are tenant-scoped.
+  if (db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'`).get()) {
+    _ensureColumn('audit_log', 'tenant_id',
+      'tenant_id INTEGER REFERENCES tenants(id)');
+    db.prepare('UPDATE audit_log SET tenant_id = ? WHERE tenant_id IS NULL')
+      .run(defaultTenantId);
+  }
+
+  // rack_owners — many-to-many between tenants and racks. A rack id is
+  // a SHA-256 of the source image, so two tenants scanning the same
+  // image get the same RK-id; ownership is recorded per-tenant so the
+  // shared output dir doesn't leak.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS rack_owners (
+      tenant_id   INTEGER NOT NULL REFERENCES tenants(id),
+      rack_id     TEXT    NOT NULL,
+      created_by  INTEGER REFERENCES users(id),
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (tenant_id, rack_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_rack_owners_rack ON rack_owners(rack_id);
+  `);
+
+  // rack_groups — a multi-rack scan: one video upload that produced N
+  // best-frames. Each member rack_id still lives independently in the
+  // outputs/ dir and the regular rack APIs work on it; the group is
+  // just a parent record so the UI can show "this rack was scanned
+  // alongside Rack 2 and Rack 3 in the same video".
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS rack_groups (
+      id           TEXT    PRIMARY KEY,
+      video_hash   TEXT    NOT NULL,
+      tenant_id    INTEGER NOT NULL REFERENCES tenants(id),
+      created_by   INTEGER REFERENCES users(id),
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS rack_group_members (
+      group_id     TEXT    NOT NULL REFERENCES rack_groups(id) ON DELETE CASCADE,
+      rack_id      TEXT    NOT NULL,
+      position     INTEGER NOT NULL,
+      label        TEXT    NOT NULL,
+      device_count INTEGER,
+      score        REAL,
+      PRIMARY KEY (group_id, rack_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_rack_group_members_rack
+      ON rack_group_members(rack_id);
+    CREATE INDEX IF NOT EXISTS idx_rack_groups_tenant_created
+      ON rack_groups(tenant_id, created_at DESC);
+  `);
+
+  logger.info({
+    event: 'auth.tenant_migration',
+    defaultTenantId, defaultTenantSlug: defTenant.slug,
+  }, 'tenant schema ready');
+})();
+
+// Public so other modules (lib/tenant.js, audit.js) can resolve the
+// default tenant when migrating legacy rows.
+function getDefaultTenantId() {
+  const t = db.prepare('SELECT id FROM tenants WHERE slug = ?').get('default');
+  return t?.id;
+}
+
+// Tenant CRUD — the bare minimum to support signup. A full tenant
+// admin UI (name change, member invite, deletion) is a later add.
+function findTenantBySlug(slug) {
+  return db.prepare('SELECT * FROM tenants WHERE slug = ?').get(slug);
+}
+
+function createTenant(name) {
+  // Slug = lowercase ascii + dash, with a 4-char random suffix to
+  // guarantee uniqueness (two "Acme Corp" signups don't collide).
+  const base = String(name || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+    || 'tenant';
+  const suffix = crypto.randomBytes(2).toString('hex'); // 4 hex chars
+  const slug = `${base}-${suffix}`;
+  const r = db.prepare(
+    'INSERT INTO tenants (slug, name) VALUES (?, ?)'
+  ).run(slug, String(name).trim().slice(0, 120));
+  return { id: r.lastInsertRowid, slug, name };
+}
 
 // ── Validation ───────────────────────────────────────────────
 const EMAIL_RE    = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -86,7 +218,7 @@ function getTransporter() {
   const pass = process.env.SMTP_PASS;
   if (!user || !pass) {
     _transporter = false; // marker = "no SMTP configured"
-    console.warn('[auth] SMTP_USER / SMTP_PASS not set — verification codes will only be logged + returned in the API response (dev mode).');
+    logger.warn('[auth] SMTP_USER / SMTP_PASS not set — verification codes will only be logged + returned in the API response (dev mode).');
     return false;
   }
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -95,7 +227,7 @@ function getTransporter() {
     host, port, secure: port === 465,
     auth: { user, pass: pass.replace(/\s+/g, '') }, // strip spaces from App Password
   });
-  console.log(`[auth] SMTP transporter ready: ${user} via ${host}:${port}`);
+  logger.info(`[auth] SMTP transporter ready: ${user} via ${host}:${port}`);
   return _transporter;
 }
 
@@ -126,7 +258,7 @@ function emailHtml(code) {
 
 // Returns true if email actually went out via SMTP, false otherwise.
 async function sendVerificationEmail(email, code) {
-  console.log(`[auth] verification code for ${email}: ${code}`);
+  logger.info(`[auth] verification code for ${email}: ${code}`);
   const t = getTransporter();
   if (!t) return false;
   try {
@@ -138,10 +270,10 @@ async function sendVerificationEmail(email, code) {
       text: `Your RackTrack verification code is ${code}. It expires in 1 minute.`,
       html: emailHtml(code),
     });
-    console.log(`[auth] verification email sent to ${email}`);
+    logger.info(`[auth] verification email sent to ${email}`);
     return true;
   } catch (err) {
-    console.error(`[auth] failed to send verification email to ${email}:`, err.message);
+    logger.error(`[auth] failed to send verification email to ${email}:`, err.message);
     return false;
   }
 }
@@ -153,14 +285,34 @@ function genCode() {
 }
 
 function makeToken(user) {
-  return jwt.sign({ sub: user.id, username: user.username }, JWT_SECRET, { expiresIn: TOKEN_TTL });
+  // tenantId baked into the JWT so middleware can read it without a DB
+  // round-trip on every request.
+  return jwt.sign(
+    { sub: user.id, username: user.username, tenantId: user.tenant_id },
+    JWT_SECRET,
+    { expiresIn: TOKEN_TTL }
+  );
 }
 
-function publicUser(user) {
-  return { id: user.id, email: user.email, username: user.username, created_at: user.created_at };
+function publicUser(user, tenant = null) {
+  const out = {
+    id: user.id, email: user.email, username: user.username,
+    created_at: user.created_at,
+    tenant_id: user.tenant_id,
+  };
+  if (tenant) {
+    out.tenant = { id: tenant.id, slug: tenant.slug, name: tenant.name };
+  } else if (user.tenant_id) {
+    const t = db.prepare('SELECT id, slug, name FROM tenants WHERE id = ?')
+                .get(user.tenant_id);
+    if (t) out.tenant = t;
+  }
+  return out;
 }
 
 // Express middleware: attaches req.user when a valid Bearer token is present.
+// req.user is the full user row PLUS .tenant ({id, slug, name}) so route
+// handlers don't have to look it up themselves.
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const match  = header.match(/^Bearer\s+(.+)$/i);
@@ -169,6 +321,13 @@ function requireAuth(req, res, next) {
     const payload = jwt.verify(match[1], JWT_SECRET);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.sub);
     if (!user) return res.status(401).json({ error: 'User no longer exists' });
+    // Defensive: a token issued before tenancy landed won't carry tenantId.
+    // Use the user's row value (backfilled to default tenant) instead.
+    if (user.tenant_id) {
+      const t = db.prepare('SELECT id, slug, name FROM tenants WHERE id = ?')
+                  .get(user.tenant_id);
+      user.tenant = t || null;
+    }
     req.user = user;
     next();
   } catch {
@@ -179,8 +338,11 @@ function requireAuth(req, res, next) {
 // ── Routes ───────────────────────────────────────────────────
 function registerRoutes(app) {
   // ── Sign up: stage 1 — create pending signup, send code ────
+  // Now takes an optional `company` field. If absent / blank, the user
+  // joins the `default` tenant (preserves the legacy behavior). If
+  // present, the verify step creates a fresh tenant for that company.
   app.post('/api/auth/signup', async (req, res) => {
-    const { email, username, password } = req.body || {};
+    const { email, username, password, company } = req.body || {};
     if (!email || !EMAIL_RE.test(String(email).trim())) {
       audit.log({ req, action: 'auth.signup.start', status: 'fail', error: 'invalid email', payload: { email } });
       return res.status(400).json({ error: 'Valid email required' });
@@ -193,6 +355,16 @@ function registerRoutes(app) {
     if (pwErr) {
       audit.log({ req, action: 'auth.signup.start', status: 'fail', error: pwErr, payload: { email, username } });
       return res.status(400).json({ error: pwErr });
+    }
+    // Company name is REQUIRED — every user must belong to a real tenant.
+    // Without this, blank-company signups would all collapse into the
+    // shared `default` tenant, which is exactly the data-leak multi-
+    // tenancy is supposed to prevent.
+    const companyNorm = String(company || '').trim().slice(0, 120);
+    if (!companyNorm || companyNorm.length < 2) {
+      audit.log({ req, action: 'auth.signup.start', status: 'fail',
+        error: 'company required', payload: { email, username } });
+      return res.status(400).json({ error: 'Company name is required (at least 2 characters)' });
     }
 
     const emailNorm = String(email).trim().toLowerCase();
@@ -214,22 +386,35 @@ function registerRoutes(app) {
     const passwordHash = bcrypt.hashSync(password, 10);
     const expiresAt = Date.now() + 60 * 1000; // 1 minute
 
+    // Stash the company name on the pending row so the verify step
+    // (which is the only place that actually creates persistent records)
+    // has it without re-reading from request input.
     db.prepare(`
-      INSERT INTO pending_signups (email, username, password_hash, code, code_expires_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO pending_signups (email, username, password_hash, code, code_expires_at, tenant_id)
+      VALUES (?, ?, ?, ?, ?, NULL)
       ON CONFLICT(email) DO UPDATE SET
         username = excluded.username,
         password_hash = excluded.password_hash,
         code = excluded.code,
-        code_expires_at = excluded.code_expires_at
+        code_expires_at = excluded.code_expires_at,
+        tenant_id = NULL
     `).run(emailNorm, userNorm, passwordHash, code, expiresAt);
+    // We use a side-channel column (we don't have a `company` column on
+    // pending_signups) — easiest is to reuse the `username` row. Add a
+    // dedicated `company` column the cheap way: only if pending wasn't
+    // already that shape.
+    if (!_hasColumn('pending_signups', 'company')) {
+      db.exec('ALTER TABLE pending_signups ADD COLUMN company TEXT');
+    }
+    db.prepare('UPDATE pending_signups SET company = ? WHERE email = ?')
+      .run(companyNorm || null, emailNorm);
 
     const sent = await sendVerificationEmail(emailNorm, code);
     if (!sent) {
       audit.log({ req, action: 'auth.signup.start', status: 'fail', error: 'smtp send failed', payload: { email: emailNorm } });
       return res.status(502).json({ error: 'Could not send verification email — try again in a minute' });
     }
-    audit.log({ req, action: 'auth.signup.start', status: 'ok', payload: { email: emailNorm, username: userNorm } });
+    audit.log({ req, action: 'auth.signup.start', status: 'ok', payload: { email: emailNorm, username: userNorm, company: companyNorm || null } });
     res.json({ ok: true, email: emailNorm, sent: true });
   });
 
@@ -267,15 +452,35 @@ function registerRoutes(app) {
       return res.status(409).json({ error: 'That username is taken' });
     }
 
+    // Every user MUST belong to a real tenant. Signup validates that
+    // `company` is non-empty, so a pending row without one means a
+    // pre-tenancy client somehow snuck in — refuse and force a fresh
+    // signup. The `default` tenant exists only as a backstop for
+    // legacy users that pre-date this migration.
+    if (!pending.company || !String(pending.company).trim()) {
+      audit.log({ req, action: 'auth.signup.verify', status: 'fail',
+        error: 'pending row missing company', payload: { email: emailNorm } });
+      db.prepare('DELETE FROM pending_signups WHERE email = ?').run(emailNorm);
+      return res.status(400).json({
+        error: 'Signup is missing a company name. Please sign up again.',
+      });
+    }
+    const tenant = createTenant(pending.company);
+
     const result = db.prepare(`
-      INSERT INTO users (email, username, password_hash, email_verified)
-      VALUES (?, ?, ?, 1)
-    `).run(emailNorm, pending.username, pending.password_hash);
+      INSERT INTO users (email, username, password_hash, email_verified, tenant_id)
+      VALUES (?, ?, ?, 1, ?)
+    `).run(emailNorm, pending.username, pending.password_hash, tenant.id);
     db.prepare('DELETE FROM pending_signups WHERE email = ?').run(emailNorm);
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
-    audit.log({ req, user, action: 'auth.signup.verify', status: 'ok', targetType: 'user', targetId: user.id });
-    res.json({ ok: true, token: makeToken(user), user: publicUser(user) });
+    user.tenant = tenant;  // attach so audit + token + response see it
+    audit.log({
+      req, user, action: 'auth.signup.verify', status: 'ok',
+      targetType: 'user', targetId: user.id,
+      payload: { tenant_id: tenant.id, tenant_slug: tenant.slug, new_tenant: !!pending.company },
+    });
+    res.json({ ok: true, token: makeToken(user), user: publicUser(user, tenant) });
   });
 
   // ── Resend verification code ───────────────────────────────

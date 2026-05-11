@@ -1,8 +1,14 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import styles from './ResultsPage.module.css';
 import { apiUrl, authFetch } from '../utils/api';
 import CmdbApprovalModal from '../components/CmdbApprovalModal.jsx';
+import ScanTabBar from '../components/ScanTabBar.jsx';
+import RackTabs from '../components/RackTabs.jsx';
+import { PortsContent } from './PortsPage.jsx';
+import { TopologyContent } from './TopologyPage.jsx';
+import { NetdiscoContent } from './NetdiscoPage.jsx';
+import { SwitchInfoContent } from './SwitchInformationPage.jsx';
 
 // ── Naming convention ─────────────────────────────────────────
 const CLASS_CODE = {
@@ -242,6 +248,298 @@ function buildPortReport({ host, vendor, iface, portNum, entries = [], neighbor,
   };
 }
 
+// ── Switch info parser ───────────────────────────────────────
+// Parses live SSH output (show version / show system-info) into a small set
+// of fields we surface in the Switch Info modal. Live data only — never
+// persisted, never reconciled with CMDB.
+function parseSwitchInfo(raw, vendor) {
+  const text = String(raw || '').replace(/\r/g, '');
+  const out = { model: null, firmware: null, uptime: null, serial: null, mac: null, hostname: null };
+  if (!text) return out;
+
+  const grab = (re) => {
+    const m = text.match(re);
+    return m ? m[1].trim() : null;
+  };
+
+  if (vendor === 'tplink') {
+    out.model    = grab(/(?:Device\s*Model|Hardware\s*Version)\s*[-:]\s*([^\r\n]+)/i);
+    out.firmware = grab(/(?:Software|Firmware)\s*Version\s*[-:]\s*([^\r\n]+)/i);
+    // "Running Time" is the actual uptime; "System Time" is wall-clock.
+    out.uptime   = grab(/Running\s*Time\s*[-:]\s*([^\r\n]+)/i)
+                || grab(/System\s*Up\s*Time\s*[-:]\s*([^\r\n]+)/i);
+    out.serial   = grab(/Serial\s*Number\s*[-:]\s*(\S+)/i);
+    out.mac      = grab(/(?:System\s*)?MAC\s*Address\s*[-:]\s*([0-9A-Fa-f:.\- ]+)/i);
+    out.hostname = grab(/(?:Device\s*Name|System\s*Name)\s*[-:]\s*([^\r\n]+)/i);
+  } else if (vendor === 'dlink') {
+    out.model    = grab(/(?:Device\s*Type|System\s*Hardware\s*Version)\s*:\s*([^\r\n]+)/i);
+    out.firmware = grab(/(?:Firmware|System\s*Firmware)\s*Version\s*:\s*([^\r\n]+)/i);
+    out.uptime   = grab(/System\s*Up\s*Time\s*:\s*([^\r\n]+)/i);
+    out.serial   = grab(/Serial\s*Number\s*:\s*([^\r\n]+)/i);
+    out.mac      = grab(/(?:System\s*)?MAC\s*Address\s*:\s*([0-9A-Fa-f:.\- ]+)/i);
+    out.hostname = grab(/(?:Device\s*Name|System\s*Name)\s*:\s*([^\r\n]+)/i);
+  } else {
+    // cisco-ios (default): `show version`
+    // Hardware model: try Model number first, then "cisco <MODEL> (...)"
+    out.model =
+      grab(/Model\s*number\s*:\s*([^\r\n]+)/i) ||
+      grab(/^cisco\s+(\S+)\s*\(/im);
+    // IOS / IOS-XE software version
+    out.firmware =
+      grab(/(?:IOS\s*XE\s*Software|IOS\s*Software)[^\n]*Version\s+([^\s,]+)/i) ||
+      grab(/Version\s+([^\s,]+),\s*RELEASE/i);
+    out.uptime   = grab(/uptime\s+is\s+([^\r\n]+)/i);
+    out.serial   = grab(/(?:Processor\s*board\s*ID|System\s*Serial\s*Number)\s*:?\s*([A-Z0-9]+)/i);
+    out.hostname = grab(/^([^\s]+)\s+uptime\s+is/im);
+  }
+  return out;
+}
+
+// Vendor → command we run for the Switch Info modal. Live SSH only.
+const SWITCH_INFO_CMD = {
+  'cisco-ios': 'show version',
+  'tplink':    'show system-info',
+  'dlink':     'show switch',
+};
+
+// SSH vendor code → vendor display name in the spec-scraper Excel sheet.
+// The /api/specs and /api/firmware backends take a free-text vendor and
+// substring-match it against the sheet, so we need the canonical brand name.
+const SSH_VENDOR_TO_DISPLAY = {
+  'cisco-ios': 'Cisco',
+  'tplink':    'TP-Link',
+  'dlink':     'D-Link',
+};
+
+// Strip a trailing hardware-revision suffix ("TL-SG2428P 5.0" → "TL-SG2428P")
+// so the vendor product page actually resolves. Vendors don't put hw rev in
+// the URL slug; SSH does include it in `Hardware Version`.
+function cleanModelForLookup(m) {
+  if (!m) return '';
+  return String(m).trim().replace(/\s+v?\d+(?:\.\d+){0,2}\s*$/i, '').trim();
+}
+
+// Extract a clean dotted version from messy firmware strings.
+//   "5.0.2 Build 20220909 Rel.75392" → "5.0.2"
+//   "16.9.5"                          → "16.9.5"
+//   "9.3(7)I7(7)"                     → "9.3(7)I7(7)"
+function cleanFirmwareVersion(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  // Cisco NX-OS form first — has parentheses our generic regex would miss.
+  const nx = s.match(/\b\d+\.\d+\([^)]+\)(?:[A-Z]\d+(?:\([^)]+\))?)?/);
+  if (nx) return nx[0];
+  const dotted = s.match(/\b\d+\.\d+(?:\.\d+){0,3}(?:[A-Za-z][A-Za-z0-9]{0,5})?(?:-[A-Za-z0-9]{1,8})?\b/);
+  return dotted ? dotted[0] : s;
+}
+
+// ── Switch info modal ────────────────────────────────────────
+// Live snapshot of the switch over SSH — model, firmware, uptime, serial.
+// Independent of CMDB / Netdisco / any synthesized data.
+function SwitchInfoModal({
+  status, info, raw, error, host, vendor,
+  specs, specsStatus, specsError,
+  firmware, firmwareStatus, firmwareError,
+  onClose, onRetry,
+}) {
+  const [rawOpen, setRawOpen] = useState(false);
+
+  return (
+    <div className={styles.portReportBackdrop} onClick={onClose}>
+      <div className={`${styles.portReport} ${styles.siModal}`} onClick={(e) => e.stopPropagation()}>
+        {/* ── Header ── */}
+        <div className={styles.siHeader}>
+          <div className={styles.siHeaderLeft}>
+            <div className={styles.siHeaderIcon}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="18" rx="3"/>
+                <circle cx="7" cy="16" r="1.2" fill="currentColor" stroke="none"/>
+                <circle cx="11" cy="16" r="1.2" fill="currentColor" stroke="none"/>
+                <line x1="6" y1="8" x2="18" y2="8"/>
+              </svg>
+            </div>
+            <div>
+              <div className={styles.siTitle}>Switch Info</div>
+              <div className={styles.siSub}>
+                <span className={styles.siLiveDot} />
+                live · {host || '—'} · {vendor || '—'}
+              </div>
+            </div>
+          </div>
+          <button className={styles.portReportClose} onClick={onClose} aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div className={styles.siBody}>
+          {status === 'loading' && (
+            <div className={styles.siCard}>
+              <p className={styles.prEmpty}>Querying switch over SSH…</p>
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className={styles.siCard}>
+              <div className={styles.siCardHead}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <h4>Could not reach switch</h4>
+              </div>
+              <p className={styles.prEmpty}>{error || 'Unknown error'}</p>
+              <div style={{ marginTop: 10 }}>
+                <button className={styles.reportChip} onClick={onRetry}>Retry</button>
+              </div>
+            </div>
+          )}
+
+          {status === 'ready' && info && (
+            <>
+              {/* ── Hardware & Firmware card ── */}
+              <div className={styles.siCard}>
+                <div className={styles.siCardHead}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+                  <h4>Hardware &amp; Firmware</h4>
+                </div>
+                <div className={styles.siTable}>
+                  <div className={styles.siRow}><span>Model</span><span>{info.model || '—'}</span></div>
+                  <div className={styles.siRow}><span>Firmware</span><span>{info.firmware || '—'}</span></div>
+                  <div className={styles.siRow}><span>Serial</span><span>{info.serial || '—'}</span></div>
+                  <div className={styles.siRow}><span>Uptime</span><span>{info.uptime || '—'}</span></div>
+                  {info.hostname && <div className={styles.siRow}><span>Hostname</span><span>{info.hostname}</span></div>}
+                  {info.mac && <div className={styles.siRow}><span>MAC Address</span><span>{info.mac}</span></div>}
+                </div>
+              </div>
+
+              {/* ── Firmware Update card ── */}
+              <div className={styles.siCard}>
+                <div className={styles.siCardHead}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <h4>Firmware Update</h4>
+                </div>
+                {firmwareStatus === 'loading' && (
+                  <p className={styles.prEmpty}>Checking vendor site for newer firmware…</p>
+                )}
+                {firmwareStatus === 'error' && (
+                  <p className={styles.prEmpty}>Could not check: {firmwareError || 'lookup failed'}</p>
+                )}
+                {firmwareStatus === 'ready' && firmware && (() => {
+                  const cves = firmware.cves || [];
+                  const counts = cves.reduce((a, c) => {
+                    const s = (c.severity || 'NONE').toUpperCase();
+                    a[s] = (a[s] || 0) + 1;
+                    return a;
+                  }, {});
+                  const crit = counts.CRITICAL || 0;
+                  const high = counts.HIGH || 0;
+                  const tone =
+                    firmware.upToDate === true && cves.length === 0 ? 'ok'
+                    : (crit > 0 || (firmware.upToDate === false && high > 0)) ? 'critical'
+                    : firmware.upToDate === false ? 'warn'
+                    : 'neutral';
+                  const headline =
+                    firmware.upToDate === true ? "Up to date"
+                    : firmware.upToDate === false
+                      ? (crit > 0 ? 'Upgrade strongly recommended' : 'Upgrade available')
+                      : 'Could not determine latest version';
+                  const icon =
+                    tone === 'ok' ? '✓' : tone === 'critical' ? '!' : tone === 'warn' ? '↑' : '?';
+                  return (
+                    <>
+                      <div className={`${styles.siBadge} ${styles[`siBadge_${tone}`]}`}>
+                        <span className={styles.siBadgeIcon}>{icon}</span>
+                        {headline}
+                      </div>
+                      <div className={styles.siTable} style={{ marginTop: 10 }}>
+                        <div className={styles.siRow}>
+                          <span>Current version</span>
+                          <span>{firmware.currentVersion || '—'}</span>
+                        </div>
+                        <div className={styles.siRow}>
+                          <span>Latest version</span>
+                          <span>{firmware.latestVersion || '—'}</span>
+                        </div>
+                        <div className={styles.siRow}>
+                          <span>Known CVEs</span>
+                          <span>
+                            {cves.length === 0 ? 'None' : (
+                              <>{cves.length}{(crit + high) > 0 && <span className={styles.siCveSub}> ({crit} critical, {high} high)</span>}</>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      {firmware.releaseNotesUrl && (
+                        <a href={firmware.releaseNotesUrl} target="_blank" rel="noreferrer noopener"
+                           className={styles.siLink}>
+                          Release notes
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                        </a>
+                      )}
+                    </>
+                  );
+                })()}
+                {firmwareStatus === 'skipped' && (
+                  <p className={styles.prEmpty}>Need both model and firmware version to check for updates.</p>
+                )}
+              </div>
+
+              {/* ── Vendor Specifications card ── */}
+              <div className={styles.siCard}>
+                <div className={styles.siCardHead}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  <h4>Vendor Specifications</h4>
+                  {specsStatus === 'ready' && specs?.productUrl && (
+                    <a href={specs.productUrl} target="_blank" rel="noreferrer noopener"
+                       className={styles.siLink} style={{ marginLeft: 'auto' }}>
+                      Source
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                    </a>
+                  )}
+                </div>
+                {specsStatus === 'loading' && (
+                  <p className={styles.prEmpty}>Looking up specs on vendor site…</p>
+                )}
+                {specsStatus === 'error' && (
+                  <p className={styles.prEmpty}>Could not fetch specs: {specsError || 'lookup failed'}</p>
+                )}
+                {specsStatus === 'ready' && specs?.specs && (
+                  <div className={styles.siTable}>
+                    {Object.entries(specs.specs).slice(0, 12).map(([k, v]) => (
+                      <div className={styles.siRow} key={k}>
+                        <span>{k}</span>
+                        <span>{String(v).length > 80 ? String(v).slice(0, 77) + '…' : String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {specsStatus === 'skipped' && (
+                  <p className={styles.prEmpty}>Need a model to look up specs.</p>
+                )}
+              </div>
+
+              {/* ── Raw Output (collapsible) ── */}
+              {raw && (
+                <div className={styles.siCard}>
+                  <button className={styles.siCardToggle} onClick={() => setRawOpen(o => !o)}>
+                    <div className={styles.siCardHead} style={{ margin: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                      <h4>Raw Output</h4>
+                    </div>
+                    <span className={`${styles.siChevron} ${rawOpen ? styles.siChevronOpen : ''}`}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </button>
+                  {rawOpen && (
+                    <pre className={styles.siRawPre}>{raw}</pre>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Port report modal (shown when the user presses "Done" in the console) ────
 function PortReportModal({ report, onClose }) {
   const {
@@ -447,8 +745,9 @@ function isDevicePickable(dev) {
 }
 
 // ── All components ───────────────────────────────────────────
-function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack }) {
+function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack, embedded = false }) {
   const navigate = useNavigate();
+  const { state } = useLocation();
   const safeDevices = Array.isArray(devices) ? devices : [];
   const safeLabels  = Array.isArray(labels)  ? labels  : [];
   const visible = safeDevices
@@ -458,7 +757,6 @@ function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack }
   const [selectedCard, setSelectedCard] = useState(null);
   const [imgNat, setImgNat] = useState(null);
   const heroSrc = apiUrl(`/outputs/${scanId}/original_image.${originalExt || 'png'}`);
-  const portsId = scanId || rackId;
 
   // CMDB approval modal — shows once after a fresh detect-mode scan when
   // the rack isn't yet registered in CMDB. Skipped for ticket-mode scans
@@ -519,61 +817,8 @@ function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack }
     }
   };
 
-  return (
-    <div className={styles.allPage}>
-      <div className={styles.amb} />
-      <header className={styles.header} style={{ position: 'sticky', top: 0 }}>
-        <button className="btn btn-ghost btn-icon" onClick={onBack}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-          </svg>
-        </button>
-        <div className={styles.headerCenter}>
-          <h2 className={styles.headerTitle}>All Components</h2>
-          <span className={styles.headerMono}>{rackId ? `${rackId} · ` : ''}{visible.length} devices</span>
-        </div>
-        {portsId ? (
-          <div className={styles.headerActions}>
-            <button
-              onClick={() => navigate(`/results/${portsId}/netdisco`)}
-              title="Cross-reference this scan with the live network view"
-              aria-label="Network View"
-              className={`${styles.navPill} ${styles.navPillNetdisco}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <circle cx="5" cy="5" r="2"/>
-                <circle cx="19" cy="5" r="2"/>
-                <circle cx="5" cy="19" r="2"/>
-                <circle cx="19" cy="19" r="2"/>
-                <line x1="7" y1="7" x2="10" y2="10"/>
-                <line x1="17" y1="7" x2="14" y2="10"/>
-                <line x1="7" y1="17" x2="10" y2="14"/>
-                <line x1="17" y1="17" x2="14" y2="14"/>
-              </svg>
-              <span className={styles.navPillLabel}>Network View →</span>
-            </button>
-            <button
-              onClick={() => navigate(`/results/${portsId}/topology`, { state: { result: { rackId: portsId, devices: safeDevices } } })}
-              title="Rack topology"
-              aria-label="Topology"
-              className={`${styles.navPill} ${styles.navPillTopology}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="2" width="6" height="6" rx="1"/>
-                <rect x="2" y="16" width="6" height="6" rx="1"/>
-                <rect x="16" y="16" width="6" height="6" rx="1"/>
-                <path d="M12 8v4M5 16v-4h14v4"/>
-              </svg>
-              <span className={styles.navPillLabel}>Topology →</span>
-            </button>
-          </div>
-        ) : (
-          <div style={{ width: 40 }} />
-        )}
-      </header>
-
-      <div className={styles.allWrap}>
+  const allBody = (
+      <div className={embedded ? styles.tabContent : styles.allWrap}>
         {cmdbModalOpen && cmdbRackId && (
           <CmdbApprovalModal
             rackId={cmdbRackId}
@@ -653,6 +898,26 @@ function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack }
           </div>
         )}
       </div>
+  );
+
+  if (embedded) return allBody;
+
+  return (
+    <div className={styles.allPage}>
+      <div className={styles.amb} />
+      <header className={styles.header} style={{ position: 'sticky', top: 0 }}>
+        <button className="btn btn-ghost btn-icon" onClick={onBack}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+        </button>
+        <div className={styles.headerCenter}>
+          <h2 className={styles.headerTitle}>All Components</h2>
+          <span className={styles.headerMono}>{rackId ? `${rackId} · ` : ''}{visible.length} devices</span>
+        </div>
+        <div style={{ width: 40 }} />
+      </header>
+      {allBody}
     </div>
   );
 }
@@ -661,11 +926,35 @@ function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack }
 export default function ResultsPage() {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const result = state?.result;
+  const { rackId: urlRackId } = useParams();
+  // Two ways to land here:
+  //   1. ScanPage navigated with state.result = full /api/analyze response
+  //   2. RackTabs navigated to /results/<rackId> (no state) — fetch via API
+  const [fetchedResult, setFetchedResult] = useState(null);
+  const result = state?.result || fetchedResult;
+
+  // Cold-link / rack-tab-switch path: when there's no state but the URL
+  // carries a rackId, hit /api/scan/:rackId once to materialize the same
+  // payload shape ScanPage's analyze response would provide.
+  useEffect(() => {
+    if (state?.result || !urlRackId) return;
+    if (fetchedResult?.rackId === urlRackId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await authFetch(apiUrl(`/api/scan/${encodeURIComponent(urlRackId)}`));
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!cancelled) setFetchedResult(data);
+      } catch { /* leave fetchedResult null — page renders an empty state */ }
+    })();
+    return () => { cancelled = true; };
+  }, [urlRackId, state?.result, fetchedResult?.rackId]);
 
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [portNum,     setPortNum]     = useState('');
   const [phase,       setPhase]       = useState('detect');
+  const [tab,         setTab]         = useState('overview');
   const [resultImg,   setResultImg]   = useState(null);
   const [portInfo,    setPortInfo]    = useState(null);
   const [zoom,        setZoom]        = useState(1);
@@ -734,6 +1023,21 @@ export default function ResultsPage() {
   // Detailed per-port console report (shown when the user presses "Done")
   const [portReportOpen, setPortReportOpen] = useState(false);
   const [portReport, setPortReport] = useState(null);
+  // Switch Info modal — live SSH snapshot, independent of CMDB/Netdisco.
+  const [switchInfoOpen, setSwitchInfoOpen] = useState(false);
+  const [switchInfoStatus, setSwitchInfoStatus] = useState('idle'); // 'idle' | 'loading' | 'ready' | 'error'
+  const [switchInfoData, setSwitchInfoData] = useState(null);
+  const [switchInfoRaw, setSwitchInfoRaw] = useState('');
+  const [switchInfoError, setSwitchInfoError] = useState(null);
+  // Specifications + firmware-update lookups — fired after we have a model
+  // from SSH. Independent of the SSH call so a slow vendor scrape doesn't
+  // hold back the basic info section.
+  const [switchSpecs, setSwitchSpecs] = useState(null);
+  const [switchSpecsStatus, setSwitchSpecsStatus] = useState('idle'); // 'idle' | 'loading' | 'ready' | 'error' | 'skipped'
+  const [switchSpecsError, setSwitchSpecsError] = useState(null);
+  const [switchFirmware, setSwitchFirmware] = useState(null);
+  const [switchFirmwareStatus, setSwitchFirmwareStatus] = useState('idle'); // 'idle' | 'loading' | 'ready' | 'error' | 'skipped'
+  const [switchFirmwareError, setSwitchFirmwareError] = useState(null);
   const consoleTermRef = useRef(null);
   // Auto-scroll the console terminal to the bottom as entries stream in so
   // the user always sees the latest command / output, not the first one.
@@ -1022,6 +1326,15 @@ export default function ResultsPage() {
   }, [result]);
 
   if (!result) {
+    // Deep-linked /results/:rackId — fetch in flight. Show a benign
+    // loading state instead of the cold "No scan result" panel.
+    if (urlRackId) {
+      return (
+        <div className={`page page-full ${styles.results}`}>
+          <div className={styles.empty}><p>Loading rack {urlRackId}…</p></div>
+        </div>
+      );
+    }
     return (
       <div className={`page page-full ${styles.results}`}>
         <div className={styles.empty}>
@@ -1032,9 +1345,7 @@ export default function ResultsPage() {
     );
   }
 
-  if (phase === 'all') {
-    return <AllDevicesView devices={devices} labels={labels} rackId={rackId} scanId={scanId} originalExt={originalExt} onBack={() => setPhase('detect')} />;
-  }
+  // phase='all' is now handled by the 'all' tab — no early return needed
 
   const selectedDevice = selectedIdx ? devices[selectedIdx - 1] : null;
   const selectedLabel  = selectedIdx ? labels[selectedIdx - 1]  : null;
@@ -1373,6 +1684,140 @@ export default function ResultsPage() {
     setConsoleOpen(true);
   };
 
+  // Live SSH snapshot of the switch — model, firmware, uptime, serial.
+  // Fires the vendor's "switch info" command (show version / show
+  // system-info) and parses the output. Does NOT pass scanId/device_index/
+  // port so the server skips appending to the persisted transcript — this
+  // is an out-of-band lookup, not part of the rack scan record.
+  // Fire /api/specs in the background once we know vendor + model.
+  // No await on the caller — this runs in parallel with the firmware check.
+  const lookupSpecs = async (displayVendor, lookupModel) => {
+    if (!displayVendor || !lookupModel) {
+      setSwitchSpecsStatus('skipped');
+      return;
+    }
+    setSwitchSpecsStatus('loading');
+    setSwitchSpecsError(null);
+    setSwitchSpecs(null);
+    try {
+      const res = await authFetch(apiUrl('/api/specs'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendor: displayVendor, model: lookupModel }),
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { /* not JSON */ }
+      if (!data) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok || !data.ok) {
+        setSwitchSpecsError(data.error || `HTTP ${res.status}`);
+        setSwitchSpecs(data); // preserve any partial fields (productUrl etc.)
+        setSwitchSpecsStatus('error');
+        return;
+      }
+      setSwitchSpecs(data);
+      setSwitchSpecsStatus('ready');
+    } catch (err) {
+      setSwitchSpecsError(err.message || String(err));
+      setSwitchSpecsStatus('error');
+    }
+  };
+
+  // Fire /api/firmware in the background — needs vendor + model + version.
+  const lookupFirmware = async (displayVendor, lookupModel, currentVersion) => {
+    if (!displayVendor || !lookupModel || !currentVersion) {
+      setSwitchFirmwareStatus('skipped');
+      return;
+    }
+    setSwitchFirmwareStatus('loading');
+    setSwitchFirmwareError(null);
+    setSwitchFirmware(null);
+    try {
+      const res = await authFetch(apiUrl('/api/firmware'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendor: displayVendor, model: lookupModel, currentVersion }),
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { /* not JSON */ }
+      if (!data) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok || !data.ok) {
+        setSwitchFirmwareError(data.error || `HTTP ${res.status}`);
+        setSwitchFirmwareStatus('error');
+        return;
+      }
+      setSwitchFirmware(data);
+      setSwitchFirmwareStatus('ready');
+    } catch (err) {
+      setSwitchFirmwareError(err.message || String(err));
+      setSwitchFirmwareStatus('error');
+    }
+  };
+
+  const fetchSwitchInfo = async () => {
+    const vendor = switchCreds.vendor || 'tplink';
+    const cmd = SWITCH_INFO_CMD[vendor] || 'show version';
+    setSwitchInfoStatus('loading');
+    setSwitchInfoError(null);
+    setSwitchInfoData(null);
+    setSwitchInfoRaw('');
+    // Reset downstream lookups so a stale prior result doesn't flash.
+    setSwitchSpecs(null);
+    setSwitchSpecsStatus('idle');
+    setSwitchSpecsError(null);
+    setSwitchFirmware(null);
+    setSwitchFirmwareStatus('idle');
+    setSwitchFirmwareError(null);
+    try {
+      const res = await fetch(apiUrl('/api/switch/console/run'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: switchCreds.host,
+          username: switchCreds.username,
+          password: switchCreds.password,
+          enablePassword: switchCreds.enablePassword || '',
+          command: cmd,
+          vendor,
+          // Slow on some platforms; allow up to 30s.
+          timeoutMs: 30000,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok || data.entry?.error) {
+        throw new Error(data.entry?.error || data.error || 'Command failed');
+      }
+      const raw = data.entry?.output || '';
+      const parsed = parseSwitchInfo(raw, vendor);
+      setSwitchInfoRaw(raw);
+      setSwitchInfoData(parsed);
+      setSwitchInfoStatus('ready');
+
+      // Kick off specs + firmware lookups in parallel. These are best-effort
+      // and don't block the modal; each section renders its own status.
+      const displayVendor = SSH_VENDOR_TO_DISPLAY[vendor] || '';
+      const lookupModel = cleanModelForLookup(parsed.model);
+      const cleanVer = cleanFirmwareVersion(parsed.firmware);
+      lookupSpecs(displayVendor, lookupModel);
+      lookupFirmware(displayVendor, lookupModel, cleanVer);
+    } catch (err) {
+      setSwitchInfoError(err.message || String(err));
+      setSwitchInfoStatus('error');
+    }
+  };
+
+  const openSwitchInfo = () => {
+    const userOk = !!switchCreds.username || credsStatus.has_username;
+    const passOk = !!switchCreds.password || credsStatus.has_password;
+    if (!switchCreds.host || !userOk || !passOk) {
+      setCredsOpen(true);
+      return;
+    }
+    setSwitchInfoOpen(true);
+    fetchSwitchInfo();
+  };
+
   // Run a single intent — exactly the command behind the user's chosen
   // dropdown option, nothing else. Result lands in consoleEntries with the
   // intent's English label as the entry name (we hide the raw cmd in the UI).
@@ -1487,6 +1932,17 @@ export default function ResultsPage() {
           <path d="M6 12h10M11 12v10" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
           <circle cx="25" cy="11" r="3" fill="#7b83eb"/>
           <rect x="21" y="15" width="9" height="10" rx="2" fill="#7b83eb"/>
+        </svg>
+      ),
+    },
+    {
+      key: 'outlook', label: 'Outlook',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden>
+          <rect x="2" y="7" width="17" height="18" rx="2" fill="#0078d4"/>
+          <circle cx="10.5" cy="16" r="4.5" fill="none" stroke="#fff" strokeWidth="2"/>
+          <rect x="20" y="10" width="10" height="12" rx="1.5" fill="#50d9ff"/>
+          <path d="M20 11l5 4 5-4" stroke="#0078d4" strokeWidth="1.4" fill="none"/>
         </svg>
       ),
     },
@@ -1664,6 +2120,29 @@ export default function ResultsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Feedback failed');
+      // Optimistic: reflect the user's correction in the "Port Located" card
+      // immediately. Server overlays the same change into scan_result.json
+      // (see applyFeedbackOverrides in server/app.js), so a refresh would
+      // also show this — but the user shouldn't have to refresh to see
+      // their own correction take effect.
+      if (!isCorrect) {
+        if (payloadActualPort != null) setPortNum(String(payloadActualPort));
+        if (payloadActualCableColor || payloadActualPort != null) {
+          setPortInfo(prev => {
+            if (!prev) return prev;
+            const next = { ...prev };
+            if (payloadActualPort != null) next.port_number = payloadActualPort;
+            if (payloadActualCableColor) {
+              next.cable_color = payloadActualCableColor;
+              const colorWord = /\b(?:White|Black|Blue|Red|Green|Yellow|Grey|Gray|Brown|Orange|Purple|Pink|Violet|Aqua)\b/i;
+              if (next.cable_type && colorWord.test(next.cable_type)) {
+                next.cable_type = next.cable_type.replace(colorWord, payloadActualCableColor);
+              }
+            }
+            return next;
+          });
+        }
+      }
       setFeedbackStatus('submitted');
       setTimeout(() => {
         setFeedbackStatus('hidden');
@@ -1697,6 +2176,15 @@ export default function ResultsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Feedback failed');
+      // Optimistic: reflect the user's device-class correction in the
+      // local devices[] so the picker / "Selected Device" line updates
+      // without a refresh. Server overlays the same change into
+      // scan_result.json via applyFeedbackOverrides.
+      if (!isCorrect && actualDeviceClass) {
+        setDevices(prev => prev.map((d, i) =>
+          (i + 1 === selectedIdx) ? { ...d, class_name: actualDeviceClass } : d
+        ));
+      }
       setDeviceFbStatus('submitted');
       setTimeout(() => {
         setDeviceFbStatus('hidden');
@@ -2349,11 +2837,18 @@ export default function ResultsPage() {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Report
             </button>
-            <button className={`${styles.reportChip} ${styles.reportChipConsole}`}
-              onClick={() => openConsole(switchCreds)}
-              title="Run console commands">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-              Console
+            <button className={`${styles.reportChip} ${styles.reportChipSwitchInfo}`}
+              onClick={openSwitchInfo}
+              title="Live switch model, firmware & uptime over SSH">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2"/>
+                <rect x="9" y="9" width="6" height="6"/>
+                <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
+                <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
+                <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/>
+                <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
+              </svg>
+              Switch Info
             </button>
             <div className={styles.shareWrap}>
               <button className={`${styles.reportChip} ${styles.reportChipShare} ${shareStatus === 'sent' ? styles.reportChipSlackSent : ''} ${shareStatus === 'error' ? styles.reportChipSlackErr : ''}`}
@@ -2720,6 +3215,25 @@ export default function ResultsPage() {
         {portReportOpen && portReport && (
           <PortReportModal report={portReport} onClose={() => setPortReportOpen(false)} />
         )}
+
+        {switchInfoOpen && (
+          <SwitchInfoModal
+            status={switchInfoStatus}
+            info={switchInfoData}
+            raw={switchInfoRaw}
+            error={switchInfoError}
+            host={switchCreds.host}
+            vendor={switchCreds.vendor}
+            specs={switchSpecs}
+            specsStatus={switchSpecsStatus}
+            specsError={switchSpecsError}
+            firmware={switchFirmware}
+            firmwareStatus={switchFirmwareStatus}
+            firmwareError={switchFirmwareError}
+            onClose={() => setSwitchInfoOpen(false)}
+            onRetry={fetchSwitchInfo}
+          />
+        )}
       </div>
     );
   }
@@ -2743,47 +3257,22 @@ export default function ResultsPage() {
             </span>
           </div>
         </div>
-        {(rackId || scanId) ? (
-          <div className={styles.headerActions}>
-            <button
-              onClick={() => navigate(`/results/${rackId || scanId}/netdisco`)}
-              title="Cross-reference this scan with the live network view"
-              aria-label="Network View"
-              className={`${styles.navPill} ${styles.navPillNetdisco}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <circle cx="5" cy="5" r="2"/>
-                <circle cx="19" cy="5" r="2"/>
-                <circle cx="5" cy="19" r="2"/>
-                <circle cx="19" cy="19" r="2"/>
-                <line x1="7" y1="7" x2="10" y2="10"/>
-                <line x1="17" y1="7" x2="14" y2="10"/>
-                <line x1="7" y1="17" x2="10" y2="14"/>
-                <line x1="17" y1="17" x2="14" y2="14"/>
-              </svg>
-              <span className={styles.navPillLabel}>Network View →</span>
-            </button>
-            <button
-              onClick={() => navigate(`/results/${rackId || scanId}/topology`, { state: { result: { rackId: rackId || scanId, devices } } })}
-              title="Rack topology"
-              aria-label="Topology"
-              className={`${styles.navPill} ${styles.navPillTopology}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="2" width="6" height="6" rx="1"/>
-                <rect x="2" y="16" width="6" height="6" rx="1"/>
-                <rect x="16" y="16" width="6" height="6" rx="1"/>
-                <path d="M12 8v4M5 16v-4h14v4"/>
-              </svg>
-              <span className={styles.navPillLabel}>Topology →</span>
-            </button>
-          </div>
-        ) : (
-          <div style={{ width: 40 }} />
-        )}
+        <div style={{ width: 40 }} />
       </header>
 
+      {/* Rack-tab strip — only renders when this rack is part of a multi-rack scan */}
+      <RackTabs rackId={rackId || scanId} />
+
+      <ScanTabBar
+        activeTab={tab}
+        onTabChange={setTab}
+        badges={{
+          ports: devices.filter(d => d.class_name === 'Switch').reduce((s, d) => s + (d.port_count || 0), 0) || undefined,
+          switches: devices.filter(d => d.class_name === 'Switch' || d.class_name === 'Router').length || undefined,
+        }}
+      />
+
+      {tab === 'overview' && (<>
       {qualityWarning && !warningDismissed && (
         <div className={styles.qualityModalBackdrop}>
           <div className={styles.qualityModal}>
@@ -3248,43 +3737,36 @@ export default function ResultsPage() {
             {error}
           </div>
         )}
-
-        {/* View all + Available ports — side-by-side row */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className={styles.viewAllBtn} onClick={() => setPhase('all')} style={{ marginTop: 0, flex: 1 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-            View all devices
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-            </svg>
-          </button>
-
-          {(() => {
-            const portsId = scanId || rackId;
-            if (!portsId) return null;
-            return (
-              <button
-                className={styles.viewAllBtn}
-                onClick={() => navigate(`/results/${portsId}/ports`, { state: { result: { rackId: portsId, devices, timings: analysisTimings } } })}
-                style={{ marginTop: 0, flex: 1 }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="6" width="18" height="12" rx="2"/>
-                  <line x1="7" y1="10" x2="7" y2="14"/><line x1="11" y1="10" x2="11" y2="14"/>
-                  <line x1="15" y1="10" x2="15" y2="14"/><line x1="19" y1="10" x2="19" y2="14"/>
-                </svg>
-                Available ports
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                </svg>
-              </button>
-            );
-          })()}
-        </div>
       </div>
+      </>)}
+
+      {/* ── Tab: Ports ── */}
+      {tab === 'ports' && (
+        <div className={styles.tabContent}>
+          <PortsContent rackId={rackId || scanId} />
+        </div>
+      )}
+
+      {/* ── Tab: Topology ── */}
+      {tab === 'topology' && (
+        <div className={styles.tabContent}>
+          <TopologyContent rackId={rackId || scanId} />
+        </div>
+      )}
+
+      {/* ── Tab: Network ── */}
+      {tab === 'network' && (
+        <div className={styles.tabContent}>
+          <NetdiscoContent rackId={rackId || scanId} />
+        </div>
+      )}
+
+      {/* ── Tab: Switches ── */}
+      {tab === 'switches' && (
+        <div className={styles.tabContent}>
+          <SwitchInfoContent rackId={rackId || scanId} />
+        </div>
+      )}
 
       {/* Loading overlay */}
       {loading && (

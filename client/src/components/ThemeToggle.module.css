@@ -1,4 +1,4 @@
-.toggle {
+﻿.toggle {
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -28,13 +28,13 @@
 /* ── Light theme override ── */
 :global([data-theme='light']) .toggle {
   background: #FFFFFF;
-  color: #4B45A0;
-  border: 1px solid #C8C4E4;
-  box-shadow: 0 2px 8px rgba(75, 69, 160, 0.10), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  color: #4F46E5;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.10), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
 }
 :global([data-theme='light']) .toggle:hover {
-  background: #F0EFF5;
-  border-color: #7B75C0;
-  color: #5B54B0;
-  box-shadow: 0 4px 14px rgba(75, 69, 160, 0.18);
+  background: #F5F5F7;
+  border-color: #818CF8;
+  color: #6366F1;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18);
 }

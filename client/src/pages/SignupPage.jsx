@@ -70,6 +70,12 @@ export default function SignupPage() {
 
   const [email, setEmail]       = useState('');
   const [username, setUsername] = useState('');
+  // REQUIRED — the verify step creates a brand-new tenant for this user.
+  // They become the founding member of that tenant and other employees
+  // can later be invited into it. Multi-tenancy means each customer
+  // company gets its own private space; without a company name there's
+  // no tenant to put the user into.
+  const [company, setCompany]   = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm]   = useState('');
   const [showPw, setShowPw]     = useState(false);
@@ -100,10 +106,11 @@ export default function SignupPage() {
     setError(null); setInfo(null);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Enter a valid email.'); return; }
     if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username))            { setError('Username 3–32 chars (letters, digits, . _ -).'); return; }
+    if (!company.trim() || company.trim().length < 2)        { setError('Company name is required.'); return; }
     if (!pwInfo.allOk)                                       { setError('Password is too weak.'); return; }
     if (!matchOk)                                            { setError('Passwords do not match.'); return; }
     try {
-      await signup(email.trim(), username.trim(), password);
+      await signup(email.trim(), username.trim(), password, company.trim());
       setStep('code');
       setInfo('We sent a 6-digit code to your email.');
     } catch (err) { setError(err.message); }
@@ -172,6 +179,14 @@ export default function SignupPage() {
                   autoComplete="username" value={username}
                   onChange={e => { setUsername(e.target.value); setError(null); }} />
                 <label className={styles.label} htmlFor="su-user">Username</label>
+              </div>
+
+              <div className={styles.field}>
+                <input id="su-company" className={styles.input} type="text" placeholder=" "
+                  autoComplete="organization" value={company}
+                  onChange={e => { setCompany(e.target.value); setError(null); }}
+                  required />
+                <label className={styles.label} htmlFor="su-company">Company</label>
               </div>
 
               <div className={styles.field}>

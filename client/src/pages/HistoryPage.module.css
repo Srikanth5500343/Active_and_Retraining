@@ -1,4 +1,4 @@
-.history {
+﻿.history {
   background: rgba(1, 8, 24, 0.42);
   position: relative;
 }
@@ -115,36 +115,36 @@
 :global([data-theme='light']) .history { background: transparent; }
 :global([data-theme='light']) .amb {
   background:
-    radial-gradient(ellipse 70% 35% at 10% 15%, rgba(91, 84, 176, 0.18) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(123, 117, 192, 0.14) 0%, transparent 50%);
+    radial-gradient(ellipse 70% 35% at 10% 15%, rgba(99, 102, 241, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(129, 140, 248, 0.14) 0%, transparent 50%);
 }
 :global([data-theme='light']) .header {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 247, 251, 0.88));
-  border-bottom: 1px solid #E8E6EF;
+  border-bottom: 1px solid #FFFFFF;
 }
 :global([data-theme='light']) .title {
-  background: linear-gradient(135deg, #4B45A0 0%, #5B54B0 50%, #7B75C0 100%);
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   filter: none;
 }
-:global([data-theme='light']) .empty { color: #4A4A5A; }
+:global([data-theme='light']) .empty { color: #6B7280; }
 
 :global([data-theme='light']) .card {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
+  border: 1px solid #FFFFFF;
   backdrop-filter: none;
-  box-shadow: 0 4px 14px rgba(75, 69, 160, 0.08);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.08);
 }
 :global([data-theme='light']) .card:hover {
-  background: #F8F7FB;
-  border-color: #7B75C0;
-  box-shadow: 0 8px 22px rgba(75, 69, 160, 0.16);
+  background: #FAFAFC;
+  border-color: #818CF8;
+  box-shadow: 0 8px 22px rgba(99, 102, 241, 0.16);
 }
-:global([data-theme='light']) .cardTitle { color: #1A1A2E; }
-:global([data-theme='light']) .cardMeta  { color: #4A4A5A; }
+:global([data-theme='light']) .cardTitle { color: #111827; }
+:global([data-theme='light']) .cardMeta  { color: #6B7280; }
 :global([data-theme='light']) .cardChip {
-  background: #F0EFF5;
-  border: 1px solid #DDDBE8;
-  color: #4A4A5A;
+  background: #F5F5F7;
+  border: 1px solid #EFEFF2;
+  color: #6B7280;
 }

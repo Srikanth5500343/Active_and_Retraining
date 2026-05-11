@@ -1,4 +1,4 @@
-/* Profile page — top 40% identity block, bottom 60% scan history. */
+﻿/* Profile page — top 40% identity block, bottom 60% scan history. */
 
 .profile {
   position: relative;
@@ -480,24 +480,24 @@
 
 :global([data-theme='light']) .amb {
   background:
-    radial-gradient(ellipse 80% 45% at 50% 0%, rgba(123, 117, 192, 0.20) 0%, rgba(75, 69, 160, 0.08) 40%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 30%, rgba(123, 117, 192, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 40% at 0% 90%, rgba(75, 69, 160, 0.14) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 45% at 50% 0%, rgba(129, 140, 248, 0.20) 0%, rgba(99, 102, 241, 0.08) 40%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 30%, rgba(129, 140, 248, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 0% 90%, rgba(99, 102, 241, 0.14) 0%, transparent 50%);
 }
 :global([data-theme='light']) .amb2 {
   background: conic-gradient(from 60deg,
     transparent 0deg,
-    rgba(91, 84, 176, 0.05) 90deg,
+    rgba(99, 102, 241, 0.05) 90deg,
     transparent 180deg,
-    rgba(123, 117, 192, 0.05) 270deg,
+    rgba(129, 140, 248, 0.05) 270deg,
     transparent 360deg);
 }
 
 :global([data-theme='light']) .signOutBtn {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #4A4A5A;
-  box-shadow: 0 2px 6px rgba(75, 69, 160, 0.08);
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.08);
 }
 :global([data-theme='light']) .signOutBtn:hover {
   background: rgba(239, 68, 68, 0.08);
@@ -508,28 +508,28 @@
 /* Identity card */
 :global([data-theme='light']) .idGrid {
   background-image:
-    linear-gradient(rgba(91, 84, 176, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(91, 84, 176, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
 }
 :global([data-theme='light']) .idCard {
   background:
-    linear-gradient(160deg, #FFFFFF, #F8F7FB),
-    radial-gradient(ellipse at top right, rgba(123, 117, 192, 0.10), transparent 60%);
-  border: 1px solid #C8C4E4;
+    linear-gradient(160deg, #FFFFFF, #FAFAFC),
+    radial-gradient(ellipse at top right, rgba(129, 140, 248, 0.10), transparent 60%);
+  border: 1px solid #E5E7EB;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 0 32px rgba(91, 84, 176, 0.10),
-    0 18px 40px rgba(75, 69, 160, 0.14);
+    0 0 32px rgba(99, 102, 241, 0.10),
+    0 18px 40px rgba(99, 102, 241, 0.14);
 }
 
 /* Avatar */
 :global([data-theme='light']) .idAvatar {
   background:
-    radial-gradient(circle at 30% 30%, #7B75C0, #5B54B0 55%, #4B45A0 85%);
-  border: 1.8px solid #C8C4E4;
+    radial-gradient(circle at 30% 30%, #818CF8, #6366F1 55%, #4F46E5 85%);
+  border: 1.8px solid #E5E7EB;
   box-shadow:
-    0 0 24px rgba(91, 84, 176, 0.32),
-    0 0 60px rgba(123, 117, 192, 0.20),
+    0 0 24px rgba(99, 102, 241, 0.32),
+    0 0 60px rgba(129, 140, 248, 0.20),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 :global([data-theme='light']) .idAvatarInitial {
@@ -543,50 +543,50 @@
 
 /* Identity text */
 :global([data-theme='light']) .idName {
-  background: linear-gradient(135deg, #1A1A2E 0%, #4B45A0 60%, #7B75C0 100%);
+  background: linear-gradient(135deg, #111827 0%, #4F46E5 60%, #818CF8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   filter: none;
 }
 :global([data-theme='light']) .idEmail {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 
 /* Stats */
 :global([data-theme='light']) .idStats {
-  border-top: 1px dashed #DDDBE8;
+  border-top: 1px dashed #EFEFF2;
 }
 :global([data-theme='light']) .idStatTile {
-  background: #F8F7FB;
-  border: 1px solid #E8E6EF;
+  background: #FAFAFC;
+  border: 1px solid #FFFFFF;
 }
 :global([data-theme='light']) .idStatTile:hover {
-  border-color: #7B75C0;
-  box-shadow: 0 0 10px rgba(91, 84, 176, 0.16);
+  border-color: #818CF8;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.16);
 }
 :global([data-theme='light']) .idStatIcon {
-  color: #5B54B0;
+  color: #6366F1;
   filter: none;
 }
 :global([data-theme='light']) .idStatNum {
-  color: #1A1A2E;
+  color: #111827;
 }
 :global([data-theme='light']) .idStatKey {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 
 /* History */
 :global([data-theme='light']) .historyWrap {
   background: rgba(240, 239, 245, 0.6);
-  border-top: 1px solid #DDDBE8;
+  border-top: 1px solid #EFEFF2;
 }
 :global([data-theme='light']) .historyTitle {
-  color: #5B54B0;
+  color: #6366F1;
 }
 :global([data-theme='light']) .clearBtn {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #4A4A5A;
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
 }
 :global([data-theme='light']) .clearBtn:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.08);
@@ -595,42 +595,42 @@
 }
 
 :global([data-theme='light']) .empty {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .emptyIcon {
-  background: rgba(91, 84, 176, 0.08);
-  border: 1px dashed rgba(91, 84, 176, 0.40);
-  color: #5B54B0;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px dashed rgba(99, 102, 241, 0.40);
+  color: #6366F1;
 }
 :global([data-theme='light']) .emptyText {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .startBtn {
-  background: #4B45A0;
-  border: 1px solid #4B45A0;
+  background: #4F46E5;
+  border: 1px solid #4F46E5;
   color: #FFFFFF;
-  box-shadow: 0 4px 14px rgba(75, 69, 160, 0.32);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.32);
 }
 :global([data-theme='light']) .startBtn:hover {
-  background: #5B54B0;
+  background: #6366F1;
 }
 
 /* Scan history cards */
 :global([data-theme='light']) .card {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
-  box-shadow: 0 4px 14px rgba(75, 69, 160, 0.08);
+  border: 1px solid #FFFFFF;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.08);
 }
 :global([data-theme='light']) .card:hover {
-  border-color: #7B75C0;
-  box-shadow: 0 6px 18px rgba(75, 69, 160, 0.16);
+  border-color: #818CF8;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.16);
 }
-:global([data-theme='light']) .cardTitle { color: #1A1A2E; }
-:global([data-theme='light']) .cardMeta  { color: #4A4A5A; }
+:global([data-theme='light']) .cardTitle { color: #111827; }
+:global([data-theme='light']) .cardMeta  { color: #6B7280; }
 :global([data-theme='light']) .cardChip {
-  background: #F0EFF5;
-  border: 1px solid #DDDBE8;
-  color: #4A4A5A;
+  background: #F5F5F7;
+  border: 1px solid #EFEFF2;
+  color: #6B7280;
 }
 :global([data-theme='light']) .sevCrit {
   background: rgba(239, 68, 68, 0.10);
@@ -638,9 +638,9 @@
   color: #DC2626;
 }
 :global([data-theme='light']) .sevInfo {
-  background: rgba(91, 84, 176, 0.10);
-  border: 1px solid rgba(91, 84, 176, 0.30);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.10);
+  border: 1px solid rgba(99, 102, 241, 0.30);
+  color: #4F46E5;
 }
 :global([data-theme='light']) .sevWarn {
   background: rgba(245, 158, 11, 0.10);
@@ -650,28 +650,28 @@
 
 /* Confirm modal */
 :global([data-theme='light']) .confirmBackdrop {
-  background: rgba(75, 69, 160, 0.18);
+  background: rgba(99, 102, 241, 0.18);
 }
 :global([data-theme='light']) .confirmModal {
   background: #FFFFFF;
   border: 1px solid rgba(239, 68, 68, 0.32);
   box-shadow:
     0 0 24px rgba(239, 68, 68, 0.10),
-    0 18px 50px rgba(75, 69, 160, 0.20);
+    0 18px 50px rgba(99, 102, 241, 0.20);
 }
 :global([data-theme='light']) .confirmIcon {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.40);
   color: #DC2626;
 }
-:global([data-theme='light']) .confirmTitle { color: #1A1A2E; }
-:global([data-theme='light']) .confirmMsg   { color: #4A4A5A; }
+:global([data-theme='light']) .confirmTitle { color: #111827; }
+:global([data-theme='light']) .confirmMsg   { color: #6B7280; }
 :global([data-theme='light']) .confirmCancel {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #1A1A2E;
+  border: 1px solid #E5E7EB;
+  color: #111827;
 }
-:global([data-theme='light']) .confirmCancel:hover { background: #F0EFF5; }
+:global([data-theme='light']) .confirmCancel:hover { background: #F5F5F7; }
 :global([data-theme='light']) .confirmGo {
   background: #DC2626;
   border: 1px solid #DC2626;
@@ -684,8 +684,8 @@
 
 /* Loading spinner + error banner */
 :global([data-theme='light']) .spinnerSmall {
-  border: 2px solid rgba(91, 84, 176, 0.18);
-  border-top-color: #5B54B0;
+  border: 2px solid rgba(99, 102, 241, 0.18);
+  border-top-color: #6366F1;
 }
 :global([data-theme='light']) .errBanner {
   background: rgba(239, 68, 68, 0.08);

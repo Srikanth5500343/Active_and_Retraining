@@ -43,7 +43,7 @@ def emit(obj):
 log("importing pipeline modules (slow, one-time)")
 from pipeline import runner  # noqa: E402
 from pipeline.quality_check import check_tilt, check_letterbox, check_side_view  # noqa: E402
-from pipeline.detection import load_model  # noqa: E402
+from pipeline.detection import load_model, detect_devices_dual, normalize_class_name  # noqa: E402
 from pipeline.cable import load_cable_model, load_port_identify_model  # noqa: E402
 import cv2  # noqa: E402
 import numpy as np  # noqa: E402
@@ -114,6 +114,68 @@ def handle_quality_check(req):
     return result
 
 
+def handle_detect_only(req):
+    """Stateless, lightweight YOLO bbox detection — used by the live
+    in-viewfinder overlay (POSTed at ~1 Hz). Skips the full analyze
+    pipeline (no rack folder, no port detection, no OCR, no image
+    renders). Returns just devices with class_name + confidence + bbox.
+
+    Coordinates are in the input image's pixel space. The caller is
+    responsible for any back-scaling to its source resolution.
+    """
+    import json as _json
+    img_path    = req.get("image_path")
+    config_path = req.get("config_path")
+    if not img_path or not os.path.exists(img_path):
+        return {"ok": False, "error": "image_path missing"}
+    if not config_path or not os.path.exists(config_path):
+        return {"ok": False, "error": "config_path missing"}
+
+    img = cv2.imread(img_path)
+    if img is None:
+        return {"ok": False, "error": "could not read image"}
+    h, w = img.shape[:2]
+
+    with open(config_path) as f:
+        config = _json.load(f)
+    models = config.get("models", {})
+    server_path  = models.get("server")
+    general_path = models.get("devices") or models.get("general")
+    if not general_path:
+        return {"ok": False, "error": "no general/devices model configured"}
+
+    model = load_model(general_path)
+
+    # Inline the YOLO call so we can pass imgsz=320 — full /api/analyze
+    # uses YOLO's default 640, but on CPU that's ~1s per frame; halving
+    # the inference resolution roughly triples throughput while still
+    # finding rack devices (40+ px tall in the source frame). Confidence
+    # bumped to 0.4 to keep the live overlay from strobing on noise.
+    names = getattr(model, "names", {}) or {}
+    results = model(img, conf=0.4, imgsz=320, verbose=False)
+
+    devices = []
+    if results and results[0].boxes is not None and len(results[0].boxes) > 0:
+        xyxy    = results[0].boxes.xyxy.cpu().numpy()
+        cls_ids = results[0].boxes.cls.cpu().numpy().astype(int)
+        scores  = results[0].boxes.conf.cpu().numpy()
+        for box, cid, score in zip(xyxy, cls_ids, scores):
+            x1, y1, x2, y2 = [int(v) for v in box]
+            if (x2 - x1) < 10 or (y2 - y1) < 10:
+                continue
+            cn = normalize_class_name(str(names.get(int(cid), cid)))
+            if cn in ("Empty", "Closed Unit", "Unidentified"):
+                continue
+            devices.append({
+                "class_name": cn,
+                "confidence": float(score),
+                "bbox":       [x1, y1, x2 - x1, y2 - y1],
+                "box":        [x1, y1, x2, y2],
+            })
+
+    return {"ok": True, "devices": devices, "image_size": {"w": w, "h": h}}
+
+
 def handle_extract_best_frame(req):
     from pipeline.frame_selector import extract_best_frame
     frame = extract_best_frame(req["video_path"])
@@ -124,6 +186,23 @@ def handle_extract_best_frame(req):
     if not cv2.imwrite(output_path, frame):
         return {"ok": False, "error": f"Failed to write extracted frame to {output_path}"}
     return {"ok": True, "image_path": output_path}
+
+
+def handle_split_video_racks(req):
+    """Split a multi-rack pan video into one best-frame per detected rack.
+    Returns a list of {position, label, best_frame_path, ...}. The Node
+    server then runs the existing single-rack analyze() on each path."""
+    from pipeline.multi_rack_split import split_video_into_racks
+    video_path = req["video_path"]
+    output_dir = req.get("output_dir")
+    try:
+        racks = split_video_into_racks(video_path, output_dir=output_dir)
+    except Exception as e:
+        return {"ok": False, "error": f"multi-rack split failed: {e}"}
+    if not racks:
+        return {"ok": False,
+                "error": "No racks detected in the video. Please re-record a clear pan across the racks."}
+    return {"ok": True, "racks": racks, "count": len(racks)}
 
 
 def handle_relabel_port_count(req):
@@ -204,6 +283,94 @@ def handle_relabel_port_count(req):
     }
 
 
+def _queue_low_confidence_samples(image_path, output_dir):
+    """Uncertainty sampling: after analyze succeeds, scan the produced
+    device_unit_map.json for predictions whose confidence is below the
+    per-model LOW_CONF_THRESHOLDS and queue them into the active-learning
+    store as `source="low_confidence"`. Best-effort — never raise.
+
+    The queued samples flow through the same retraining pipeline as
+    user corrections. Operators can then label them via the Flask UIs
+    and they'll be picked up by the next retrain cycle."""
+    try:
+        # Lazy import so the worker boot doesn't pay this cost
+        sys_path_added = False
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+            sys_path_added = True
+        try:
+            from active_learning_Cache import config as al_cfg
+            from active_learning_Cache.store import Store
+        finally:
+            if sys_path_added:
+                try: sys.path.remove(repo_root)
+                except ValueError: pass
+
+        import json as _json
+        map_path = os.path.join(output_dir, "device_unit_map.json")
+        if not os.path.exists(map_path):
+            return
+        with open(map_path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+
+        thr_dev = al_cfg.LOW_CONF_THRESHOLDS.get("devices", 0.0)
+        if thr_dev <= 0:
+            return
+
+        # Lazy load the source image so we can crop low-conf devices
+        try:
+            import cv2 as _cv2
+            src = _cv2.imread(image_path)
+        except Exception:
+            src = None
+
+        store = Store("devices")
+        low_conf_devices = [
+            d for d in (data.get("devices") or [])
+            if isinstance(d.get("confidence"), (int, float))
+            and d["confidence"] < thr_dev
+        ]
+        for d in low_conf_devices:
+            box = d.get("box") or []
+            if src is not None and len(box) == 4:
+                x1, y1, x2, y2 = [int(v) for v in box]
+                crop = src[max(0, y1):y2, max(0, x1):x2]
+                if crop.size > 0:
+                    ok, encoded = _cv2.imencode(".jpg", crop, [_cv2.IMWRITE_JPEG_QUALITY, 88])
+                    img_bytes = encoded.tobytes() if ok else None
+                else:
+                    img_bytes = None
+            else:
+                img_bytes = None
+
+            try:
+                store.add({
+                    "source":    "low_confidence",
+                    "predicted": {
+                        "class":      d.get("class_name"),
+                        "confidence": float(d["confidence"]),
+                    },
+                    "actual":    {},  # operator fills via Flask / React
+                    "metadata":  {
+                        "device_box": box,
+                        "image_path": image_path,
+                        "threshold":  thr_dev,
+                    },
+                }, image_bytes=img_bytes)
+            except Exception as e:
+                # Don't let the AL queue cap us blocking the analyze
+                log(f"AL low-conf queue rejected: {e}")
+                break
+        if low_conf_devices:
+            log(f"AL: queued {len(low_conf_devices)} low-conf devices "
+                f"(threshold={thr_dev})")
+    except Exception as e:
+        # Anything goes wrong → swallow. Active learning is a side-channel,
+        # never a hard dependency of the analyze response.
+        log(f"AL uncertainty hook failed (non-fatal): {e}")
+
+
 def handle_pipeline(req):
     argv = [
         "pipeline.runner",
@@ -226,6 +393,10 @@ def handle_pipeline(req):
         # Forward pipeline tail to stderr so the operator keeps visibility.
         tail = buf.getvalue()[-500:].replace("\n", " | ")
         log(f"pipeline tail: {tail}")
+        # Hook: uncertainty sampling for active learning. Only on
+        # analyze (select doesn't produce new predictions).
+        if req.get("command") == "analyze":
+            _queue_low_confidence_samples(req["image_path"], req["output_dir"])
         return {"ok": True}
     except Exception as e:
         # Log the full traceback to stderr so it shows up in the Node server's
@@ -242,8 +413,12 @@ def handle_request(req):
     command = req.get("command")
     if command == "quality_check":
         return handle_quality_check(req)
+    if command == "detect_only":
+        return handle_detect_only(req)
     if command == "extract_best_frame":
         return handle_extract_best_frame(req)
+    if command == "split_video_racks":
+        return handle_split_video_racks(req)
     if command == "relabel_port_count":
         return handle_relabel_port_count(req)
     if command in ("analyze", "select"):

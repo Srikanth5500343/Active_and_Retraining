@@ -27,8 +27,16 @@ const { v4: uuidv4 } = require('uuid');
 const { WorkerPool } = require('./worker-pool');
 const auth = require('./auth');
 const audit = require('./audit');
+const tenant = require('./lib/tenant');
+const rackGroups = require('./lib/rack_groups');
+const { appendLineWithRotation } = require('./lib/jsonl_rotation');
+const orphanGC = require('./lib/orphan_gc');
 const jwt = require('jsonwebtoken');
 const sshCreds = require('./lib/ssh-creds');
+// Central observability — must be required before anything that wants to
+// log structured events. Provides logger + metrics + middleware + helpers.
+const o11y = require('./lib/observability');
+const { logger, withSpan, recordEvent } = o11y;
 
 // Merge stored env credentials (per vendor) into request body fields. Values
 // sent explicitly by the client take precedence over the env-stored defaults.
@@ -48,6 +56,12 @@ function resolveSwitchCreds(body) {
 // Returns null when no token, an invalid token, or the auth module's secret
 // path can't be read. Routes that *require* auth still use auth.requireAuth.
 function softAuthUserId(req) {
+  return softAuthPayload(req)?.sub || null;
+}
+
+// Same as above but returns the whole JWT payload (so callers can also
+// read tenantId for tenant-scoped reads on otherwise public routes).
+function softAuthPayload(req) {
   const header = req.headers.authorization || '';
   const m = header.match(/^Bearer\s+(.+)$/i);
   if (!m) return null;
@@ -55,8 +69,7 @@ function softAuthUserId(req) {
     const secretPath = path.join(__dirname, 'data', 'jwt.secret');
     if (!fs.existsSync(secretPath)) return null;
     const secret = fs.readFileSync(secretPath, 'utf8').trim();
-    const payload = jwt.verify(m[1], secret);
-    return payload?.sub || null;
+    return jwt.verify(m[1], secret);
   } catch { return null; }
 }
 
@@ -86,18 +99,57 @@ function safeUnlink(p) {
   }
 }
 
+// ── Tenant guard for any route that takes :rackId ────────────────────
+// Express's `app.param` callback fires whenever a route definition has
+// `:rackId` in its path, just before the handler runs. This means EVERY
+// scan/topology/ocr/share endpoint that takes a rackId is automatically
+// gated by tenant ownership — no per-route wiring needed.
+//
+// Behavior:
+//   * Authenticated request whose tenant doesn't own this rack → 404
+//     (404 not 403 — don't reveal that the rack exists in another tenant)
+//   * Unauthenticated request → falls through (preserves legacy
+//     dev/test access; the routes themselves can require auth if they want)
+app.param('rackId', (req, res, next, rackId) => {
+  const auth = softAuthPayload(req);
+  if (!auth?.tenantId) return next();
+  if (!tenant.tenantOwnsRack(auth.tenantId, rackId)) {
+    logger.warn({
+      event: 'tenant.access_denied',
+      tenantId: auth.tenantId, rackId, route: req.path,
+    }, `tenant ${auth.tenantId} blocked from rack ${rackId}`);
+    return res.status(404).json({ error: 'Rack not found' });
+  }
+  next();
+});
+
+// ── Observability middleware (must be installed before any routes) ───
+// Order matters: requestId first (so other middleware can read req.id) →
+// httpLogger (logs each request, inherits requestId) → httpMetrics
+// (records duration histogram) → cors/json/static → routes.
+app.use(o11y.requestId);
+app.use(o11y.httpLogger);
+app.use(o11y.httpMetrics);
+
 app.use(cors({ origin: true }));
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 app.use('/outputs', express.static(outputsDir));
+
+// Health + metrics — placed early so they bypass auth/static/etc and
+// stay reachable even if the main app is degraded.
+app.get('/healthz', o11y.healthHandler);
+app.get('/metrics', o11y.metricsHandler);
 
 // Netdisco integration — read-only proxy onto the local Netdisco docker
 // stack so the UI can join scan output with live-network truth (LLDP
 // neighbours, learned MACs, etc). All routes under /api/netdisco/*.
 try {
   app.use(require('./netdisco_proxy'));
+  logger.info({ event: 'proxy.loaded', proxy: 'netdisco' }, 'netdisco proxy loaded');
 } catch (err) {
-  console.warn('[netdisco] proxy not loaded:', err.message);
+  logger.warn({ event: 'proxy.load_failed', proxy: 'netdisco', err: err.message },
+    'netdisco proxy not loaded');
 }
 
 // CMDB-ticket integration — every CMDB write is gated behind an SR
@@ -109,9 +161,13 @@ try {
   app.use(_cmdbTicketProxy);
   if (typeof _cmdbTicketProxy.startTicketPoller === 'function') {
     _cmdbTicketProxy.startTicketPoller();
+    logger.info({ event: 'poller.started', name: 'cmdb-ticket' },
+      'cmdb-ticket poller started');
   }
+  logger.info({ event: 'proxy.loaded', proxy: 'cmdb-ticket' }, 'cmdb-ticket proxy loaded');
 } catch (err) {
-  console.warn('[cmdb-ticket] proxy not loaded:', err.message);
+  logger.warn({ event: 'proxy.load_failed', proxy: 'cmdb-ticket', err: err.message },
+    'cmdb-ticket proxy not loaded');
 }
 
 const clientDist = path.join(PROJECT_ROOT, 'client', 'dist');
@@ -191,34 +247,40 @@ const pool = new WorkerPool({
 });
 
 async function runQualityCheck(imagePath) {
-  try {
-    return await pool.request('quality_check', { image_path: imagePath });
-  } catch (err) {
-    console.warn('[quality_check] skipped:', err.message);
-    return { ok: true, metrics: { note: 'check-failed-skipped' } };
-  }
+  return withSpan('pipeline.quality_check', async (log) => {
+    try {
+      return await pool.request('quality_check', { image_path: imagePath });
+    } catch (err) {
+      log.warn({ err: err.message }, 'quality_check skipped');
+      return { ok: true, metrics: { note: 'check-failed-skipped' } };
+    }
+  }, { imagePath });
 }
 
 async function runPipelineAnalyze(imagePath, outputDir) {
-  const res = await pool.request('analyze', {
-    image_path: imagePath,
-    config_path: CONFIG_PATH,
-    output_dir:  outputDir,
-  });
-  if (!res.ok) throw new Error(res.error || 'pipeline analyze failed');
-  return res;
+  return withSpan('pipeline.analyze', async () => {
+    const res = await pool.request('analyze', {
+      image_path: imagePath,
+      config_path: CONFIG_PATH,
+      output_dir:  outputDir,
+    });
+    if (!res.ok) throw new Error(res.error || 'pipeline analyze failed');
+    return res;
+  }, { imagePath, outputDir });
 }
 
 async function runPipelineSelect(imagePath, outputDir, deviceIndex, port) {
-  const res = await pool.request('select', {
-    image_path:   imagePath,
-    config_path:  CONFIG_PATH,
-    output_dir:   outputDir,
-    device_index: deviceIndex,
-    port,
-  });
-  if (!res.ok) throw new Error(res.error || 'pipeline select failed');
-  return res;
+  return withSpan('pipeline.select', async () => {
+    const res = await pool.request('select', {
+      image_path:   imagePath,
+      config_path:  CONFIG_PATH,
+      output_dir:   outputDir,
+      device_index: deviceIndex,
+      port,
+    });
+    if (!res.ok) throw new Error(res.error || 'pipeline select failed');
+    return res;
+  }, { imagePath, outputDir, deviceIndex, port });
 }
 
 // Re-detect ports for one device using a user-supplied target count.
@@ -792,7 +854,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
         pagebreak: { mode: ['css'] },
       }).from(document.querySelector('.wrap')).save();
     } catch (err) {
-      console.error('PDF generation failed:', err);
+      logger.error('PDF generation failed:', err);
       window.print(); // last-ditch fallback
     } finally {
       document.body.classList.remove('pdfMode');
@@ -948,7 +1010,7 @@ function writeCanonicalScanResult(rackId, prebuiltData) {
     const selPath = path.join(_rackDir, 'selected_port_info.json');
     if (fs.existsSync(selPath)) {
       try { selectedPort = JSON.parse(fs.readFileSync(selPath, 'utf8')); }
-      catch (e) { console.warn(`[scan_result] selected_port_info parse failed for ${rackId}: ${e.message}`); }
+      catch (e) { logger.warn(`[scan_result] selected_port_info parse failed for ${rackId}: ${e.message}`); }
     }
 
     const meta = readMeta(rackId) || {};
@@ -968,6 +1030,12 @@ function writeCanonicalScanResult(rackId, prebuiltData) {
       selectedPort,
     };
 
+    // Overlay any user feedback corrections on top of the model's
+    // predictions before persisting. Mutates `result` in place; the
+    // original predictions are preserved on each modified field's
+    // `_correction.original` for audit.
+    applyFeedbackOverrides(rackId, result);
+
     outPath = path.join(_rackDir, 'scan_result.json');
     const tmpPath = outPath + '.tmp';
     fs.writeFileSync(tmpPath, JSON.stringify(result, null, 2));
@@ -977,15 +1045,71 @@ function writeCanonicalScanResult(rackId, prebuiltData) {
     scheduleTopologyRegen(rackId);
     return result;
   } catch (err) {
-    console.error(`[scan_result] write failed for ${rackId}: ${err.message}`);
+    logger.error(`[scan_result] write failed for ${rackId}: ${err.message}`);
     return null;
   }
 }
 
 // Schedule a canonical-result refresh for after the response is sent. Used by
-// mutation endpoints that don't already build the report inline.
+// mutation endpoints that don't already build the report inline. Also kicks
+// off per-device OCR in the background — fully silent, the user never sees
+// it; the result lands in outputs/<rackId>/ocr_devices.json and synth.py
+// picks it up the next time CMDB is built.
 function scheduleCanonicalRefresh(rackId) {
-  setImmediate(() => writeCanonicalScanResult(rackId));
+  setImmediate(() => {
+    writeCanonicalScanResult(rackId);
+    scheduleOcrDevices(rackId);
+  });
+}
+
+// Fire-and-forget per-device OCR after a scan finishes. Runs only when
+// outputs/<rackId>/ocr_devices.json doesn't already exist — re-running OCR
+// on every canonical refresh would be wasteful (1-2 min on CPU). The user
+// can still trigger a re-run via POST /api/scan/:rackId/ocr-devices.
+//
+// When OCR completes, we re-trigger downstream syncs (Netdisco, topology,
+// canonical scan_result) so Netdisco/CMDB pick up real make/model instead
+// of synth values. Without this re-sync, Netdisco would always be 1-2 min
+// behind reality because its initial sync fires before OCR finishes.
+const _ocrRunning = new Set();
+function scheduleOcrDevices(rackId) {
+  if (!rackId || _ocrRunning.has(rackId)) return;
+  const rackDir = path.join(outputsDir, rackId);
+  const ocrPath = path.join(rackDir, 'ocr_devices.json');
+  const dumPath = path.join(rackDir, 'device_unit_map.json');
+  // Need a device_unit_map to know what to crop; skip silently otherwise.
+  if (!fs.existsSync(dumPath) || fs.existsSync(ocrPath)) return;
+  _ocrRunning.add(rackId);
+  const child = spawnChild(pythonCmd,
+    ['-u', '-m', 'pipeline.ocr_devices', rackId, '--json'],
+    { cwd: PROJECT_ROOT,
+      env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' } });
+  // Don't keep node process alive waiting on this; we just want it to run.
+  if (typeof child.unref === 'function') child.unref();
+  let stderr = '';
+  child.stderr.on('data', c => { stderr += c.toString(); });
+  child.on('close', () => {
+    _ocrRunning.delete(rackId);
+    if (!fs.existsSync(ocrPath)) {
+      logger.warn(`[ocr_devices] ${rackId} produced no output: ${stderr.slice(-300)}`);
+      return;
+    }
+    // OCR ran — re-sync downstream consumers so they pick up the real
+    // make/model. All silent / fire-and-forget; the user never sees this.
+    try { writeCanonicalScanResult(rackId); } catch (_) {}
+    try {
+      const ndProxy = require('./netdisco_proxy');
+      if (ndProxy && typeof ndProxy.scheduleNetdiscoSync === 'function') {
+        ndProxy.scheduleNetdiscoSync(rackId);
+      }
+    } catch (e) {
+      logger.warn(`[ocr_devices→netdisco] resync skipped for ${rackId}: ${e.message}`);
+    }
+  });
+  child.on('error', err => {
+    _ocrRunning.delete(rackId);
+    logger.warn(`[ocr_devices] spawn failed for ${rackId}: ${err.message}`);
+  });
 }
 
 // Resolve a working Python interpreter once at startup. Prefer the project
@@ -1013,13 +1137,13 @@ function resolvePythonBin() {
       });
       if (r.status === 0) {
         _resolvedPython = c;
-        console.log(`[python] using interpreter: ${c}`);
+        logger.info(`[python] using interpreter: ${c}`);
         return c;
       }
     } catch (_) { /* try next */ }
   }
   _resolvedPython = candidates[candidates.length - 1];
-  console.warn(`[python] no working interpreter found; falling back to ${_resolvedPython}`);
+  logger.warn(`[python] no working interpreter found; falling back to ${_resolvedPython}`);
   return _resolvedPython;
 }
 
@@ -1046,9 +1170,14 @@ function scheduleTopologyRegen(rackId) {
   child.on('close', (code) => {
     _topoRegenInflight.delete(rackId);
     if (code === 0) {
-      console.log(`[topology] regenerated for ${rackId}`);
+      logger.info({ event: 'topology.regenerated', rackId },
+        `topology regenerated for ${rackId}`);
+      recordEvent('topology.regenerated', { rackId });
     } else {
-      console.warn(`[topology] regen failed for ${rackId} (exit ${code}): ${err.trim() || out.trim()}`);
+      logger.warn({ event: 'topology.regen_failed', rackId, exit: code,
+        stderr: (err.trim() || out.trim()).slice(0, 500) },
+        `topology regen failed for ${rackId} (exit ${code})`);
+      recordEvent('topology.regen_failed', { rackId, exit: code });
     }
     // Whether topology regen succeeded or not, push the scan into Netdisco
     // so its DB stays in lock-step with what's on disk. Best-effort —
@@ -1059,7 +1188,7 @@ function scheduleTopologyRegen(rackId) {
         ndProxy.scheduleNetdiscoSync(rackId);
       }
     } catch (e) {
-      console.warn(`[netdisco] sync skipped for ${rackId}: ${e.message}`);
+      logger.warn(`[netdisco] sync skipped for ${rackId}: ${e.message}`);
     }
 
     // Compute the CMDB diff and (if non-empty) auto-open / update the SR.
@@ -1071,12 +1200,12 @@ function scheduleTopologyRegen(rackId) {
         _cmdbTicketProxy.scheduleCmdbTicket(rackId);
       }
     } catch (e) {
-      console.warn(`[cmdb-ticket] auto-create skipped for ${rackId}: ${e.message}`);
+      logger.warn(`[cmdb-ticket] auto-create skipped for ${rackId}: ${e.message}`);
     }
   });
   child.on('error', (e) => {
     _topoRegenInflight.delete(rackId);
-    console.warn(`[topology] failed to spawn for ${rackId}: ${e.message}`);
+    logger.warn(`[topology] failed to spawn for ${rackId}: ${e.message}`);
   });
 }
 
@@ -1155,11 +1284,18 @@ app.get('/api/audit', auth.requireAuth, (req, res) => {
   const adminUsers = String(process.env.AUDIT_ADMINS || '')
     .split(',').map(s => s.trim()).filter(Boolean);
   const isAdmin = adminUsers.includes(req.user.username);
-  const scope = req.query.scope === 'all' && isAdmin ? 'all' : 'self';
+  // scope=self  → only this user's events
+  // scope=tenant → every event in this user's tenant (admin-gated)
+  // scope=all   → cross-tenant view (super-admin; downgraded to tenant
+  //               for non-admins so we never leak across tenants)
+  let scope = req.query.scope || 'self';
+  if (scope === 'all' && !isAdmin) scope = 'tenant';
+  if (scope === 'tenant' && !isAdmin) scope = 'self';
 
   try {
     const rows = audit.query({
-      userId:     scope === 'self' ? req.user.id : undefined,
+      userId:     scope === 'self'   ? req.user.id        : undefined,
+      tenantId:   scope === 'tenant' ? req.user.tenant_id : undefined,
       action:     req.query.action     || undefined,
       targetType: req.query.targetType || undefined,
       targetId:   req.query.targetId   || undefined,
@@ -1171,8 +1307,163 @@ app.get('/api/audit', auth.requireAuth, (req, res) => {
     });
     res.json({ ok: true, scope, count: rows.length, events: rows });
   } catch (err) {
-    console.error('[audit] query failed:', err);
+    logger.error('[audit] query failed:', err);
     res.status(500).json({ ok: false, error: 'Audit query failed' });
+  }
+});
+
+// ── Active-learning loop ─────────────────────────────────────────────
+// POST /api/admin/active-learning/cycle  → fire one ingest+retrain cycle.
+// Heavy job: spawned as a detached subprocess so the HTTP request returns
+// immediately. Caller polls GET /api/admin/active-learning/status for state.
+//
+// Restricted to AUDIT_ADMINS (same allow-list used for org-wide audit
+// access). Logs every invocation as a business event so it shows up in
+// metrics + the audit trail.
+const _alState = { running: false, lastRunAt: null, lastExitCode: null, lastResult: null };
+
+app.post('/api/admin/active-learning/cycle', auth.requireAuth, (req, res) => {
+  const adminUsers = String(process.env.AUDIT_ADMINS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  if (adminUsers.length && !adminUsers.includes(req.user.username)) {
+    return res.status(403).json({ ok: false, error: 'admin only' });
+  }
+  if (_alState.running) {
+    return res.status(409).json({ ok: false, error: 'cycle already running',
+      startedAt: _alState.lastRunAt });
+  }
+
+  _alState.running = true;
+  _alState.lastRunAt = new Date().toISOString();
+  recordEvent('active_learning.cycle.started', { triggeredBy: req.user.username });
+  audit.log({ req, action: 'active_learning.cycle', status: 'ok',
+    payload: { triggeredBy: req.user.username } });
+
+  const py = process.env.PYTHON_PATH || (process.platform === 'win32' ? 'py' : 'python3');
+  const child = require('child_process').spawn(
+    py, ['-m', 'retraining_learning.run_loop', '--once'],
+    { cwd: PROJECT_ROOT, detached: false,
+      stdio: ['ignore', 'pipe', 'pipe'] }
+  );
+  let stdout = '', stderr = '';
+  child.stdout.on('data', d => { stdout += d.toString(); });
+  child.stderr.on('data', d => { stderr += d.toString(); });
+  child.on('exit', (code) => {
+    _alState.running = false;
+    _alState.lastExitCode = code;
+    _alState.lastResult = {
+      finishedAt: new Date().toISOString(),
+      exitCode: code,
+      stdoutTail: stdout.split('\n').slice(-30).join('\n'),
+      stderrTail: stderr.split('\n').slice(-30).join('\n'),
+    };
+    logger.info({
+      event: 'active_learning.cycle.finished',
+      exitCode: code,
+      stdoutTail: stdout.slice(-500),
+      stderrTail: stderr.slice(-500),
+    }, `active-learning cycle exit=${code}`);
+    recordEvent('active_learning.cycle.finished', { exitCode: code });
+  });
+
+  res.status(202).json({
+    ok: true, started: true,
+    startedAt: _alState.lastRunAt,
+    pollAt: '/api/admin/active-learning/status',
+  });
+});
+
+app.get('/api/admin/active-learning/status', auth.requireAuth, (req, res) => {
+  const adminUsers = String(process.env.AUDIT_ADMINS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  if (adminUsers.length && !adminUsers.includes(req.user.username)) {
+    return res.status(403).json({ ok: false, error: 'admin only' });
+  }
+  res.json({ ok: true, ..._alState });
+});
+
+// ── Orphan GC (admin-only) ──────────────────────────────────────────
+// POST /api/admin/orphan-gc/run  body: { dryRun?: bool, retentionDays?: int }
+// Lists outputs/<rackId>/ folders with no rack_owners row + (when
+// dryRun=false) deletes them. Default dryRun=true so it never destroys
+// anything by accident.
+function _isAdmin(req) {
+  const adminUsers = String(process.env.AUDIT_ADMINS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  return adminUsers.length === 0 || adminUsers.includes(req.user.username);
+}
+
+app.post('/api/admin/orphan-gc/run', auth.requireAuth, (req, res) => {
+  if (!_isAdmin(req)) return res.status(403).json({ ok: false, error: 'admin only' });
+  const dryRun = req.body?.dryRun !== false;       // default true
+  const retentionDays = Number(req.body?.retentionDays) || 14;
+  try {
+    const summary = orphanGC.run({ dryRun, retentionDays });
+    audit.log({ req, action: 'orphan_gc.run', status: 'ok', payload: {
+      dryRun, retentionDays,
+      scanned: summary.scanned, removed: summary.removed,
+      freedBytes: summary.freedBytes,
+    }});
+    recordEvent('orphan_gc.run', { dryRun, removed: summary.removed });
+    res.json({ ok: true, ...summary });
+  } catch (e) {
+    logger.error({ event: 'orphan_gc.failed', err: e.message }, 'orphan GC failed');
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Scheduled daily orphan GC. Default: dry-run only (logs counts but
+// doesn't delete) so an operator can review the metric before
+// flipping ORPHAN_GC_APPLY=1.
+const _orphanGcIntervalMs = 24 * 60 * 60 * 1000;
+const _orphanGcApply = process.env.ORPHAN_GC_APPLY === '1';
+const _orphanGcRetentionDays = parseInt(process.env.ORPHAN_GC_RETENTION_DAYS, 10) || 14;
+setInterval(() => {
+  try {
+    const summary = orphanGC.run({
+      dryRun: !_orphanGcApply,
+      retentionDays: _orphanGcRetentionDays,
+    });
+    logger.info({
+      event: 'orphan_gc.scheduled',
+      ...summary, orphans: undefined,   // omit per-folder list from log
+      sampleOrphans: (summary.orphans || []).slice(0, 5).map(o => o.rackId),
+    }, `scheduled orphan GC: ${summary.removed}/${summary.scanned} ${_orphanGcApply ? 'pruned' : 'would-prune'}`);
+  } catch (e) {
+    logger.warn({ event: 'orphan_gc.scheduled_failed', err: e.message },
+      `scheduled orphan GC failed: ${e.message}`);
+  }
+}, _orphanGcIntervalMs).unref();
+
+/**
+ * POST /api/detect
+ * Stateless live-overlay detection — runs only YOLO bbox classification on
+ * the uploaded JPEG. NO rack folder, NO OCR, NO port detection, NO audit
+ * log, NO image renders. Used by the Camera viewfinder's per-frame loop.
+ *
+ * Response: { devices: [{ class_name, confidence, bbox:[x,y,w,h] }],
+ *             image_size: { w, h } }
+ */
+app.post('/api/detect', upload.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image file provided' });
+  const tmpPath = req.file.path;
+  try {
+    const result = await pool.request('detect_only', {
+      image_path:  tmpPath,
+      config_path: CONFIG_PATH,
+    });
+    if (!result.ok) {
+      return res.status(400).json({ error: result.error || 'detection failed' });
+    }
+    res.json({
+      devices:    result.devices || [],
+      image_size: result.image_size || null,
+    });
+  } catch (err) {
+    logger.error({ err: err.message }, 'detect failed');
+    res.status(500).json({ error: 'detection failed' });
+  } finally {
+    safeUnlink(tmpPath);
   }
 });
 
@@ -1197,10 +1488,19 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     const rackDir   = path.join(outputsDir, rackId);
     const jsonPath  = path.join(rackDir, 'device_unit_map.json');
 
+    // Tenant ownership: anyone scanning an image (cached or fresh) is
+    // making a tenant-scoped claim on this rack. Idempotent — multiple
+    // tenants can co-own the same RK-id when they scan the same image.
+    const _authPayload = softAuthPayload(req);
+    const _scanTenantId = _authPayload?.tenantId || null;
+    const _scanUserId = _authPayload?.sub || null;
+    if (_scanTenantId) tenant.claimRack(_scanTenantId, rackId, _scanUserId);
+
     // ── Cache hit ──────────────────────────────────────────
     if (fs.existsSync(jsonPath)) {
       safeUnlink(tmpPath); // discard duplicate upload
-      console.log(`[cache hit] ${rackId}`);
+      logger.info({ event: 'scan.cache_hit', rackId, tenantId: _scanTenantId }, `cache hit ${rackId}`);
+      recordEvent('scan.cache_hit', { rackId, tenantId: _scanTenantId });
       await ensurePortCounts(rackId);
       timings.total_ms = Date.now() - reqStart;
       timings.cached = true;
@@ -1266,19 +1566,25 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
         fs.rmSync(rackDir, { recursive: true, force: true });
         return res.status(400).json({
           error: 'Please take the photo from the front of the rack — we need to see the devices and ports face-on.',
+          retryable: true,
+          kind: 'quality',
         });
       }
       if (unitCount < 3) {
         fs.rmSync(rackDir, { recursive: true, force: true });
         return res.status(400).json({
           error: 'Please upload a clearer photo of the rack — keep the camera steady and make sure the full rack fits in the frame.',
+          retryable: true,
+          kind: 'quality',
         });
       }
     }
 
     timings.total_ms = Date.now() - reqStart;
     timings.cached = false;
-    console.log(`[new scan] ${rackId} (analyze ${timings.total_ms}ms)`);
+    logger.info({ event: 'scan.created', rackId, durationMs: timings.total_ms, timings },
+      `new scan ${rackId} (analyze ${timings.total_ms}ms)`);
+    recordEvent('scan.created', { rackId, durationMs: timings.total_ms });
     audit.log({
       req,
       action: 'scan.create',
@@ -1293,10 +1599,12 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
   } catch (err) {
     // Clean up tmp if still around
     safeUnlink(tmpPath);
-    console.error(err.message);
+    logger.error(err.message);
     audit.log({ req, action: 'scan.create', status: 'fail', error: err.message });
-    res.status(500).json({
+    res.status(400).json({
       error: 'Please upload a clearer photo of the rack — keep the camera steady and make sure the full rack fits in the frame.',
+      retryable: true,
+      kind: 'quality',
     });
   }
 });
@@ -1392,7 +1700,7 @@ app.post('/api/ocr/labels', upload.single('image'), async (req, res) => {
     });
   } catch (e) {
     safeUnlink(tmpPath);
-    console.warn(`[ocr] failed: ${e.message}`);
+    logger.warn(`[ocr] failed: ${e.message}`);
     res.status(500).json({ error: e.message, labels: [] });
   }
 });
@@ -1490,17 +1798,28 @@ app.post('/api/select', async (req, res) => {
     return res.status(404).json({ error: `Rack ${rackId} not found. Please re-upload the image.` });
   }
 
-  if (!fs.existsSync(meta.imagePath)) {
+  // meta.imagePath may be a stale absolute path from another machine
+  // (e.g. scans copied between systems). Fall back to scanning the rack
+  // folder for original_image.{jpg,jpeg,png} — same pattern as the
+  // ticket-mode select route below.
+  const rackDir = path.join(outputsDir, rackId);
+  let imagePath = meta.imagePath && fs.existsSync(meta.imagePath) ? meta.imagePath : null;
+  if (!imagePath) {
+    for (const ext of ['jpg', 'jpeg', 'png']) {
+      const candidate = path.join(rackDir, `original_image.${ext}`);
+      if (fs.existsSync(candidate)) { imagePath = candidate; break; }
+    }
+  }
+  if (!imagePath) {
     return res.status(404).json({ error: 'Original image missing from rack folder. Please re-upload.' });
   }
 
-  const rackDir = path.join(outputsDir, rackId);
   const reqStart = Date.now();
   const timings = {};
 
   try {
     const tPipeStart = Date.now();
-    await runPipelineSelect(meta.imagePath, rackDir, device_index, port);
+    await runPipelineSelect(imagePath, rackDir, device_index, port);
     timings.pipeline_ms = Date.now() - tPipeStart;
 
     const infoPath = path.join(rackDir, 'selected_port_info.json');
@@ -1523,7 +1842,7 @@ app.post('/api/select', async (req, res) => {
     try {
       if (fs.existsSync(srcDevice)) fs.copyFileSync(srcDevice, dstDevice);
       if (fs.existsSync(srcFull))   fs.copyFileSync(srcFull, dstFull);
-    } catch (e) { console.error('port image archive failed:', e.message); }
+    } catch (e) { logger.error('port image archive failed:', e.message); }
 
     const idEntry = {
       timestamp: new Date().toISOString(),
@@ -1536,7 +1855,7 @@ app.post('/api/select', async (req, res) => {
     };
     try {
       fs.appendFileSync(idsPath, JSON.stringify(idEntry) + '\n');
-    } catch (e) { console.error('port id log failed:', e.message); }
+    } catch (e) { logger.error('port id log failed:', e.message); }
 
     timings.total_ms = Date.now() - reqStart;
     audit.log({
@@ -1556,7 +1875,7 @@ app.post('/api/select', async (req, res) => {
       timings,
     });
   } catch (err) {
-    console.error(err.message);
+    logger.error(err.message);
     audit.log({
       req,
       action: 'scan.select_port',
@@ -1649,6 +1968,201 @@ function resolveTicketDevice(rackDir, cmdbDeviceName) {
 }
 
 /**
+ * POST /api/analyze-video
+ *
+ * Multi-rack scan: user uploads ONE video that pans across N parallel
+ * racks. The server:
+ *   1. Saves the video, computes a stable hash (group key).
+ *   2. Splits the video into N best-frames via the worker
+ *      (`split_video_racks` command → pipeline.multi_rack_split).
+ *   3. For each best-frame, runs the same /api/analyze flow that single
+ *      images use — produces a normal RK-XXXXXXXX scan with full output
+ *      directory, port detection, etc. So every per-rack feature
+ *      (Ports / Topology / SFP advisor / Firmware) works as-is.
+ *   4. Records the parent group (rack_groups) + members so the UI can
+ *      navigate "Rack 1 / Rack 2 / Rack 3" from a single entry point.
+ *
+ * Returns:
+ *   { ok: true, groupId, count, racks: [
+ *       { rackId, position, label, deviceCount, score, cached }
+ *     ] }
+ */
+app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No video file provided' });
+  const reqStart = Date.now();
+  const videoPath = req.file.path;
+
+  // Tenant required — multi-rack scans always go into someone's tenant.
+  const authPayload = softAuthPayload(req);
+  const tenantId = authPayload?.tenantId;
+  const userId   = authPayload?.sub || null;
+  if (!tenantId) {
+    safeUnlink(videoPath);
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    // 1. Split video into per-rack best frames (worker call).
+    const splitResult = await withSpan('multi_rack.split', async () => {
+      const r = await pool.request('split_video_racks', {
+        video_path: videoPath,
+      });
+      if (!r.ok) throw new Error(r.error || 'split failed');
+      return r;
+    }, { videoPath });
+
+    const detected = Array.isArray(splitResult.racks) ? splitResult.racks : [];
+    if (detected.length === 0) {
+      safeUnlink(videoPath);
+      return res.status(400).json({ error: 'No racks detected in the video. Try a clearer pan.' });
+    }
+
+    // 2. Run /api/analyze logic on each best frame, in series so we
+    //    don't melt the worker pool. (For 2-3 racks this is fine; for
+    //    huge videos we'd parallelize.)
+    const racks = [];
+    const videoHash = crypto.createHash('sha256')
+      .update(fs.readFileSync(videoPath))
+      .digest('hex').slice(0, 16);
+    const groupId = rackGroups.create({ tenantId, userId, videoHash });
+
+    for (const r of detected) {
+      try {
+        // Normalize the JPEG so it goes through the same pipeline as
+        // an image upload (auto-orient, mozjpeg, etc.)
+        const normalizedPath = await normalizeImage(r.best_frame_path);
+        const rackId = computeRackId(normalizedPath);
+        const rackDir = path.join(outputsDir, rackId);
+        const jsonPath = path.join(rackDir, 'device_unit_map.json');
+
+        // Tenant ownership for each member rack
+        tenant.claimRack(tenantId, rackId, userId);
+
+        let cached = false;
+        if (fs.existsSync(jsonPath)) {
+          // Cache hit — just record group membership, no re-analysis.
+          cached = true;
+          await ensurePortCounts(rackId);
+        } else {
+          // Fresh analysis — same path /api/analyze takes. We save the
+          // file under the same name single-rack scans use ("original_image")
+          // so:
+          //   * the Results-page hero image URL (/outputs/<rackId>/original_image.<ext>) resolves
+          //   * pipeline.ocr_devices can find the source crop
+          //   * scheduleCanonicalRefresh / Netdisco / CMDB all use the same file
+          fs.mkdirSync(rackDir, { recursive: true });
+          const ext = path.extname(normalizedPath) || '.jpg';
+          const imagePath = path.join(rackDir, `original_image${ext}`);
+          fs.copyFileSync(normalizedPath, imagePath);
+          await runPipelineAnalyze(imagePath, rackDir);
+          await ensurePortCounts(rackId);
+          writeMeta(rackId, {
+            rackId, userId,
+            imageHash: crypto.createHash('sha256')
+              .update(fs.readFileSync(imagePath)).digest('hex'),
+            imagePath,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        safeUnlink(normalizedPath);
+
+        rackGroups.addMember({
+          groupId, rackId,
+          position: r.position,
+          label:    r.label,
+          deviceCount: r.device_count,
+          score:    r.score,
+        });
+
+        racks.push({
+          rackId, position: r.position, label: r.label,
+          deviceCount: r.device_count, score: r.score, cached,
+        });
+        scheduleCanonicalRefresh(rackId);
+      } catch (err) {
+        logger.warn({
+          event: 'multi_rack.member_failed',
+          err: err.message, frameIndex: r.frame_index, position: r.position,
+        }, `member rack ${r.position} failed: ${err.message}`);
+      }
+    }
+
+    safeUnlink(videoPath);
+
+    audit.log({
+      req, action: 'scan.video', status: 'ok', targetType: 'rack_group',
+      targetId: groupId,
+      payload: { count: racks.length, durationMs: Date.now() - reqStart },
+    });
+    recordEvent('multi_rack.scan_completed', {
+      groupId, count: racks.length, tenantId,
+    });
+    logger.info({
+      event: 'multi_rack.scan_completed',
+      groupId, count: racks.length, durationMs: Date.now() - reqStart,
+    }, `multi-rack scan: ${racks.length} racks under ${groupId}`);
+
+    res.json({
+      ok: true, groupId, count: racks.length,
+      durationMs: Date.now() - reqStart,
+      racks,
+    });
+  } catch (err) {
+    safeUnlink(videoPath);
+    logger.error({
+      event: 'multi_rack.scan_failed', err: err.message,
+    }, 'multi-rack scan failed');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/rack-group/:groupId
+ *
+ * Returns the parent group + each member rack. Tenant-scoped: 404 if
+ * the group's tenant doesn't match the caller's tenant.
+ */
+app.get('/api/rack-group/:groupId', auth.requireAuth, (req, res) => {
+  const data = rackGroups.get(req.params.groupId);
+  if (!data) return res.status(404).json({ error: 'Group not found' });
+  if (data.group.tenant_id !== req.user.tenant_id) {
+    // 404 not 403 — don't reveal cross-tenant existence
+    return res.status(404).json({ error: 'Group not found' });
+  }
+  res.json({ ok: true, ...data });
+});
+
+/**
+ * GET /api/rack/:rackId/group
+ *
+ * Returns the parent rack-group (if any) for a single rack. Used by
+ * per-rack pages (Results, Ports, Topology) to detect that a rack is
+ * part of a multi-rack scan and render the rack-switcher tabs at the
+ * top. Returns { ok: true, group: null } when the rack is standalone.
+ */
+app.get('/api/rack/:rackId/group', auth.requireAuth, (req, res) => {
+  const groupId = rackGroups.findGroupForRack(req.params.rackId);
+  if (!groupId) return res.json({ ok: true, group: null });
+  const data = rackGroups.get(groupId);
+  if (!data) return res.json({ ok: true, group: null });
+  // Don't reveal cross-tenant membership
+  if (data.group.tenant_id !== req.user.tenant_id) {
+    return res.json({ ok: true, group: null });
+  }
+  res.json({ ok: true, ...data });
+});
+
+/**
+ * GET /api/rack-groups
+ * List recent multi-rack scans for the caller's tenant.
+ */
+app.get('/api/rack-groups', auth.requireAuth, (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
+  const groups = rackGroups.listForTenant(req.user.tenant_id, limit);
+  res.json({ ok: true, groups });
+});
+
+/**
  * GET /api/incidents/active
  * Returns the current list of RackTrack-actionable tickets pulled from
  * ServiceNow by the poller, plus the top one as a convenience field.
@@ -1697,9 +2211,16 @@ app.post('/api/analyze-for-ticket', upload.single('image'), async (req, res) => 
     const rackDir  = path.join(outputsDir, rackId);
     const jsonPath = path.join(rackDir, 'device_unit_map.json');
 
+    // Tenant ownership claim (same logic as /api/analyze).
+    const _ticketAuth = softAuthPayload(req);
+    if (_ticketAuth?.tenantId) {
+      tenant.claimRack(_ticketAuth.tenantId, rackId, _ticketAuth.sub || null);
+    }
+
     if (fs.existsSync(jsonPath)) {
       safeUnlink(tmpPath);
-      console.log(`[ticket] cache hit ${rackId}`);
+      logger.info({ event: 'ticket.cache_hit', rackId }, `ticket cache hit ${rackId}`);
+      recordEvent('ticket.cache_hit', { rackId });
     } else {
       // Skip quality check in ticket mode — the tech is directed to a specific
       // rack by the ticket, we don't want to gate on tilt/lighting.
@@ -1792,7 +2313,7 @@ app.post('/api/analyze-for-ticket', upload.single('image'), async (req, res) => 
     try {
       if (fs.existsSync(srcDevice)) fs.copyFileSync(srcDevice, dstDevice);
       if (fs.existsSync(srcFull))   fs.copyFileSync(srcFull, dstFull);
-    } catch (e) { console.error('port image archive failed:', e.message); }
+    } catch (e) { logger.error('port image archive failed:', e.message); }
 
     // STEP 4 — LLDP / SSH (best-effort; network is often unreachable in demo)
     let lldp = null;
@@ -1845,19 +2366,36 @@ app.post('/api/analyze-for-ticket', upload.single('image'), async (req, res) => 
       timings,
     });
   } catch (err) {
-    console.error('[analyze-for-ticket]', err.message);
-    res.status(500).json({ error: err.message });
+    logger.error('[analyze-for-ticket]', err.message);
+    res.status(400).json({
+      error: 'Analysis failed. Please check the image and try again.',
+      retryable: true,
+      kind: 'quality',
+    });
   }
 });
 
 /**
  * GET /api/racks
- * List all stored rack IDs with their metadata (useful for debugging / future history).
+ * Tenant-scoped: returns only racks the calling user's tenant has scanned.
+ * If no auth token is present, falls back to the legacy "all racks" view
+ * but logged so we can see if anything still hits it that way.
  */
 app.get('/api/racks', (req, res) => {
   try {
+    const auth = softAuthPayload(req);
+    const tid = auth?.tenantId;
+    let allowed;
+    if (tid) {
+      allowed = tenant.tenantRackIds(tid);
+    } else {
+      logger.warn({ event: 'racks.unauthenticated' },
+        'GET /api/racks served without auth — returning unfiltered list');
+      allowed = null; // unfiltered (legacy)
+    }
     const racks = fs.readdirSync(outputsDir)
       .filter(name => name.startsWith('RK-'))
+      .filter(name => allowed === null || allowed.has(name))
       .map(name => {
         const meta = readMeta(name);
         return meta ? { rackId: name, timestamp: meta.timestamp } : { rackId: name };
@@ -1875,10 +2413,17 @@ app.get('/api/racks', (req, res) => {
 // Used by the Profile page's history list.
 app.get('/api/scans', auth.requireAuth, (req, res) => {
   const userId = req.user.id;
+  const tenantId = req.user.tenant_id;
+  // Tenant-scoped filter: defence-in-depth. The historical filter is
+  // meta.userId === current user; multi-tenancy adds: AND the rack must
+  // belong to the user's tenant. So a user moved between tenants
+  // (rare) keeps seeing only what their *current* tenant owns.
+  const tenantRacks = tenantId ? tenant.tenantRackIds(tenantId) : null;
   try {
     const scans = fs.readdirSync(outputsDir)
       .filter(name => name.startsWith('RK-'))
       .map(rackId => {
+        if (tenantRacks && !tenantRacks.has(rackId)) return null;
         const meta = readMeta(rackId);
         if (!meta || meta.userId !== userId) return null;
         const rackDir  = path.join(outputsDir, rackId);
@@ -1915,7 +2460,7 @@ app.get('/api/scans', auth.requireAuth, (req, res) => {
       .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
     res.json({ scans });
   } catch (err) {
-    console.error('/api/scans failed:', err.message);
+    logger.error('/api/scans failed:', err.message);
     res.status(500).json({ error: 'Failed to load scans' });
   }
 });
@@ -1995,7 +2540,7 @@ app.post('/api/scan/:rackId/report', (req, res) => {
 // If the file doesn't exist yet (e.g. older scan, or it was never refreshed),
 // regenerate it on the fly so callers always get a current view.
 // GET /api/cmdb/rack/:rackId/switches
-// Returns { rack, switches: [{ name, serial_number, model_number, ip_address, mac_address, position }] }.
+// Returns { rack, switches: [{ name, serial_number, model_number, ip_address, mac_address, os_version, manufacturer, position }] }.
 // Spawns servicenow/list_rack_switches.py which queries cmdb_ci_rack by
 // u_racktrack_scan_id and walks Contains-relations to its switch children.
 // Empty switches[] when SN env vars aren't set or the rack isn't in CMDB —
@@ -2131,6 +2676,8 @@ function runSwitchCommand({ host, port = 22, username, password, command, timeou
           if (err) return finish(err);
 
           let buf = '';
+          let pagedAt = -1;
+          const PAGING_RE = /Press any key to continue|--More--|<--- More --->/i;
           const waiters = []; // { re, resolve, timer }
           const checkWaiters = () => {
             const clean = stripAnsi(buf);
@@ -2144,7 +2691,22 @@ function runSwitchCommand({ host, port = 22, username, password, command, timeou
             }
           };
           stream
-            .on('data', (chunk) => { buf += chunk.toString(); checkWaiters(); })
+            .on('data', (chunk) => {
+              buf += chunk.toString();
+              // Auto-advance past --More-- pagination prompts.
+              // Search from after the last acknowledged prompt so we detect
+              // subsequent pages (buf.match() only returns the first hit).
+              const searchFrom = pagedAt < 0 ? 0 : pagedAt + 1;
+              if (searchFrom < buf.length) {
+                const tail = buf.slice(searchFrom);
+                const m = tail.match(PAGING_RE);
+                if (m) {
+                  pagedAt = searchFrom + m.index;
+                  try { stream.write(' '); } catch (_) {}
+                }
+              }
+              checkWaiters();
+            })
             .on('close', () => finish(null, buf))
             .stderr.on('data', (chunk) => { buf += chunk.toString(); checkWaiters(); });
           stream.setEncoding('utf8');
@@ -2160,7 +2722,7 @@ function runSwitchCommand({ host, port = 22, username, password, command, timeou
             waiters.push(w);
           });
           // Reset buffer so subsequent waitFor() only sees new output.
-          const resetBuf = () => { buf = ''; };
+          const resetBuf = () => { buf = ''; pagedAt = -1; };
 
           (async () => {
             try {
@@ -2544,7 +3106,7 @@ function loadConsoleCommands() {
   const p = path.join(__dirname, 'console_commands.json');
   if (!fs.existsSync(p)) return { auto_commands: [] };
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); }
-  catch (e) { console.error('console_commands.json parse error:', e.message); return { auto_commands: [] }; }
+  catch (e) { logger.error('console_commands.json parse error:', e.message); return { auto_commands: [] }; }
 }
 
 function substIface(cmd, iface) {
@@ -2567,7 +3129,7 @@ function saveConsoleTranscript({ scanId, device_index, port, interface: iface, h
     entries,
   };
   try { fs.writeFileSync(filePath, JSON.stringify(payload, null, 2)); return filePath; }
-  catch (e) { console.error('console transcript save failed:', e.message); return null; }
+  catch (e) { logger.error('console transcript save failed:', e.message); return null; }
 }
 
 function readConsoleTranscript(rackDir, deviceIndex, port) {
@@ -2576,10 +3138,17 @@ function readConsoleTranscript(rackDir, deviceIndex, port) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
 }
 
-// Strip the command echo and any leading/trailing prompt lines from shell output.
+// Strip the command echo, paging prompts, and trailing shell prompts from output.
 function cleanShellOutput(raw, cmd) {
   if (!raw) return '';
   let out = raw.replace(/\r/g, '');
+  // remove null bytes left by some TP-Link firmware after paging prompts
+  out = out.replace(/\x00/g, '');
+  // strip paging prompts: "Press any key to continue (Q to quit)", "--More--", etc.
+  // These leave the data after them on the same line, so replace with newline.
+  out = out.replace(/Press any key to continue[^\n]*/gi, '\n');
+  out = out.replace(/--More--[^\n]*/g, '\n');
+  out = out.replace(/<--- More --->[^\n]*/g, '\n');
   // remove the first occurrence of the command (which the switch echoed back)
   if (cmd) {
     const idx = out.indexOf(cmd);
@@ -2664,7 +3233,7 @@ function writeLastHost(userId, host) {
   try {
     fs.mkdirSync(lastHostDir, { recursive: true });
     fs.writeFileSync(path.join(lastHostDir, `${userId}.txt`), String(host).trim());
-  } catch (err) { console.error('[last-host] write failed:', err.message); }
+  } catch (err) { logger.error('[last-host] write failed:', err.message); }
 }
 
 app.get('/api/switch/default-host', (req, res) => {
@@ -2802,7 +3371,7 @@ app.post('/api/switch/console/run-auto-stream', async (req, res) => {
     if (saved && scanId) scheduleCanonicalRefresh(scanId);
     send({ type: 'done', total: entries.length, transcript_saved: Boolean(saved) });
   } catch (err) {
-    console.error('[console stream] failed:', err && err.stack ? err.stack : err);
+    logger.error('[console stream] failed:', err && err.stack ? err.stack : err);
     audit.log({ req, action: 'console.run_auto_stream', status: 'fail',
                 targetType: scanId ? 'rack' : null, targetId: scanId || null,
                 error: (err && err.message) || String(err),
@@ -3111,6 +3680,273 @@ app.get('/api/vendors', (req, res) => {
   });
 });
 
+// ── Spec sheet & firmware lookup ──────────────────────────────
+// Spawns a python module under pipeline/ with --json. The module reads
+// Switch_Vendors_Websites.xlsx, picks the vendor URL, searches the vendor
+// site, and scrapes the relevant block (specs, release notes, CVEs).
+const { spawn: _spawnPyMod } = require('child_process');
+const PY_MOD_TIMEOUT_MS = 90_000;
+
+function runPipelineModule(moduleName, extraArgs) {
+  return new Promise((resolve) => {
+    const child = _spawnPyMod(pythonCmd, ['-u', '-m', moduleName, ...extraArgs], {
+      cwd: PROJECT_ROOT,
+      env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' },
+    });
+
+    let stdout = '', stderr = '', settled = false;
+    const finish = (payload) => { if (settled) return; settled = true; resolve(payload); };
+
+    const killTimer = setTimeout(() => {
+      try { child.kill('SIGKILL'); } catch (_) {}
+      // Friendly user-facing string. The real module name + stderr are
+      // kept on the result object for server-log debugging but never
+      // surface to the UI directly.
+      finish({
+        ok: false,
+        error: 'Lookup took too long. Try again in a moment.',
+        _moduleName: moduleName,
+        _stderr: stderr,
+      });
+    }, PY_MOD_TIMEOUT_MS);
+
+    child.stdout.on('data', c => { stdout += c.toString(); });
+    child.stderr.on('data', c => { stderr += c.toString(); });
+    child.on('error', (err) => {
+      clearTimeout(killTimer);
+      finish({ ok: false, error: 'Lookup failed to start. Try again.', _spawnError: err.message });
+    });
+    child.on('close', (code) => {
+      clearTimeout(killTimer);
+      const lastLine = stdout.trim().split('\n').filter(Boolean).pop();
+      let parsed = null;
+      if (lastLine) { try { parsed = JSON.parse(lastLine); } catch (_) {} }
+      if (parsed) return finish(parsed);
+      finish({
+        ok: false,
+        error: 'Lookup didn’t return a usable result. Try again.',
+        _exitCode: code,
+        _stderr: stderr.trim().slice(-500),
+      });
+    });
+  });
+}
+
+// GET /api/specs/vendors — vendor names from the Excel sheet.
+app.get('/api/specs/vendors', async (req, res) => {
+  const result = await runPipelineModule('pipeline.all_vendor', ['--list-vendors']);
+  if (!result.ok) return res.status(500).json(result);
+  res.json(result);
+});
+
+// POST /api/specs  body: { vendor, model }
+// → resolves the vendor URL, searches the site, scrapes specs.
+app.post('/api/specs', async (req, res) => {
+  const vendor = String(req.body?.vendor || '').trim();
+  const model  = String(req.body?.model  || '').trim();
+  if (!vendor || !model) {
+    return res.status(400).json({ ok: false, error: 'vendor and model are required' });
+  }
+  const result = await runPipelineModule('pipeline.all_vendor',
+    ['--json', '--vendor', vendor, '--model', model]);
+  if (!result.ok) return res.status(404).json(result);
+  res.json(result);
+});
+
+// POST /api/sfp/analyze  body: { vendor, model, interfaces? }
+// → dynamically determines SFP slot type by scraping vendor datasheets,
+//   then searches the web for compatible transceiver modules.
+//   No hardcoded switch database — everything is inferred from live data.
+app.post('/api/sfp/analyze', async (req, res) => {
+  const vendor     = String(req.body?.vendor || '').trim();
+  const model      = String(req.body?.model  || '').trim();
+  const interfaces = req.body?.interfaces || '';  // comma-separated iface names
+  if (!vendor && !model) {
+    return res.status(400).json({ ok: false, error: 'vendor or model required' });
+  }
+  const args = ['--json', '--vendor', vendor || 'Unknown', '--model', model || 'Unknown'];
+  if (interfaces) args.push('--interfaces', interfaces);
+  const result = await runPipelineModule('pipeline.sfp_recommend', args);
+  res.json(result);
+});
+
+// POST /api/firmware  body: { vendor, model, currentVersion }
+// → finds release notes / changelog on the vendor's site and queries
+//   NIST NVD for CVEs that mention the product. Best-effort by design.
+app.post('/api/firmware', async (req, res) => {
+  const vendor         = String(req.body?.vendor || '').trim();
+  const model          = String(req.body?.model  || '').trim();
+  const currentVersion = String(req.body?.currentVersion || '').trim();
+  if (!vendor || !model || !currentVersion) {
+    return res.status(400).json({
+      ok: false,
+      error: 'vendor, model, and currentVersion are required',
+    });
+  }
+  const result = await runPipelineModule('pipeline.firmware_check', [
+    '--json',
+    '--vendor', vendor,
+    '--model',  model,
+    '--current-version', currentVersion,
+  ]);
+  if (!result.ok) return res.status(404).json(result);
+  res.json(result);
+});
+
+// POST /api/scan/:rackId/ocr-devices
+// Runs pipeline.ocr_devices on a rack — per-device EasyOCR pass against
+// each detected device's chassis crop, parsing make/model/firmware. Writes
+// outputs/<rackId>/ocr_devices.json which servicenow/synth.py picks up on
+// the next CMDB build to populate real (instead of synthesized) make/model.
+// Slow path: EasyOCR on CPU can take 1-2 minutes for a full rack. We use
+// a generous timeout (5 min) and run synchronously since the user is
+// usually waiting on the result before triggering the CMDB push.
+const OCR_DEVICES_TIMEOUT_MS = 5 * 60_000;
+app.post('/api/scan/:rackId/ocr-devices', (req, res) => {
+  const { rackId } = req.params;
+  const rackDir = path.join(outputsDir, rackId);
+  if (!fs.existsSync(rackDir)) {
+    return res.status(404).json({ ok: false, error: `rack ${rackId} not found` });
+  }
+  const child = spawnChild(pythonCmd,
+    ['-u', '-m', 'pipeline.ocr_devices', rackId, '--json'],
+    { cwd: PROJECT_ROOT,
+      env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' } });
+  let stdout = '', stderr = '', settled = false;
+  const send = (status, body) => {
+    if (settled) return;
+    settled = true;
+    res.status(status).json(body);
+  };
+  const killer = setTimeout(() => {
+    try { child.kill('SIGKILL'); } catch (_) {}
+    send(504, { ok: false, error: 'OCR timed out', rackId });
+  }, OCR_DEVICES_TIMEOUT_MS);
+  child.stdout.on('data', c => { stdout += c.toString(); });
+  child.stderr.on('data', c => { stderr += c.toString(); });
+  child.on('error', err => {
+    clearTimeout(killer);
+    send(500, { ok: false, error: `spawn failed: ${err.message}` });
+  });
+  child.on('close', () => {
+    clearTimeout(killer);
+    const lastLine = stdout.trim().split('\n').filter(Boolean).pop() || '';
+    let parsed = null;
+    try { parsed = JSON.parse(lastLine); } catch (_) {}
+    if (!parsed) {
+      return send(500, { ok: false,
+        error: stderr.slice(-400) || 'no JSON on stdout',
+        rackId });
+    }
+    audit.log({ req, action: 'scan.ocr_devices',
+                status: parsed.ok ? 'ok' : 'fail',
+                targetType: 'rack', targetId: rackId,
+                payload: { devices: (parsed.devices || []).length,
+                           full: (parsed.devices || []).filter(d => d.source === 'ocr_full').length,
+                           partial: (parsed.devices || []).filter(d => d.source === 'ocr_make_only').length } });
+    send(parsed.ok ? 200 : 500, parsed);
+  });
+});
+
+// GET /api/scan/:rackId/ocr-devices
+// Returns the cached ocr_devices.json if it exists. No SSH, no scrape — just
+// reads the file written by the POST endpoint above. Used by the Switch
+// Information page to know whether OCR has been run for this rack.
+app.get('/api/scan/:rackId/ocr-devices', (req, res) => {
+  const { rackId } = req.params;
+  const p = path.join(outputsDir, rackId, 'ocr_devices.json');
+  if (!fs.existsSync(p)) {
+    return res.status(404).json({ ok: false, error: 'OCR not yet run for this rack', rackId });
+  }
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(fs.readFileSync(p, 'utf8'));
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message, rackId });
+  }
+});
+
+// POST /api/scan/:rackId/side-labels
+// Runs pipeline.side_labels — extracts identifier-shaped text from the
+// LEFT and RIGHT margins of the rack photo (the green "SWHOME / SWFIBRA1"
+// chips techs apply to rack rails). This is independent of the CV
+// detector: even when YOLO misses a device with an unusual fascia, the
+// side label is still readable. The client uses the result to surface
+// recall gaps ("5 labels found, 3 switches identified — confirm the
+// missing 2") instead of silently under-counting.
+//
+// Same spawn pattern as ocr-devices (synchronous, generous timeout —
+// EasyOCR on CPU). Cheaper than the full-image pass because we only OCR
+// ~24% of the pixels (12% on each margin).
+const SIDE_LABELS_TIMEOUT_MS = 3 * 60_000;
+app.post('/api/scan/:rackId/side-labels', (req, res) => {
+  const { rackId } = req.params;
+  const rackDir = path.join(outputsDir, rackId);
+  if (!fs.existsSync(rackDir)) {
+    return res.status(404).json({ ok: false, error: `rack ${rackId} not found` });
+  }
+  const child = spawnChild(pythonCmd,
+    ['-u', '-m', 'pipeline.side_labels', rackId, '--json'],
+    { cwd: PROJECT_ROOT,
+      env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' } });
+  let stdout = '', stderr = '', settled = false;
+  const send = (status, body) => {
+    if (settled) return;
+    settled = true;
+    res.status(status).json(body);
+  };
+  const killer = setTimeout(() => {
+    try { child.kill('SIGKILL'); } catch (_) {}
+    send(504, { ok: false, error: 'side-label OCR timed out', rackId });
+  }, SIDE_LABELS_TIMEOUT_MS);
+  child.stdout.on('data', c => { stdout += c.toString(); });
+  child.stderr.on('data', c => { stderr += c.toString(); });
+  child.on('error', err => {
+    clearTimeout(killer);
+    send(500, { ok: false, error: `spawn failed: ${err.message}` });
+  });
+  child.on('close', () => {
+    clearTimeout(killer);
+    const lastLine = stdout.trim().split('\n').filter(Boolean).pop() || '';
+    let parsed = null;
+    try { parsed = JSON.parse(lastLine); } catch (_) {}
+    if (!parsed) {
+      return send(500, { ok: false,
+        error: stderr.slice(-400) || 'no JSON on stdout',
+        rackId });
+    }
+    // Cache for cheap re-fetch from the GET endpoint.
+    if (parsed.ok) {
+      try {
+        fs.writeFileSync(
+          path.join(rackDir, 'side_labels.json'),
+          JSON.stringify(parsed, null, 2),
+        );
+      } catch (e) {
+        logger.warn(`[side_labels] cache write failed for ${rackId}: ${e.message}`);
+      }
+    }
+    send(parsed.ok ? 200 : 500, parsed);
+  });
+});
+
+// GET /api/scan/:rackId/side-labels
+// Returns the cached side_labels.json if present, otherwise 404. The
+// client falls back to triggering a POST when this 404s.
+app.get('/api/scan/:rackId/side-labels', (req, res) => {
+  const { rackId } = req.params;
+  const p = path.join(outputsDir, rackId, 'side_labels.json');
+  if (!fs.existsSync(p)) {
+    return res.status(404).json({ ok: false, error: 'side labels not yet extracted', rackId });
+  }
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(fs.readFileSync(p, 'utf8'));
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message, rackId });
+  }
+});
+
 // POST /api/scan/:rackId/{slack,teams,outlook}
 // Each regenerates the report as PDF (via headless Chromium) and spawns the
 // matching Python sender (pipeline.slack_email / pipeline.teams_send /
@@ -3137,7 +3973,7 @@ async function runShareSender(req, res, { rackId, channel, pyModule, email, extr
     ({ pdfPath } = await buildScanReportPDF(rackId));
   } catch (err) {
     const code = /not.*found|ENOENT/i.test(String(err?.message)) ? 404 : 500;
-    console.error(`[share:${channel}] PDF build failed for ${rackId}:`, err);
+    logger.error(`[share:${channel}] PDF build failed for ${rackId}:`, err);
     audit.log({ req, action: `scan.share.${channel}`, status: 'fail', targetType: 'rack', targetId: rackId,
                 error: `pdf build: ${err.message}`, payload: { recipient: email } });
     return res.status(code).json({ ok: false, channel, error: 'Could not generate the report. Please try again.' });
@@ -3181,7 +4017,7 @@ async function runShareSender(req, res, { rackId, channel, pyModule, email, extr
         result: parsed,
       });
     }
-    console.error(`[share:${channel}] sender exited code=${code} for ${rackId}`, { stderr: stderr.slice(-500) });
+    logger.error(`[share:${channel}] sender exited code=${code} for ${rackId}`, { stderr: stderr.slice(-500) });
     audit.log({ req, action: `scan.share.${channel}`, status: 'fail', targetType: 'rack', targetId: rackId,
                 error: parsed?.error || `exit ${code}`, payload: { recipient: email } });
     send(502, {
@@ -3195,7 +4031,7 @@ async function runShareSender(req, res, { rackId, channel, pyModule, email, extr
 
   child.on('error', (err) => {
     clearTimeout(killTimer);
-    console.error(`[share:${channel}] failed to spawn Python:`, err);
+    logger.error(`[share:${channel}] failed to spawn Python:`, err);
     audit.log({ req, action: `scan.share.${channel}`, status: 'fail', targetType: 'rack', targetId: rackId,
                 error: `spawn: ${err.message}`, payload: { recipient: email } });
     send(500, { ok: false, channel, error: `Failed to spawn Python: ${err.message}` });
@@ -3252,6 +4088,277 @@ const feedbackWrongDir = path.join(feedbackDir, 'wrong');
 const feedbackLogPath  = path.join(__dirname, 'feedback.jsonl');
 [feedbackDir, feedbackWrongDir].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
+// ── Feedback override layer ──────────────────────────────────
+// Reads server/feedback.jsonl for a given scan and overlays the user's
+// `actual_*` corrections on top of the model's predictions in the scan
+// result. Keeps a `_correction` audit trail so the original prediction
+// is never lost.
+//
+// Applied during writeCanonicalScanResult, so the corrected values land
+// in scan_result.json — every consumer (UI, exports, ServiceNow) sees
+// the same overlaid view. Re-runs after every feedback POST because
+// scheduleCanonicalRefresh fires after the audit.log success.
+function _readFeedbackForScan(scanId) {
+  if (!fs.existsSync(feedbackLogPath)) return [];
+  let raw;
+  try { raw = fs.readFileSync(feedbackLogPath, 'utf8'); }
+  catch (err) {
+    logger.warn(`[feedback_overlay] read failed for ${scanId}: ${err.message}`);
+    return [];
+  }
+  const out = [];
+  for (const line of raw.split('\n')) {
+    if (!line) continue;
+    try {
+      const r = JSON.parse(line);
+      if (r.scanId === scanId && r.is_correct === false) out.push(r);
+    } catch (_) { /* skip malformed */ }
+  }
+  return out;
+}
+
+// Re-derive cable_type when the color changes. Heuristic: replace any
+// known color word in the existing cable_type string. If we can't
+// detect a color word, leave cable_type unchanged.
+const _CABLE_COLOR_WORD = /\b(?:White|Black|Blue|Red|Green|Yellow|Grey|Gray|Brown|Orange|Purple|Pink)\b/i;
+function _swapCableTypeColor(cableType, newColor) {
+  if (!cableType || !newColor) return cableType;
+  if (!_CABLE_COLOR_WORD.test(cableType)) return cableType;
+  return cableType.replace(_CABLE_COLOR_WORD, newColor);
+}
+
+function applyFeedbackOverrides(scanId, payload) {
+  if (!payload) return payload;
+  const rows = _readFeedbackForScan(scanId);
+  if (!rows.length) return payload;
+
+  // Latest correction wins per (key). Keys differ by feedback_type:
+  //  - port:       device_index + port_location signature
+  //  - device:     device_index
+  //  - port_count: device_index
+  const latest = new Map();
+  for (const r of rows) {
+    const ft = r.feedback_type;
+    let key = null;
+    if (ft === 'port') key = `port:${r.device_index}:${(r.port_location || []).join(',')}`;
+    else if (ft === 'device') key = `device:${r.device_index}`;
+    else if (ft === 'port_count') key = `count:${r.device_index}`;
+    if (!key) continue;
+    const prev = latest.get(key);
+    if (!prev || (r.timestamp || '') > (prev.timestamp || '')) latest.set(key, r);
+  }
+
+  // 1) selectedPort.port_info — the "Port Located" card the UI renders.
+  const sp = payload.selectedPort;
+  if (sp && sp.device_index != null && sp.port_info) {
+    const pi = sp.port_info;
+    const k = `port:${sp.device_index}:${(pi.location || []).join(',')}`;
+    const fb = latest.get(k);
+    if (fb) {
+      const fields = [];
+      const original = {};
+      if (fb.actual_port != null && fb.actual_port !== pi.port_number) {
+        original.port_number = pi.port_number;
+        pi.port_number = fb.actual_port;
+        fields.push('port_number');
+      }
+      if (fb.actual_cable_color && fb.actual_cable_color !== pi.cable_color) {
+        original.cable_color = pi.cable_color;
+        pi.cable_color = fb.actual_cable_color;
+        fields.push('cable_color');
+        const newType = _swapCableTypeColor(pi.cable_type, fb.actual_cable_color);
+        if (newType && newType !== pi.cable_type) {
+          original.cable_type = pi.cable_type;
+          pi.cable_type = newType;
+          fields.push('cable_type');
+        }
+      }
+      if (fields.length) {
+        pi._correction = { applied_at: fb.timestamp, source: 'user_feedback', fields, original };
+      }
+    }
+
+    // selected_device.class_name from device-class feedback
+    if (sp.selected_device) {
+      const dfb = latest.get(`device:${sp.device_index}`);
+      if (dfb && dfb.actual_device_class && dfb.actual_device_class !== sp.selected_device.class_name) {
+        const original = { class_name: sp.selected_device.class_name };
+        sp.selected_device.class_name = dfb.actual_device_class;
+        sp.selected_device._correction = {
+          applied_at: dfb.timestamp, source: 'user_feedback',
+          fields: ['class_name'], original,
+        };
+      }
+    }
+  }
+
+  // 2) devices[] — class_name (device feedback) + port_count (port-count feedback)
+  for (const dev of payload.devices || []) {
+    if (!dev || dev.index == null) continue;
+
+    const dfb = latest.get(`device:${dev.index}`);
+    if (dfb && dfb.actual_device_class && dfb.actual_device_class !== dev.class_name) {
+      dev._correction = dev._correction || { source: 'user_feedback', fields: [], original: {} };
+      dev._correction.original.class_name = dev.class_name;
+      dev._correction.fields.push('class_name');
+      dev._correction.applied_at = dfb.timestamp;
+      dev.class_name = dfb.actual_device_class;
+    }
+
+    const cfb = latest.get(`count:${dev.index}`);
+    if (cfb && cfb.actual_port_count != null && cfb.actual_port_count !== dev.port_count) {
+      dev._correction = dev._correction || { source: 'user_feedback', fields: [], original: {} };
+      dev._correction.original.port_count = dev.port_count;
+      dev._correction.fields.push('port_count');
+      dev._correction.applied_at = cfb.timestamp;
+      dev.port_count = cfb.actual_port_count;
+    }
+  }
+
+  // 3) Per-device port re-indexing from port-feedback corrections.
+  //
+  // When a user corrects a port number (e.g. "this is port 8, model said 2"),
+  // they're anchoring one physical port at an absolute number. The same
+  // shift applies to every other port the detector found on that device:
+  // it just started counting at the wrong place.
+  //
+  //   shift = actual_port - predicted_port
+  //
+  // Positive shift  → model missed `shift` ports at the start of the row.
+  //                   Every detection bumps up by `shift`. Device's
+  //                   port_count grows by `shift` to make room.
+  // Negative shift  → model emitted spurious detections before the actual
+  //                   start of the port row. Drop the leading |shift|
+  //                   detections; lower port_count by |shift|.
+  //
+  // Multiple corrections on one device are summed chronologically, because
+  // each correction's `predicted_port` reflects the value the user saw at
+  // that moment (which may already include prior shifts). Summing deltas
+  // in chronological order yields the correct total shift relative to the
+  // raw detector output.
+  const sortedPortRows = rows
+    .filter(r => r.feedback_type === 'port' && r.actual_port != null && r.predicted_port != null)
+    .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+  const deviceShifts = new Map(); // device_index -> { shift, ts }
+  for (const r of sortedPortRows) {
+    const delta = Number(r.actual_port) - Number(r.predicted_port);
+    if (!delta) continue;
+    const prev = deviceShifts.get(r.device_index);
+    deviceShifts.set(r.device_index, {
+      shift: (prev?.shift || 0) + delta,
+      ts: r.timestamp,
+    });
+  }
+
+  const idents = payload.port_identifications || [];
+  const newIdents = [];
+  for (const ident of idents) {
+    if (!ident || ident.device_index == null) { newIdents.push(ident); continue; }
+    const ds = deviceShifts.get(ident.device_index);
+    if (!ds || !ds.shift) { newIdents.push(ident); continue; }
+    const newPort = ident.port + ds.shift;
+    if (newPort <= 0) continue; // before actual start of port row — drop
+    const fields = ['port'];
+    const original = { port: ident.port };
+    const shifted = { ...ident, port: newPort };
+
+    // If the latest port-feedback row for this device matches THIS detection
+    // (same original port number) and supplies a cable color, overlay it too.
+    const matchingFb = sortedPortRows.findLast
+      ? sortedPortRows.findLast(r => r.device_index === ident.device_index && r.predicted_port === ident.port)
+      : [...sortedPortRows].reverse().find(r => r.device_index === ident.device_index && r.predicted_port === ident.port);
+    if (matchingFb && matchingFb.actual_cable_color && matchingFb.actual_cable_color !== shifted.cable_color) {
+      original.cable_color = shifted.cable_color;
+      shifted.cable_color = matchingFb.actual_cable_color;
+      fields.push('cable_color');
+      const newType = _swapCableTypeColor(shifted.cable_type, matchingFb.actual_cable_color);
+      if (newType && newType !== shifted.cable_type) {
+        original.cable_type = shifted.cable_type;
+        shifted.cable_type = newType;
+        fields.push('cable_type');
+      }
+    }
+    shifted._correction = {
+      applied_at: ds.ts, source: 'user_feedback',
+      fields, original, port_shift: ds.shift,
+    };
+    newIdents.push(shifted);
+  }
+  payload.port_identifications = newIdents;
+
+  // Reflect the shift on each device's port_count so the picker / "port
+  // 1-N" range reflects the corrected layout.
+  for (const dev of payload.devices || []) {
+    if (!dev || dev.index == null) continue;
+    const ds = deviceShifts.get(dev.index);
+    if (!ds || !ds.shift) continue;
+    if (typeof dev.port_count !== 'number') continue;
+    const newCount = Math.max(0, dev.port_count + ds.shift);
+    if (newCount === dev.port_count) continue;
+    dev._correction = dev._correction || { source: 'user_feedback', fields: [], original: {} };
+    if (!('port_count' in (dev._correction.original || {}))) {
+      dev._correction.original = dev._correction.original || {};
+      dev._correction.original.port_count = dev.port_count;
+    }
+    if (!Array.isArray(dev._correction.fields)) dev._correction.fields = [];
+    if (!dev._correction.fields.includes('port_count')) dev._correction.fields.push('port_count');
+    dev._correction.applied_at = ds.ts;
+    dev._correction.port_shift = ds.shift;
+    dev.port_count = newCount;
+  }
+
+  return payload;
+}
+
+// ── Active-learning trigger ───────────────────────────────────
+// Each feedback POST kicks off a fire-and-forget run_loop --once:
+// ingest (cursor-tracked, idempotent) + threshold-check + retrain
+// when ready. Deduped so a burst of feedback doesn't fan out into
+// N concurrent subprocesses. The trainer itself runs in its own
+// subprocess inside run_loop, so even a real retrain spike is
+// isolated from the API server. Disable with ACTIVE_LEARNING_AUTOTRAIN=0.
+let _activeLearningRunning = false;
+let _activeLearningPending  = false;
+function triggerActiveLearning(reason) {
+  if (process.env.ACTIVE_LEARNING_AUTOTRAIN === '0') return;
+  if (_activeLearningRunning) {
+    // Coalesce: if a cycle is already running, mark that another
+    // pass should kick off when the current one finishes. New rows
+    // arriving mid-cycle aren't lost — they'll be picked up next.
+    _activeLearningPending = true;
+    return;
+  }
+  _activeLearningRunning = true;
+  _activeLearningPending = false;
+  const repoRoot = path.join(__dirname, '..');
+  let child;
+  try {
+    child = require('child_process').spawn(
+      pythonCmd,
+      ['-m', 'retraining_learning.run_loop', '--once'],
+      { cwd: repoRoot, detached: true, stdio: 'ignore', windowsHide: true }
+    );
+  } catch (err) {
+    _activeLearningRunning = false;
+    logger.warn(`[active_learning] spawn threw: ${err.message}`);
+    return;
+  }
+  logger.info(`[active_learning] cycle started (reason=${reason}, pid=${child.pid})`);
+  child.on('exit', (code) => {
+    _activeLearningRunning = false;
+    logger.info(`[active_learning] cycle done (exit ${code})`);
+    if (_activeLearningPending) {
+      _activeLearningPending = false;
+      setImmediate(() => triggerActiveLearning('coalesced'));
+    }
+  });
+  child.on('error', (err) => {
+    _activeLearningRunning = false;
+    logger.warn(`[active_learning] failed to spawn: ${err.message}`);
+  });
+  child.unref();
+}
+
 async function cropBoxImage(rackId, box, destPath, padRatio = 0.25, minPad = 6) {
   if (!Array.isArray(box) || box.length !== 4) return false;
   const meta = readMeta(rackId);
@@ -3275,7 +4382,7 @@ async function cropBoxImage(rackId, box, destPath, padRatio = 0.25, minPad = 6) 
       .toFile(destPath);
     return true;
   } catch (err) {
-    console.error('cropBoxImage failed:', err.message);
+    logger.error('cropBoxImage failed:', err.message);
     return false;
   }
 }
@@ -3293,6 +4400,17 @@ app.post('/api/feedback', async (req, res) => {
     return res.status(400).json({
       error: 'When is_correct is false, supply at least one of actual_port, actual_cable_color',
     });
+  }
+
+  // Tenant guard: feedback endpoints take scanId in the BODY (not the path),
+  // so the global app.param('rackId',...) doesn't fire here. Verify the
+  // calling user's tenant owns this rack before letting them write feedback.
+  const fbAuth = softAuthPayload(req);
+  if (fbAuth?.tenantId && !tenant.tenantOwnsRack(fbAuth.tenantId, scanId)) {
+    logger.warn({ event: 'tenant.access_denied', tenantId: fbAuth.tenantId,
+      rackId: scanId, route: '/api/feedback' },
+      `tenant ${fbAuth.tenantId} blocked from feedback on rack ${scanId}`);
+    return res.status(404).json({ error: `Scan ${scanId} not found` });
   }
 
   const meta = readMeta(scanId);
@@ -3363,10 +4481,10 @@ app.post('/api/feedback', async (req, res) => {
   const line = JSON.stringify(entry) + '\n';
 
   try {
-    fs.appendFileSync(feedbackLogPath, line);
-    fs.appendFileSync(path.join(rackDir, 'feedback.jsonl'), line);
+    appendLineWithRotation(feedbackLogPath, line);
+    appendLineWithRotation(path.join(rackDir, 'feedback.jsonl'), line);
   } catch (err) {
-    console.error('feedback write failed:', err.message);
+    logger.error('feedback write failed:', err.message);
     audit.log({ req, action: 'feedback.submit', status: 'fail', targetType: 'rack', targetId: scanId,
                 error: err.message, payload: { feedback_type: 'port' } });
     return res.status(500).json({ error: 'Failed to save feedback' });
@@ -3375,6 +4493,7 @@ app.post('/api/feedback', async (req, res) => {
   audit.log({ req, action: 'feedback.submit', status: 'ok', targetType: 'rack', targetId: scanId,
               payload: { feedback_type: 'port', device_index: Number(device_index), is_correct } });
   scheduleCanonicalRefresh(scanId);
+  triggerActiveLearning('port-feedback');
   res.json({ ok: true, port_crop_image: portCropSavedAs, device_crop_image: deviceCropSavedAs });
 });
 
@@ -3389,6 +4508,12 @@ app.post('/api/feedback/device', async (req, res) => {
   }
   if (!is_correct && !actual_device_class) {
     return res.status(400).json({ error: 'actual_device_class is required when is_correct is false' });
+  }
+
+  // Tenant guard (scanId is in body, not path)
+  const fbAuth = softAuthPayload(req);
+  if (fbAuth?.tenantId && !tenant.tenantOwnsRack(fbAuth.tenantId, scanId)) {
+    return res.status(404).json({ error: `Scan ${scanId} not found` });
   }
 
   const meta = readMeta(scanId);
@@ -3433,10 +4558,10 @@ app.post('/api/feedback/device', async (req, res) => {
   const line = JSON.stringify(entry) + '\n';
 
   try {
-    fs.appendFileSync(feedbackLogPath, line);
-    fs.appendFileSync(path.join(rackDir, 'feedback.jsonl'), line);
+    appendLineWithRotation(feedbackLogPath, line);
+    appendLineWithRotation(path.join(rackDir, 'feedback.jsonl'), line);
   } catch (err) {
-    console.error('device feedback write failed:', err.message);
+    logger.error('device feedback write failed:', err.message);
     audit.log({ req, action: 'feedback.submit', status: 'fail', targetType: 'rack', targetId: scanId,
                 error: err.message, payload: { feedback_type: 'device' } });
     return res.status(500).json({ error: 'Failed to save feedback' });
@@ -3445,6 +4570,7 @@ app.post('/api/feedback/device', async (req, res) => {
   audit.log({ req, action: 'feedback.submit', status: 'ok', targetType: 'rack', targetId: scanId,
               payload: { feedback_type: 'device', device_index: Number(device_index), is_correct } });
   scheduleCanonicalRefresh(scanId);
+  triggerActiveLearning('device-feedback');
   res.json({ ok: true, device_crop_image: deviceCropSavedAs });
 });
 
@@ -3461,6 +4587,12 @@ app.post('/api/feedback/port-count', async (req, res) => {
   const actualNum = actual_port_count == null ? null : Number(actual_port_count);
   if (!is_correct && (actualNum == null || isNaN(actualNum) || actualNum < 0)) {
     return res.status(400).json({ error: 'actual_port_count is required (>= 0) when is_correct is false' });
+  }
+
+  // Tenant guard (scanId is in body, not path)
+  const fbAuth = softAuthPayload(req);
+  if (fbAuth?.tenantId && !tenant.tenantOwnsRack(fbAuth.tenantId, scanId)) {
+    return res.status(404).json({ error: `Scan ${scanId} not found` });
   }
 
   const meta = readMeta(scanId);
@@ -3506,10 +4638,10 @@ app.post('/api/feedback/port-count', async (req, res) => {
   const line = JSON.stringify(entry) + '\n';
 
   try {
-    fs.appendFileSync(feedbackLogPath, line);
-    fs.appendFileSync(path.join(rackDir, 'feedback.jsonl'), line);
+    appendLineWithRotation(feedbackLogPath, line);
+    appendLineWithRotation(path.join(rackDir, 'feedback.jsonl'), line);
   } catch (err) {
-    console.error('port-count feedback write failed:', err.message);
+    logger.error('port-count feedback write failed:', err.message);
     audit.log({ req, action: 'feedback.submit', status: 'fail', targetType: 'rack', targetId: scanId,
                 error: err.message, payload: { feedback_type: 'port_count' } });
     return res.status(500).json({ error: 'Failed to save feedback' });
@@ -3517,6 +4649,7 @@ app.post('/api/feedback/port-count', async (req, res) => {
 
   audit.log({ req, action: 'feedback.submit', status: 'ok', targetType: 'rack', targetId: scanId,
               payload: { feedback_type: 'port_count', device_index: Number(device_index), is_correct, actual_port_count: actualNum } });
+  triggerActiveLearning('port-count-feedback');
 
   // If the user supplied an actual count, re-run port detection for this
   // device with that target so the device's port_count reflects ground truth.
@@ -3535,7 +4668,7 @@ app.post('/api/feedback/port-count', async (req, res) => {
         relabel = { ok: false, error: r?.error || 'relabel failed' };
       }
     } catch (err) {
-      console.error('relabel_port_count failed:', err.message);
+      logger.error('relabel_port_count failed:', err.message);
       relabel = { ok: false, error: err.message };
     }
   }
@@ -3587,9 +4720,14 @@ app.get(/^\/(?!api|uploads|outputs).*/, (req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.message);
+  logger.error(err.message);
   res.status(500).json({ error: err.message });
 });
+
+// Global error handler — must be installed AFTER all routes/middleware so
+// it catches anything that throws or calls next(err). Logs with full
+// context (requestId, route, stack) and returns a sanitized JSON body.
+app.use(o11y.errorHandler);
 
 // Only bind the port when run directly (`node app.js` / `npm start`). Loading
 // app.js as a module (tests, scripts, in-process tools like buildScanReportPDF)
@@ -3606,26 +4744,33 @@ if (require.main === module) {
   const tryListen = () => {
     attempt += 1;
     server = app.listen(PORT, () => {
-      console.log(attempt === 1
-        ? `RackTrack API  http://localhost:${PORT}`
-        : `RackTrack API  http://localhost:${PORT}  (after ${attempt} attempts)`);
-      console.log(`Outputs dir    ${outputsDir}`);
-      console.log(`Workers        ${WORKER_COUNT}`);
+      o11y.logBootBanner({ port: PORT, workers: WORKER_COUNT });
+      logger.info({
+        event: 'server.listening',
+        attempt, outputsDir, workers: WORKER_COUNT,
+      }, `listening on :${PORT}${attempt > 1 ? ` (after ${attempt} attempts)` : ''}`);
     });
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE' && attempt < MAX_ATTEMPTS) {
-        console.error(`Port ${PORT} is already in use (attempt ${attempt}/${MAX_ATTEMPTS}). Retrying in 3 seconds...`);
+        logger.warn({
+          event: 'server.eaddrinuse',
+          port: PORT, attempt, maxAttempts: MAX_ATTEMPTS,
+        }, `port ${PORT} in use, retrying in 3s`);
         setTimeout(tryListen, 3000);
         return;
       }
-      console.error(`[server] listen failed: ${err.code || err.message}`);
+      logger.fatal({
+        event: 'server.listen_failed',
+        err: err.code || err.message,
+      }, 'listen failed');
       process.exit(1);
     });
   };
   tryListen();
 
   const gracefulShutdown = (signal) => {
-    console.log(`\n[shutdown] ${signal} received, stopping workers and HTTP server`);
+    logger.info({ event: 'server.shutdown', signal },
+      `${signal} received — stopping workers and HTTP server`);
     pool.shutdown().finally(() => {
       if (server) server.close(() => process.exit(0));
       else process.exit(0);

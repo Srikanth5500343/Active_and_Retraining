@@ -22,6 +22,14 @@ allprojects {
         google()
         mavenCentral()
     }
+    configurations.all {
+        resolutionStrategy {
+            // Pin androidx.core to a version compatible with AGP 8.2.1 / compileSdk 34.
+            // Without this, transitive deps pull androidx.core 1.17+ which demands AGP 8.9+.
+            force 'androidx.core:core:1.13.1'
+            force 'androidx.core:core-ktx:1.13.1'
+        }
+    }
 }
 
 task clean(type: Delete) {

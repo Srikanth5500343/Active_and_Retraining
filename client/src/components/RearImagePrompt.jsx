@@ -31,7 +31,7 @@ export default function RearImagePrompt({ rackId, onComplete, onSkip }) {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'OCR analysis failed');
+        throw new Error(data.error || 'Couldn’t read this image. Try a clearer photo.');
       }
 
       // Now fetch the merged labels (front + rear)

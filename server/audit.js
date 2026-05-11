@@ -53,12 +53,39 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_audit_target    ON audit_log(target_type, target_id);
 `);
 
-const insertStmt = db.prepare(`
-  INSERT INTO audit_log
-    (user_id, username, action, target_type, target_id, status, ip, user_agent, payload, error)
-  VALUES
-    (@user_id, @username, @action, @target_type, @target_id, @status, @ip, @user_agent, @payload, @error)
-`);
+// tenant_id column is added by auth.js's tenant migration (idempotent
+// ALTER TABLE). The schema may not have it yet on the very first boot
+// before auth.js runs, so we detect at prepare-time and pick the right
+// INSERT shape.
+function _prepInsert() {
+  const cols = db.prepare('PRAGMA table_info(audit_log)').all();
+  const hasTenant = cols.some(c => c.name === 'tenant_id');
+  if (hasTenant) {
+    return {
+      hasTenant: true,
+      stmt: db.prepare(`
+        INSERT INTO audit_log
+          (user_id, username, tenant_id, action, target_type, target_id,
+           status, ip, user_agent, payload, error)
+        VALUES
+          (@user_id, @username, @tenant_id, @action, @target_type, @target_id,
+           @status, @ip, @user_agent, @payload, @error)
+      `),
+    };
+  }
+  return {
+    hasTenant: false,
+    stmt: db.prepare(`
+      INSERT INTO audit_log
+        (user_id, username, action, target_type, target_id, status, ip, user_agent, payload, error)
+      VALUES
+        (@user_id, @username, @action, @target_type, @target_id, @status, @ip, @user_agent, @payload, @error)
+    `),
+  };
+}
+let _ins = _prepInsert();
+const insertStmt = _ins.stmt;
+const _hasTenantCol = _ins.hasTenant;
 
 const PAYLOAD_LIMIT = 8 * 1024;
 
@@ -84,6 +111,14 @@ function safeStringify(payload) {
   }
 }
 
+// Lazy-load observability so audit.js can still be required from contexts
+// where the observability module isn't bootstrapped (e.g. one-off scripts).
+// Falls back to console.* in that case so logs aren't lost.
+function _o11y() {
+  try { return require('./lib/observability'); }
+  catch { return null; }
+}
+
 function log(opts = {}) {
   const {
     req,
@@ -96,35 +131,68 @@ function log(opts = {}) {
     payload    = null,
   } = opts;
 
+  const o = _o11y();
+  const fallbackWarn = (msg) => o ? o.logger.warn({ kind: 'audit', drop: true }, msg) : console.warn(msg);
+
   if (!action || typeof action !== 'string') {
-    console.warn('[audit] dropped event: missing action');
+    fallbackWarn('[audit] dropped event: missing action');
     return;
   }
   if (status !== 'ok' && status !== 'fail') {
-    console.warn(`[audit] dropped event "${action}": invalid status "${status}"`);
+    fallbackWarn(`[audit] dropped event "${action}": invalid status "${status}"`);
     return;
   }
 
   // Resolve user from req.user (set by requireAuth) if not passed explicitly.
   const u = user || req?.user || null;
   const targetIdStr = targetId == null ? null : String(targetId);
+  const ip = clientIp(req);
+  const userAgent = req?.headers?.['user-agent']?.slice(0, 512) ?? null;
+  // Tenant snapshot at write time so the audit row stays correct even
+  // if the user later moves tenants (rare but possible via admin tools).
+  const tenantId = u?.tenant_id ?? u?.tenant?.id ?? null;
 
   try {
-    insertStmt.run({
+    const params = {
       user_id:     u?.id ?? null,
       username:    u?.username ?? null,
       action,
       target_type: targetType,
       target_id:   targetIdStr,
       status,
-      ip:          clientIp(req),
-      user_agent:  req?.headers?.['user-agent']?.slice(0, 512) ?? null,
+      ip,
+      user_agent:  userAgent,
       payload:     safeStringify(payload),
       error:       error ? String(error).slice(0, 1024) : null,
-    });
+    };
+    if (_hasTenantCol) params.tenant_id = tenantId;
+    insertStmt.run(params);
   } catch (err) {
-    // Never let audit failures break the caller. Surface to console for ops.
-    console.error('[audit] failed to record event', { action, targetId: targetIdStr, err: err.message });
+    // Never let audit failures break the caller. Surface to log for ops.
+    if (o) {
+      o.logger.error({
+        kind: 'audit', subkind: 'persist_failed',
+        action, targetId: targetIdStr, err: err.message,
+      }, 'audit DB write failed');
+    } else {
+      console.error('[audit] failed to record event', { action, targetId: targetIdStr, err: err.message });
+    }
+  }
+
+  // Mirror to structured log stream + bump audit-event counter so the same
+  // trail is queryable in logs/aggregators, not just SQLite. Best-effort —
+  // a failure here must not affect the caller.
+  if (o) {
+    try {
+      o.emitAudit({
+        action, status, targetType, targetId: targetIdStr,
+        userId: u?.id ?? null, username: u?.username ?? null,
+        tenantId,
+        ip, userAgent,
+        requestId: req?.id ?? null,
+        error: error ? String(error).slice(0, 1024) : null,
+      });
+    } catch { /* swallow */ }
   }
 }
 
@@ -134,6 +202,7 @@ function log(opts = {}) {
  */
 function query({
   userId   = undefined,
+  tenantId = undefined,   // restrict to one tenant (multi-tenancy guard)
   action   = undefined,
   targetType = undefined,
   targetId = undefined,
@@ -149,6 +218,10 @@ function query({
   if (userId !== undefined && userId !== null && userId !== '') {
     where.push('user_id = @userId');
     params.userId = Number(userId);
+  }
+  if (tenantId !== undefined && tenantId !== null && tenantId !== '' && _hasTenantCol) {
+    where.push('tenant_id = @tenantId');
+    params.tenantId = Number(tenantId);
   }
   if (action) {
     // Allow wildcard suffix like 'scan.*'

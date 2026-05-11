@@ -1,4 +1,4 @@
-.scan {
+﻿.scan {
   background: rgba(1, 8, 24, 0.42);
   overflow: hidden;
   position: relative;
@@ -336,6 +336,40 @@
   display:flex; align-items:stretch;
 }
 .camVideo { width:100%; object-fit:cover; display:block; flex:1; }
+
+/* ── Live detection overlay (drawn on top of <video>) ─────── */
+.liveOverlay {
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:5;
+}
+.liveBox {
+  position:absolute;
+  border:2px solid #22d3ee;
+  border-radius:6px;
+  box-shadow:0 0 12px rgba(0,0,0,0.55);
+  transition:left .18s linear, top .18s linear, width .18s linear, height .18s linear;
+}
+.liveChip {
+  position:absolute;
+  top:-22px; left:-2px;
+  padding:3px 8px;
+  background:#22d3ee;
+  color:#000;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.02em;
+  line-height:1;
+  border-radius:5px 5px 0 0;
+  white-space:nowrap;
+  box-shadow:0 1px 6px rgba(0,0,0,0.45);
+}
+.liveChipSub {
+  font-weight:600;
+  opacity:.8;
+}
+
 .flashLayer { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:20; transition:opacity .08s; }
 .flashOn    { opacity:.85; }
 .scanBar {
@@ -579,146 +613,146 @@
 }
 :global([data-theme='light']) .amb {
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(123, 117, 192, 0.22) 0%, rgba(91, 84, 176, 0.08) 40%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 0% 80%, rgba(75, 69, 160, 0.14) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 40% at 100% 90%, rgba(123, 117, 192, 0.10) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(129, 140, 248, 0.22) 0%, rgba(99, 102, 241, 0.08) 40%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 0% 80%, rgba(99, 102, 241, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 100% 90%, rgba(129, 140, 248, 0.10) 0%, transparent 50%);
 }
 
 :global([data-theme='light']) .header {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 247, 251, 0.85));
-  border-bottom: 1px solid #E8E6EF;
-  box-shadow: 0 1px 0 rgba(75, 69, 160, 0.04);
+  border-bottom: 1px solid #FFFFFF;
+  box-shadow: 0 1px 0 rgba(99, 102, 241, 0.04);
 }
 :global([data-theme='light']) .headerTitle {
-  background: linear-gradient(135deg, #4B45A0 0%, #5B54B0 50%, #7B75C0 100%);
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   filter: none;
 }
 
-:global([data-theme='light']) .scanLabel { color: #5B54B0; }
+:global([data-theme='light']) .scanLabel { color: #6366F1; }
 :global([data-theme='light']) .scanHeadline {
-  background: linear-gradient(135deg, #4B45A0 0%, #5B54B0 50%, #7B75C0 100%);
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
-:global([data-theme='light']) .scanCopy { color: #4A4A5A; }
+:global([data-theme='light']) .scanCopy { color: #6B7280; }
 
 :global([data-theme='light']) .tipChip {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #4A4A5A;
-  box-shadow: 0 1px 2px rgba(75, 69, 160, 0.04);
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.04);
 }
 
 /* Tabs — light pills */
 :global([data-theme='light']) .tabs {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
+  border: 1px solid #FFFFFF;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: 0 2px 8px rgba(75, 69, 160, 0.06);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
 }
 :global([data-theme='light']) .tab {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 :global([data-theme='light']) .tab:hover {
-  color: #4B45A0;
-  background: rgba(91, 84, 176, 0.06);
+  color: #4F46E5;
+  background: rgba(99, 102, 241, 0.06);
 }
 :global([data-theme='light']) .tabOn {
-  background: rgba(91, 84, 176, 0.12) !important;
-  color: #4B45A0 !important;
-  border-color: rgba(91, 84, 176, 0.32) !important;
-  box-shadow: 0 0 0 1px rgba(91, 84, 176, 0.18) !important;
+  background: rgba(99, 102, 241, 0.12) !important;
+  color: #4F46E5 !important;
+  border-color: rgba(99, 102, 241, 0.32) !important;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.18) !important;
 }
 
 /* Media + drop zone — white card, indigo dashed border */
 :global([data-theme='light']) .mediaBox {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
+  border: 1px solid #FFFFFF;
   box-shadow:
-    0 1px 2px rgba(75, 69, 160, 0.04),
-    0 12px 32px rgba(75, 69, 160, 0.10);
+    0 1px 2px rgba(99, 102, 241, 0.04),
+    0 12px 32px rgba(99, 102, 241, 0.10);
 }
 :global([data-theme='light']) .dropZone {
   background:
     repeating-linear-gradient(
       -45deg,
-      rgba(91, 84, 176, 0.025) 0px,
-      rgba(91, 84, 176, 0.025) 1px,
+      rgba(99, 102, 241, 0.025) 0px,
+      rgba(99, 102, 241, 0.025) 1px,
       transparent 1px,
       transparent 18px
     );
-  border: 1.5px dashed #C8C4E4;
+  border: 1.5px dashed #E5E7EB;
 }
 :global([data-theme='light']) .dropZone:hover,
 :global([data-theme='light']) .dragOver {
   background:
     repeating-linear-gradient(
       -45deg,
-      rgba(91, 84, 176, 0.05) 0px,
-      rgba(91, 84, 176, 0.05) 1px,
+      rgba(99, 102, 241, 0.05) 0px,
+      rgba(99, 102, 241, 0.05) 1px,
       transparent 1px,
       transparent 18px
     );
-  border-color: #7B75C0;
+  border-color: #818CF8;
 }
 
-:global([data-theme='light']) .zc { border-color: #7B75C0; }
+:global([data-theme='light']) .zc { border-color: #818CF8; }
 :global([data-theme='light']) .dragOver .zc,
 :global([data-theme='light']) .dropZone:hover .zc {
-  border-color: #4B45A0;
-  box-shadow: 0 0 10px rgba(75, 69, 160, 0.28);
+  border-color: #4F46E5;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.28);
 }
 
 :global([data-theme='light']) .iconPulse {
-  background: radial-gradient(ellipse, rgba(91, 84, 176, 0.18) 0%, transparent 65%);
+  background: radial-gradient(ellipse, rgba(99, 102, 241, 0.18) 0%, transparent 65%);
 }
 :global([data-theme='light']) .iconPulse2 {
-  background: radial-gradient(ellipse, rgba(91, 84, 176, 0.10) 0%, transparent 60%);
+  background: radial-gradient(ellipse, rgba(99, 102, 241, 0.10) 0%, transparent 60%);
 }
 :global([data-theme='light']) .iconWrap {
-  background: rgba(91, 84, 176, 0.08);
-  border: 1px solid #C8C4E4;
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid #E5E7EB;
+  color: #4F46E5;
   box-shadow:
-    0 0 24px rgba(91, 84, 176, 0.16),
+    0 0 24px rgba(99, 102, 241, 0.16),
     0 1px 0 rgba(255, 255, 255, 0.6) inset;
 }
 :global([data-theme='light']) .dragOver .iconWrap,
 :global([data-theme='light']) .dropZone:hover .iconWrap {
-  border-color: #7B75C0;
+  border-color: #818CF8;
   box-shadow:
-    0 0 32px rgba(91, 84, 176, 0.28),
+    0 0 32px rgba(99, 102, 241, 0.28),
     0 1px 0 rgba(255, 255, 255, 0.7) inset;
 }
 
-:global([data-theme='light']) .dropTitle { color: #1A1A2E; }
-:global([data-theme='light']) .dropSub   { color: #4A4A5A; }
+:global([data-theme='light']) .dropTitle { color: #111827; }
+:global([data-theme='light']) .dropSub   { color: #6B7280; }
 
 /* Preview */
 :global([data-theme='light']) .previewGrid {
   background-image:
-    linear-gradient(rgba(91, 84, 176, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(91, 84, 176, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
 }
 :global([data-theme='light']) .previewBar {
-  background: linear-gradient(90deg, transparent, #5B54B0, transparent);
-  box-shadow: 0 0 14px #7B75C0;
+  background: linear-gradient(90deg, transparent, #6366F1, transparent);
+  box-shadow: 0 0 14px #818CF8;
 }
 :global([data-theme='light']) .previewCloseBtn {
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid #C8C4E4;
-  color: #4B45A0;
+  border: 1px solid #E5E7EB;
+  color: #4F46E5;
 }
 :global([data-theme='light']) .previewCloseBtn:hover {
   background: #FFFFFF;
-  border-color: #7B75C0;
+  border-color: #818CF8;
 }
 
-:global([data-theme='light']) .fieldLabel { color: #4A4A5A; }
-:global([data-theme='light']) .fieldHelp  { color: #4A4A5A; }
+:global([data-theme='light']) .fieldLabel { color: #6B7280; }
+:global([data-theme='light']) .fieldHelp  { color: #6B7280; }
 
 :global([data-theme='light']) .errBox {
   background: rgba(239, 68, 68, 0.08);
@@ -743,19 +777,19 @@
   border-color: rgba(255, 255, 255, 0.35);
 }
 :global([data-theme='light']) .modeBtnOn {
-  background: rgba(91, 84, 176, 0.55);
-  box-shadow: 0 0 12px rgba(91, 84, 176, 0.45);
+  background: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.45);
 }
 
 /* Camera wrap — lavender placeholder when no video stream yet */
 :global([data-theme='light']) .camWrap {
-  background: #E8E6EF;
+  background: #FFFFFF;
 }
 :global([data-theme='light']) .camWrapFull {
-  background: #1A1A2E;  /* fullscreen camera stays dark — better video contrast */
+  background: #111827;  /* fullscreen camera stays dark — better video contrast */
 }
-:global([data-theme='light']) .camErrorIcon { color: rgba(91, 84, 176, 0.55); }
-:global([data-theme='light']) .camErrorText { color: #4A4A5A; }
+:global([data-theme='light']) .camErrorIcon { color: rgba(99, 102, 241, 0.55); }
+:global([data-theme='light']) .camErrorText { color: #6B7280; }
 
 /* Analyzing overlay */
 :global([data-theme='light']) .overlay {
@@ -764,51 +798,51 @@
   -webkit-backdrop-filter: blur(28px);
 }
 :global([data-theme='light']) .ovRack3D {
-  filter: drop-shadow(0 6px 18px rgba(91, 84, 176, 0.32));
+  filter: drop-shadow(0 6px 18px rgba(99, 102, 241, 0.32));
 }
 :global([data-theme='light']) .ovRack3DGlow {
   background: radial-gradient(circle at center,
-    rgba(123, 117, 192, 0.30) 0%,
-    rgba(91, 84, 176, 0.16) 40%,
+    rgba(129, 140, 248, 0.30) 0%,
+    rgba(99, 102, 241, 0.16) 40%,
     transparent 70%);
 }
-:global([data-theme='light']) .ovTitle { color: #1A1A2E; }
-:global([data-theme='light']) .ovStep  { color: #5B54B0; }
+:global([data-theme='light']) .ovTitle { color: #111827; }
+:global([data-theme='light']) .ovStep  { color: #6366F1; }
 :global([data-theme='light']) .ovTrack {
-  background: rgba(91, 84, 176, 0.10);
-  border-color: rgba(91, 84, 176, 0.18);
+  background: rgba(99, 102, 241, 0.10);
+  border-color: rgba(99, 102, 241, 0.18);
 }
 :global([data-theme='light']) .ovFill {
-  background: linear-gradient(90deg, #4B45A0, #7B75C0);
-  box-shadow: 0 0 8px rgba(91, 84, 176, 0.45);
+  background: linear-gradient(90deg, #4F46E5, #818CF8);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.45);
 }
 :global([data-theme='light']) .ovGlow {
-  background: radial-gradient(#7B75C0, transparent 70%);
+  background: radial-gradient(#818CF8, transparent 70%);
 }
-:global([data-theme='light']) .ovPct { color: #5B54B0; }
-:global([data-theme='light']) .ovStepRow { color: #4A4A5A; }
+:global([data-theme='light']) .ovPct { color: #6366F1; }
+:global([data-theme='light']) .ovStepRow { color: #6B7280; }
 :global([data-theme='light']) .ovDone    { color: #16A34A; }
-:global([data-theme='light']) .ovActive  { color: #1A1A2E; }
+:global([data-theme='light']) .ovActive  { color: #111827; }
 :global([data-theme='light']) .ovSpinner {
-  border-color: rgba(91, 84, 176, 0.18);
-  border-top-color: #5B54B0;
+  border-color: rgba(99, 102, 241, 0.18);
+  border-top-color: #6366F1;
 }
 :global([data-theme='light']) .ovDot {
-  background: rgba(91, 84, 176, 0.32);
+  background: rgba(99, 102, 241, 0.32);
 }
 
 /* Preview footer */
 :global([data-theme='light']) .previewFooter {
   background: rgba(255, 255, 255, 0.94);
-  border-top: 1px solid #E8E6EF;
+  border-top: 1px solid #FFFFFF;
 }
 :global([data-theme='light']) .previewReady { color: #16A34A; }
-:global([data-theme='light']) .previewFileName { color: #4A4A5A; }
+:global([data-theme='light']) .previewFileName { color: #6B7280; }
 :global([data-theme='light']) .clearBtn {
-  background: rgba(91, 84, 176, 0.06);
-  border-color: #C8C4E4;
-  color: #5B54B0;
+  background: rgba(99, 102, 241, 0.06);
+  border-color: #E5E7EB;
+  color: #6366F1;
 }
 :global([data-theme='light']) .clearBtn:hover {
-  background: rgba(91, 84, 176, 0.12);
+  background: rgba(99, 102, 241, 0.12);
 }

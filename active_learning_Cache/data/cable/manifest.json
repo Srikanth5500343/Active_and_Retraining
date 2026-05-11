@@ -1,0 +1,9 @@
+{
+  "model": "cable",
+  "pending": 3,
+  "total": 3,
+  "threshold": 200,
+  "last_export": null,
+  "history": [],
+  "refreshed_ts": "2026-05-08T11:53:49+00:00"
+}

@@ -1,0 +1,9 @@
+{
+  "model": "port_count",
+  "pending": 1,
+  "total": 1,
+  "threshold": 100,
+  "last_export": null,
+  "history": [],
+  "refreshed_ts": "2026-05-07T08:28:58+00:00"
+}

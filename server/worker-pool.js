@@ -14,6 +14,28 @@ const { EventEmitter } = require('events');
 const { randomUUID } = require('crypto');
 const path = require('path');
 
+// Lazy-load observability so this module can also be required from non-server
+// contexts. When present we use structured logging + worker-event counters.
+let _o11y = null;
+function o11y() {
+  if (_o11y === null) {
+    try { _o11y = require('./lib/observability'); }
+    catch { _o11y = false; }
+  }
+  return _o11y || null;
+}
+function wlog(level, fields, msg) {
+  const o = o11y();
+  if (o) o.logger[level](fields, msg);
+  else console[level === 'error' || level === 'fatal' ? 'error' : (level === 'warn' ? 'warn' : 'log')](
+    `[${fields.worker !== undefined ? `worker ${fields.worker}` : 'pool'}] ${msg}`
+  );
+}
+function wcount(event) {
+  const o = o11y();
+  if (o) o.metrics.workerEvents.labels(event).inc();
+}
+
 class Worker extends EventEmitter {
   constructor(pythonCmd, pythonArgs, cwd, index, env) {
     super();
@@ -28,10 +50,12 @@ class Worker extends EventEmitter {
     this.proc.stdout.on('data', (chunk) => this._onStdout(chunk));
     this.proc.stderr.on('data', (chunk) => {
       const s = chunk.toString().trimEnd();
-      if (s) console.error(`[worker ${index}] ${s}`);
+      if (s) wlog('warn', { worker: index, kind: 'worker.stderr' }, s);
     });
     this.proc.on('exit', (code, signal) => {
-      console.error(`[worker ${index}] exited code=${code} signal=${signal}`);
+      wcount('exit');
+      wlog('warn', { worker: index, code, signal, kind: 'worker.exit' },
+        `worker ${index} exited code=${code} signal=${signal}`);
       for (const { reject } of this.pending.values()) {
         reject(new Error('worker exited mid-request'));
       }
@@ -40,8 +64,11 @@ class Worker extends EventEmitter {
       this.emit('exit', { code, signal });
     });
     this.proc.on('error', (err) => {
-      console.error(`[worker ${index}] spawn error: ${err.message}`);
+      wcount('spawn_error');
+      wlog('error', { worker: index, err: err.message, kind: 'worker.spawn_error' },
+        `worker ${index} spawn error: ${err.message}`);
     });
+    wcount('spawn');
   }
 
   _onStdout(chunk) {
@@ -54,7 +81,12 @@ class Worker extends EventEmitter {
 
       let msg;
       try { msg = JSON.parse(line); }
-      catch { console.error(`[worker ${this.index}] bad JSON on stdout: ${line.slice(0, 200)}`); continue; }
+      catch {
+        wcount('bad_json');
+        wlog('error', { worker: this.index, kind: 'worker.bad_json', line: line.slice(0, 200) },
+          `bad JSON on stdout`);
+        continue;
+      }
 
       if (msg.ready === true) {
         this.ready = true;
@@ -111,7 +143,9 @@ class WorkerPool extends EventEmitter {
   _spawn(index) {
     const w = new Worker(this.pythonCmd, this.pythonArgs, this.cwd, index, this.env);
     w.on('ready', () => {
-      console.log(`[pool] worker ${index} ready`);
+      wcount('ready');
+      wlog('info', { worker: index, kind: 'worker.ready' },
+        `worker ${index} ready`);
       this._drain();
     });
     w.on('free', () => this._drain());

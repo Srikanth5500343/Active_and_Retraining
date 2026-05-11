@@ -59,10 +59,12 @@ export function AuthProvider({ children }) {
     } finally { setLoading(false); }
   }, []);
 
-  const signup = useCallback(async (email, username, password) => {
+  const signup = useCallback(async (email, username, password, company = '') => {
     setLoading(true);
     try {
-      return await callApi('/api/auth/signup', { body: { email, username, password } });
+      return await callApi('/api/auth/signup', {
+        body: { email, username, password, company },
+      });
     } finally { setLoading(false); }
   }, []);
 

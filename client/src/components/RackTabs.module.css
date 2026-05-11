@@ -1,0 +1,222 @@
+/* Scan-group bar — horizontal, three-zone layout:
+     [ count badge ] · [ rack rail ] · [ combined-3D button ]
+   Defaults target the LIGHT theme; a [data-theme="dark"] override at the
+   end retunes for dark surfaces. */
+
+.bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin: 10px 12px 6px;
+  padding: 0;
+  background: linear-gradient(135deg, #ffffff 0%, #f4f1ff 100%);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 4px 14px -8px rgba(124, 58, 237, 0.25);
+  overflow: hidden;
+}
+
+/* ── Left zone: count badge ───────────────────────────────── */
+.countBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.10), rgba(34, 211, 238, 0.06));
+  border-right: 1px solid rgba(124, 58, 237, 0.12);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+.countNum {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  color: #4c1d95;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #4c1d95, #0e7490);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.countWord {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(76, 29, 149, 0.7);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Middle zone: rack rail ───────────────────────────────── */
+.rail {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  margin: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rail::-webkit-scrollbar { display: none; }
+.railItem {
+  flex-shrink: 0;
+}
+
+.rack {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #4c1d95;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.rack:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(8, 145, 178, 0.25);
+  color: #0e7490;
+}
+
+.rackActive {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(124, 58, 237, 0.12));
+  border-color: rgba(8, 145, 178, 0.45);
+  color: #0e7490;
+  cursor: default;
+  box-shadow: 0 2px 8px -3px rgba(8, 145, 178, 0.30);
+}
+
+.rackBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.12);
+  color: #4c1d95;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.rackActive .rackBadge {
+  background: linear-gradient(135deg, #22d3ee, #7c3aed);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(8, 145, 178, 0.4);
+}
+
+.rackName {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Subtle moving "you are here" dot below the active rack name */
+.activeDot {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22d3ee, #7c3aed);
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.6);
+}
+
+/* ── Right zone: combined 3D action ───────────────────────── */
+.combined {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #7c3aed, #22d3ee);
+  border: none;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+.combined:hover {
+  filter: brightness(1.08) saturate(1.1);
+  transform: translateX(1px);
+}
+.combinedIcon {
+  opacity: 0.95;
+}
+
+/* ── Mobile: stack the layout, drop the count word ───────── */
+@media (max-width: 600px) {
+  .bar {
+    margin: 8px 10px 4px;
+  }
+  .countBadge {
+    min-width: 48px;
+    padding: 8px 10px;
+  }
+  .countWord { display: none; }
+  .rail { padding: 4px 6px; gap: 3px; }
+  .rack { padding: 5px 9px 5px 5px; font-size: 11.5px; }
+  .rackBadge { width: 20px; height: 20px; font-size: 10px; }
+  .combined { padding: 0 12px; font-size: 11px; }
+}
+
+/* ── Dark theme override ──────────────────────────────────── */
+:global([data-theme="dark"]) .bar {
+  background: linear-gradient(135deg, rgba(20, 28, 50, 0.85) 0%, rgba(28, 22, 60, 0.75) 100%);
+  border-color: rgba(167, 139, 250, 0.30);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 4px 14px -8px rgba(0, 0, 0, 0.6);
+}
+:global([data-theme="dark"]) .countBadge {
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.12), rgba(34, 211, 238, 0.08));
+  border-right-color: rgba(255, 255, 255, 0.06);
+}
+:global([data-theme="dark"]) .countNum {
+  background: linear-gradient(135deg, #c4b5fd, #67e8f9);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+:global([data-theme="dark"]) .countWord {
+  color: rgba(196, 181, 253, 0.75);
+}
+:global([data-theme="dark"]) .rack {
+  color: rgba(220, 230, 250, 0.90);
+}
+:global([data-theme="dark"]) .rack:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(34, 211, 238, 0.35);
+  color: #67e8f9;
+}
+:global([data-theme="dark"]) .rackActive {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.20), rgba(167, 139, 250, 0.16));
+  border-color: rgba(34, 211, 238, 0.50);
+  color: #67e8f9;
+}
+:global([data-theme="dark"]) .rackBadge {
+  background: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
+}
+:global([data-theme="dark"]) .rackActive .rackBadge {
+  background: linear-gradient(135deg, #22d3ee, #a78bfa);
+  color: #0e1830;
+}

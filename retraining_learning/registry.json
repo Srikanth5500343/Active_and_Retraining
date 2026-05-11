@@ -1,0 +1,36 @@
+{
+  "_doc": "Production registry. Updated by retraining_learning.",
+  "devices": {
+    "production": {
+      "version": "baseline",
+      "model_path": "Models/best 32.pt",
+      "trained_on": null,
+      "metrics": {},
+      "promoted_ts": null
+    },
+    "candidates": [],
+    "history": []
+  },
+  "cable": {
+    "production": {
+      "version": "baseline",
+      "model_path": "Models/best_model_efficientnet.pth",
+      "trained_on": null,
+      "metrics": {},
+      "promoted_ts": null
+    },
+    "candidates": [],
+    "history": []
+  },
+  "port_count": {
+    "production": {
+      "version": "baseline",
+      "model_path": "Models/port_count.pt",
+      "trained_on": null,
+      "metrics": {},
+      "promoted_ts": null
+    },
+    "candidates": [],
+    "history": []
+  }
+}

@@ -4,6 +4,7 @@ import styles from './ScanPage.module.css';
 import { validateMedia } from '../utils/validateMedia';
 import { apiUrl, authFetch } from '../utils/api';
 import { triggerBackgroundProbe } from '../utils/portsProbe';
+import { prefetchScan } from '../utils/scanPrefetch';
 import { useShutter } from '../ShutterContext.jsx';
 import RearImagePrompt from '../components/RearImagePrompt.jsx';
 import MiniRack3D from '../components/MiniRack3D.jsx';
@@ -109,6 +110,7 @@ function pickRecorderMime() {
 }
 
 function CameraCapture({ onCapture, onCancel }) {
+  const navigate = useNavigate();
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
   const sampleRef = useRef(null);
@@ -123,6 +125,22 @@ function CameraCapture({ onCapture, onCancel }) {
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
   const [quality,  setQuality]  = useState({ sharp: false, framed: false, lit: false });
+
+  // ── Live detection overlay ──────────────────────────────────
+  // While the camera is streaming, sample frames at ~1Hz, send them to
+  // /api/analyze, and overlay 2D HTML labels on top of the <video>. We
+  // match each frame's detections against prior tracks by IoU so a device
+  // that briefly drops below the model's confidence threshold doesn't get
+  // a new label when it comes back, and run NMS so we never display two
+  // overlapping labels on the same physical device.
+  const [liveDevices, setLiveDevices] = useState([]); // already in display-pixel space
+  const detectionInflightRef = useRef(false);
+  const tracksRef        = useRef(new Map());
+  const nextTrackIdRef   = useRef(1);
+  const TRACK_IOU_MIN     = 0.2;
+  const TRACK_TTL_FRAMES  = 3;   // ~3 detection cycles before a missed label disappears
+  const NMS_IOU           = 0.4; // two tracks overlapping > this collapse to one
+  const DETECT_INTERVAL_MS = 400;
 
   const allGood = quality.sharp && quality.framed && quality.lit;
   const canShoot = mode === 'video' ? ready : ready && allGood;
@@ -283,6 +301,149 @@ function CameraCapture({ onCapture, onCancel }) {
     }
   }, []);
 
+  // ── Live detection loop ─────────────────────────────────
+  // Runs while the camera is ready (Photo + Video modes both). Samples
+  // a frame from <video> each tick → /api/analyze → IoU-match against
+  // existing tracks → NMS → display labels on top of the viewfinder.
+  // Single-flighted so a slow analyze doesn't queue requests.
+  useEffect(() => {
+    if (!ready) { setLiveDevices([]); return; }
+
+    // Reset tracks on each camera (re)start so stale labels from a
+    // previous viewfinder don't bleed into a fresh scene.
+    tracksRef.current.clear();
+    nextTrackIdRef.current = 1;
+    setLiveDevices([]);
+
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled || detectionInflightRef.current) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const video = videoRef.current;
+      if (!video || !video.videoWidth) return;
+
+      detectionInflightRef.current = true;
+      try {
+        const sw = video.videoWidth;
+        const sh = video.videoHeight;
+        // /api/detect runs YOLO at imgsz=320 for live throughput, so the
+        // client only needs to send 320px wide. Smaller upload + decode +
+        // inference together cuts round-trip ~3× vs 640.
+        const targetW = Math.min(sw, 320);
+        const targetH = Math.round(sh * targetW / sw);
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW; canvas.height = targetH;
+        canvas.getContext('2d').drawImage(video, 0, 0, targetW, targetH);
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.78));
+        if (!blob || cancelled) return;
+
+        const fd = new FormData();
+        fd.append('image', blob, 'live-frame.jpg');
+        const r = await authFetch(apiUrl('/api/detect'), { method: 'POST', body: fd });
+        if (cancelled) return;
+        const data = await r.json().catch(() => ({}));
+        const rawDevices = data?.devices || [];
+
+        // /api/detect returns bboxes in the JPEG's space (targetW × targetH).
+        // Scale back to source resolution so display-coord math uses one
+        // consistent space (sourceW × sourceH).
+        const back = sw / targetW;
+
+        const observations = rawDevices
+          .map(d => {
+            const bb = normalizeBbox(d);
+            return bb ? { ...d, _xywh: bb.map(v => v * back) } : null;
+          })
+          .filter(Boolean)
+          .slice(0, 32)
+          .map(d => ({
+            bbox:  d._xywh,
+            cls:   String(d.class_name || d.class || 'Device'),
+            color: colorForClass(d.class_name || d.class || ''),
+          }));
+
+        const tracks = tracksRef.current;
+        const claimed = new Set();
+        for (const obs of observations) {
+          let bestId = null;
+          let bestIoU = TRACK_IOU_MIN;
+          for (const [id, t] of tracks) {
+            if (claimed.has(id) || t.cls !== obs.cls) continue;
+            const iou = boxIoU(t.bbox, obs.bbox);
+            if (iou > bestIoU) { bestIoU = iou; bestId = id; }
+          }
+          if (bestId !== null) {
+            const t = tracks.get(bestId);
+            t.bbox   = obs.bbox;
+            t.misses = 0;
+            claimed.add(bestId);
+          } else {
+            const id = `t${nextTrackIdRef.current++}`;
+            tracks.set(id, {
+              id,
+              label:  obs.cls,         // "Switch", "Patch Panel", "Server", …
+              cls:    obs.cls,
+              color:  obs.color,
+              bbox:   obs.bbox,
+              misses: 0,
+            });
+            claimed.add(id);
+          }
+        }
+        for (const [id, t] of tracks) {
+          if (claimed.has(id)) continue;
+          t.misses += 1;
+          if (t.misses > TRACK_TTL_FRAMES) tracks.delete(id);
+        }
+
+        // NMS: two tracks should never claim the same image region —
+        // happens after a strong camera move when an old (still-alive)
+        // track's last bbox sits where a new track just spawned. Prefer
+        // the just-observed one (misses == 0) and drop the stale.
+        const alive = Array.from(tracks.values())
+          .sort((a, b) => a.misses - b.misses);
+        const kept = [];
+        for (const t of alive) {
+          if (kept.some(k => boxIoU(k.bbox, t.bbox) > NMS_IOU)) {
+            tracks.delete(t.id);
+          } else {
+            kept.push(t);
+          }
+        }
+
+        // Map source coords → display pixels (object-fit:cover math).
+        const rect = video.getBoundingClientRect();
+        const dispW = rect.width;
+        const dispH = rect.height;
+        if (!dispW || !dispH) { setLiveDevices([]); return; }
+        const scale = Math.max(dispW / sw, dispH / sh);
+        const offX = (sw * scale - dispW) / 2;
+        const offY = (sh * scale - dispH) / 2;
+        const positioned = kept.map(t => ({
+          id:     t.id,
+          label:  t.label,
+          color:  t.color,
+          left:   Math.round(t.bbox[0] * scale - offX),
+          top:    Math.round(t.bbox[1] * scale - offY),
+          width:  Math.round(t.bbox[2] * scale),
+          height: Math.round(t.bbox[3] * scale),
+        }));
+        if (!cancelled) setLiveDevices(positioned);
+      } catch (e) {
+        // Keep the loop alive — single-frame failures (network blips,
+        // 429s) are normal during a long viewfinder session.
+        console.warn('live detect failed:', e?.message || e);
+      } finally {
+        detectionInflightRef.current = false;
+      }
+    };
+
+    // Kick once immediately, then every DETECT_INTERVAL_MS.
+    tick();
+    const interval = setInterval(tick, DETECT_INTERVAL_MS);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [ready]);
+
   // Expose capture/record toggle to the BottomNav's middle button via context
   useEffect(() => {
     registerShutter(handleShutter, canShoot);
@@ -331,6 +492,28 @@ function CameraCapture({ onCapture, onCancel }) {
       <canvas ref={canvasRef} style={{display:'none'}} />
       <canvas ref={sampleRef} style={{display:'none'}} />
 
+      {/* Live detection labels — positioned absolutely on top of the
+          video. Hidden during the photo flash so they don't leak into
+          the captured still (they wouldn't anyway since canvas pulls
+          from the <video> element directly, but it looks cleaner). */}
+      <div className={styles.liveOverlay} aria-hidden="true">
+        {liveDevices.map(d => (
+          <div key={d.id} className={styles.liveBox}
+            style={{
+              left:        d.left,
+              top:         d.top,
+              width:       d.width,
+              height:      d.height,
+              borderColor: d.color,
+            }}>
+            <div className={styles.liveChip}
+              style={{ background: d.color }}>
+              {d.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {onCancel && (
         <button className={styles.camCloseBtn} onClick={onCancel} aria-label="Close camera">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -375,6 +558,61 @@ function CameraCapture({ onCapture, onCancel }) {
       </div>
     </div>
   );
+}
+
+// ── AR helpers ───────────────────────────────────────────────
+function base64ToBlob(b64, mime) {
+  const bytes = atob(b64);
+  const buf = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+  return new Blob([buf], { type: mime });
+}
+
+// /api/analyze returns devices in one of three bbox shapes — normalize
+// to [x, y, w, h] image-pixel space for the native overlay re-projector.
+function normalizeBbox(d) {
+  if (d.bbox && typeof d.bbox === 'object' && !Array.isArray(d.bbox) &&
+      'x' in d.bbox && 'y' in d.bbox && 'w' in d.bbox && 'h' in d.bbox) {
+    const a = [d.bbox.x, d.bbox.y, d.bbox.w, d.bbox.h].map(Number);
+    return a.every(Number.isFinite) ? a : null;
+  }
+  if (Array.isArray(d.bbox) && d.bbox.length === 4) {
+    const a = d.bbox.map(Number);
+    return a.every(Number.isFinite) ? a : null;
+  }
+  if (Array.isArray(d.box) && d.box.length === 4) {
+    const [x1, y1, x2, y2] = d.box.map(Number);
+    if (![x1, y1, x2, y2].every(Number.isFinite)) return null;
+    return [x1, y1, x2 - x1, y2 - y1];
+  }
+  return null;
+}
+
+function colorForClass(cls) {
+  const c = String(cls || '').toLowerCase();
+  if (c.includes('switch'))  return '#22d3ee';
+  if (c.includes('patch'))   return '#a78bfa';
+  if (c.includes('server'))  return '#f59e0b';
+  if (c.includes('router'))  return '#10b981';
+  return '#94a3b8';
+}
+
+function isSwitchOrPatchPanel(cls) {
+  const c = String(cls || '').toLowerCase();
+  return c.includes('switch') || c.includes('patch');
+}
+
+function boxIoU(a, b) {
+  const [ax, ay, aw, ah] = a;
+  const [bx, by, bw, bh] = b;
+  const x1 = Math.max(ax, bx);
+  const y1 = Math.max(ay, by);
+  const x2 = Math.min(ax + aw, bx + bw);
+  const y2 = Math.min(ay + ah, by + bh);
+  if (x2 <= x1 || y2 <= y1) return 0;
+  const inter = (x2 - x1) * (y2 - y1);
+  const union = aw * ah + bw * bh - inter;
+  return union > 0 ? inter / union : 0;
 }
 
 // ── Cinematic Loading Overlay ────────────────────────────────
@@ -466,17 +704,27 @@ export default function ScanPage() {
       setStep(STEPS[si]);
     }, 300);
     try {
+      // Detect video uploads — if the user shot/picked a video clip, route
+      // to the multi-rack pipeline. The server splits the video into one
+      // best-frame per detected rack, runs the existing analyze on each,
+      // and returns a group with N member rackIds.
+      const isVideoUpload = (file?.type || '').startsWith('video/');
+      const ticketActive = !!ticket && ticket.target && ticket.target.device && ticket.target.port != null;
+      const useMultiRack = isVideoUpload && !ticketActive;
+
       const body = new FormData();
-      body.append('image', file);
+      body.append(useMultiRack ? 'video' : 'image', file);
       if (override) body.append('skipQualityCheck', '1');
 
       // Ticket-mode: one-shot endpoint that runs analyze + auto-targets the
       // ticket's device/port + runs LLDP. Returns a bundled payload.
-      const useTicketMode = !!ticket && ticket.target && ticket.target.device && ticket.target.port != null;
+      const useTicketMode = ticketActive;
       if (useTicketMode) {
         body.append('incident_number', ticket.incident_number);
       }
-      const endpoint = useTicketMode ? '/api/analyze-for-ticket' : '/api/analyze';
+      const endpoint = useMultiRack
+        ? '/api/analyze-video'
+        : (useTicketMode ? '/api/analyze-for-ticket' : '/api/analyze');
 
       const res  = await authFetch(apiUrl(endpoint), { method: 'POST', body });
       const data = await res.json().catch(() => ({}));
@@ -490,14 +738,58 @@ export default function ScanPage() {
       }
       clearInterval(ticker);
       setProgress(100); setStep(useTicketMode ? 'Port located!' : 'Target located!');
-      
+
+      // Multi-rack response — { groupId, racks:[...] }. Land the user on
+      // the SAME /results overview a single-rack scan would show, just
+      // for the FIRST rack. RackTabs at the top lets them switch between
+      // members; per-rack sub-pages (Ports / Topology / Switches / etc.)
+      // work unchanged because each member rack still has its own RK-id.
+      if (useMultiRack && data.groupId) {
+        const racks = data.racks || [];
+        try {
+          racks.forEach(r => r.rackId && prefetchScan(r.rackId));
+        } catch (_) {}
+        const first = racks.find(r => r.rackId);
+        if (!first) {
+          setError('Multi-rack scan succeeded but no rack ids returned.');
+          return;
+        }
+        // Fetch the first rack's full scan payload so /results renders
+        // identically to a fresh single-rack scan (devices, units, port
+        // counts, hero image — everything the overview/Ports tab needs).
+        let firstResult = null;
+        try {
+          const r = await authFetch(apiUrl(`/api/scan/${encodeURIComponent(first.rackId)}`));
+          if (r.ok) firstResult = await r.json();
+        } catch (_) { /* fall through to deep-link path */ }
+        setTimeout(() => {
+          if (firstResult) {
+            navigate(`/results/${encodeURIComponent(first.rackId)}`,
+              { state: { result: firstResult } });
+          } else {
+            // Fetch failed — let ResultsPage cold-fetch via useParams.
+            navigate(`/results/${encodeURIComponent(first.rackId)}`);
+          }
+        }, 600);
+        return;
+      }
+
+      // Kick off every per-rack prefetch the moment analyze succeeds —
+      // OCR, topology, CMDB, specs, firmware, SFP. By the time the user
+      // clicks through to the Switches / Topology / Ports tabs, the data
+      // is already in memory and the cards render instantly instead of
+      // showing a per-tab loading spinner.
+      if (data.rackId) {
+        try { prefetchScan(data.rackId); } catch (_) {}
+      }
+
       // Store result and show rear image prompt if we got a rackId
       setPendingResult({
         result: data,
         ticketMode: useTicketMode,
         ticket: useTicketMode ? ticket : null,
       });
-      
+
       if (data.rackId) {
         setTimeout(() => setShowRearPrompt(true), 600);
       } else {

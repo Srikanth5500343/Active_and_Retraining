@@ -1,4 +1,4 @@
-/* CMDB ticket banner — slim horizontal strip rendered above page content. */
+﻿/* CMDB ticket banner — slim horizontal strip rendered above page content. */
 
 .banner {
   display: flex;
@@ -133,26 +133,26 @@
 
 :global([data-theme='light']) .banner {
   background: #FFFFFF;
-  color: #1A1A2E;
-  box-shadow: 0 1px 2px rgba(75, 69, 160, 0.04);
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.04);
 }
-:global([data-theme='light']) .numLink { color: #4B45A0; }
-:global([data-theme='light']) .line2   { color: #5B54B0; }
+:global([data-theme='light']) .numLink { color: #4F46E5; }
+:global([data-theme='light']) .line2   { color: #6366F1; }
 :global([data-theme='light']) .errorLine { color: #DC2626; }
 
 :global([data-theme='light']) .btn {
-  background: rgba(91, 84, 176, 0.08);
-  border: 1px solid rgba(91, 84, 176, 0.40);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.40);
+  color: #4F46E5;
 }
 :global([data-theme='light']) .btn:hover:not(:disabled) {
-  background: rgba(91, 84, 176, 0.18);
-  border-color: rgba(91, 84, 176, 0.55);
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.55);
 }
 :global([data-theme='light']) .btnGhost {
   background: transparent;
-  border: 1px solid #C8C4E4;
-  color: #4A4A5A;
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
 }
 :global([data-theme='light']) .btnGhost:hover:not(:disabled) {
   border-color: rgba(239, 68, 68, 0.45);
@@ -160,11 +160,11 @@
 }
 
 :global([data-theme='light']) .b_open {
-  border-color: rgba(91, 84, 176, 0.30);
-  background: rgba(91, 84, 176, 0.04);
+  border-color: rgba(99, 102, 241, 0.30);
+  background: rgba(99, 102, 241, 0.04);
 }
-:global([data-theme='light']) .b_open .dot   { background: #5B54B0; color: #5B54B0; }
-:global([data-theme='light']) .b_open .title { color: #4B45A0; }
+:global([data-theme='light']) .b_open .dot   { background: #6366F1; color: #6366F1; }
+:global([data-theme='light']) .b_open .title { color: #4F46E5; }
 
 :global([data-theme='light']) .b_applied {
   border-color: rgba(34, 197, 94, 0.35);
@@ -179,6 +179,6 @@
   background: rgba(148, 163, 184, 0.04);
 }
 :global([data-theme='light']) .b_rejected .dot,
-:global([data-theme='light']) .b_cancelled .dot { background: #4A4A5A; color: #4A4A5A; }
+:global([data-theme='light']) .b_cancelled .dot { background: #6B7280; color: #6B7280; }
 :global([data-theme='light']) .b_rejected .title,
-:global([data-theme='light']) .b_cancelled .title { color: #4A4A5A; }
+:global([data-theme='light']) .b_cancelled .title { color: #6B7280; }

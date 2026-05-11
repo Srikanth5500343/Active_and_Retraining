@@ -13,6 +13,28 @@ import re
 import sys
 from pathlib import Path
 
+
+# Pull discovery_source out of the CMDB `comments` field. cmdb_apply.py
+# writes the line "discovery_source=<value>; ..." there; we parse it back
+# out so the UI can show a "from CMDB (OCR)" / "(synth)" / "(manual)" badge.
+def _discovery_source_from_comments(comments: str | None) -> tuple[str | None, dict]:
+    if not comments:
+        return None, {}
+    extras: dict[str, str] = {}
+    src = None
+    for part in str(comments).split(";"):
+        part = part.strip()
+        if "=" not in part:
+            continue
+        k, _, v = part.partition("=")
+        k, v = k.strip(), v.strip().strip("'\"")
+        if k == "discovery_source":
+            src = v
+        elif k in ("ocr_make", "ocr_model", "ocr_version", "ocr_conf",
+                   "synthetic_data"):
+            extras[k] = v
+    return src, extras
+
 # Make repo-relative imports work whether invoked from project root or elsewhere.
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
@@ -74,13 +96,20 @@ def main():
     for ci in children:
         if ci.get("sys_class_name") != "cmdb_ci_ip_switch":
             continue
+        src, extras = _discovery_source_from_comments(ci.get("comments"))
         out.append({
-            "name":          ci.get("name"),
-            "serial_number": ci.get("serial_number") or None,
-            "model_number":  ci.get("model_number") or None,
-            "ip_address":    ci.get("ip_address") or None,
-            "mac_address":   ci.get("mac_address") or None,
-            "position":      ci.get("u_position") or extract_position(ci.get("name")),
+            "name":             ci.get("name"),
+            "serial_number":    ci.get("serial_number") or None,
+            "model_number":     ci.get("model_number") or None,
+            "ip_address":       ci.get("ip_address") or None,
+            "mac_address":      ci.get("mac_address") or None,
+            "os_version":       ci.get("os_version") or None,
+            "manufacturer":     ci.get("manufacturer") or None,
+            "position":         ci.get("u_position") or extract_position(ci.get("name")),
+            "discovery_source": src,                    # 'ocr_full' | 'ocr_make_only' | 'override' | 'synth'
+            "ocr_make":         extras.get("ocr_make") or None,
+            "ocr_model":        extras.get("ocr_model") or None,
+            "ocr_conf":         extras.get("ocr_conf") or None,
         })
 
     print(json.dumps({"rack": rack_name, "switches": out}))
@@ -90,5 +119,20 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(json.dumps({"error": str(exc), "switches": []}))
+        # Map known low-level errors to user-friendly messages so the UI
+        # never has to display "Expecting value: line 1 column 1 (char 0)"
+        # or a raw urllib stacktrace. Anything that ends up here means the
+        # CMDB simply couldn't be queried.
+        msg = str(exc)
+        cls = exc.__class__.__name__
+        if "JSONDecode" in cls or "Expecting value" in msg:
+            friendly = "ServiceNow returned an empty/invalid response (instance unreachable or auth failed)."
+        elif cls in ("ConnectionError", "Timeout", "ReadTimeout", "ConnectTimeout",
+                     "URLError", "HTTPError", "MaxRetryError"):
+            friendly = "ServiceNow is unreachable from this server."
+        elif "credentials" in msg.lower() or "401" in msg or "403" in msg:
+            friendly = "ServiceNow authentication failed (check SN_USER / SN_PASSWORD)."
+        else:
+            friendly = "CMDB lookup failed."
+        print(json.dumps({"error": friendly, "switches": []}))
         sys.exit(0)  # don't fail the request — return empty switches gracefully

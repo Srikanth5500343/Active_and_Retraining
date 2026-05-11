@@ -1,4 +1,4 @@
-.modal {
+﻿.modal {
   position: fixed;
   inset: 0;
   display: flex;
@@ -200,31 +200,31 @@
    ══════════════════════════════════════════════════════════════════════ */
 
 :global([data-theme='light']) .backdrop {
-  background: rgba(75, 69, 160, 0.20);
+  background: rgba(99, 102, 241, 0.20);
 }
 :global([data-theme='light']) .dialog {
-  background: linear-gradient(135deg, #FFFFFF 0%, #F8F7FB 100%);
-  border: 1px solid #E8E6EF;
-  box-shadow: 0 24px 60px rgba(75, 69, 160, 0.22);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAFAFC 100%);
+  border: 1px solid #FFFFFF;
+  box-shadow: 0 24px 60px rgba(99, 102, 241, 0.22);
 }
-:global([data-theme='light']) .title    { color: #1A1A2E; }
-:global([data-theme='light']) .subtitle { color: #4A4A5A; }
+:global([data-theme='light']) .title    { color: #111827; }
+:global([data-theme='light']) .subtitle { color: #6B7280; }
 
 :global([data-theme='light']) .dropZone {
-  border: 2px dashed rgba(91, 84, 176, 0.40);
-  background: rgba(91, 84, 176, 0.04);
+  border: 2px dashed rgba(99, 102, 241, 0.40);
+  background: rgba(99, 102, 241, 0.04);
 }
 :global([data-theme='light']) .dropZone:hover {
-  border-color: rgba(91, 84, 176, 0.60);
-  background: rgba(91, 84, 176, 0.08);
+  border-color: rgba(99, 102, 241, 0.60);
+  background: rgba(99, 102, 241, 0.08);
 }
 :global([data-theme='light']) .dropZone.dragOver {
-  border-color: #5B54B0;
-  background: rgba(91, 84, 176, 0.14);
+  border-color: #6366F1;
+  background: rgba(99, 102, 241, 0.14);
 }
-:global([data-theme='light']) .dropZone svg { color: #5B54B0; }
-:global([data-theme='light']) .dropText { color: #1A1A2E; }
-:global([data-theme='light']) .dropSub  { color: #4A4A5A; }
+:global([data-theme='light']) .dropZone svg { color: #6366F1; }
+:global([data-theme='light']) .dropText { color: #111827; }
+:global([data-theme='light']) .dropSub  { color: #6B7280; }
 
 :global([data-theme='light']) .error {
   background: rgba(239, 68, 68, 0.08);
@@ -234,18 +234,18 @@
 :global([data-theme='light']) .error svg { color: #EF4444; }
 
 :global([data-theme='light']) .spinner {
-  border: 2px solid rgba(91, 84, 176, 0.18);
-  border-top-color: #5B54B0;
+  border: 2px solid rgba(99, 102, 241, 0.18);
+  border-top-color: #6366F1;
 }
-:global([data-theme='light']) .progress p { color: #4A4A5A; }
+:global([data-theme='light']) .progress p { color: #6B7280; }
 
 :global([data-theme='light']) .btnSkip {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #4A4A5A;
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
 }
 :global([data-theme='light']) .btnSkip:hover:not(:disabled) {
-  border-color: #7B75C0;
-  color: #4B45A0;
-  background: #F0EFF5;
+  border-color: #818CF8;
+  color: #4F46E5;
+  background: #F5F5F7;
 }

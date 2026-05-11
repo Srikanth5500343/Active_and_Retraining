@@ -1,4 +1,4 @@
-/* Netdisco page — visually consistent with ResultsPage / TopologyPage.
+﻿/* Netdisco page — visually consistent with ResultsPage / TopologyPage.
    Same dark navy + cyan/blue/violet palette, same card density, same chip
    shapes. The page should feel like a peer view of the rest of the app. */
 
@@ -771,29 +771,29 @@
 
 :global([data-theme='light']) .page {
   background: transparent;
-  color: #1A1A2E;
+  color: #111827;
 }
 :global([data-theme='light']) .amb {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(123, 117, 192, 0.18) 0%, rgba(91, 84, 176, 0.08) 40%, transparent 60%),
-    radial-gradient(ellipse 55% 45% at 95% 95%, rgba(75, 69, 160, 0.14) 0%, transparent 55%),
-    radial-gradient(ellipse 45% 35% at 5% 65%,  rgba(123, 117, 192, 0.08) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(129, 140, 248, 0.18) 0%, rgba(99, 102, 241, 0.08) 40%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 95% 95%, rgba(99, 102, 241, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 5% 65%,  rgba(129, 140, 248, 0.08) 0%, transparent 50%);
 }
 :global([data-theme='light']) .header {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 247, 251, 0.88));
-  border-bottom: 1px solid #E8E6EF;
+  border-bottom: 1px solid #FFFFFF;
 }
 :global([data-theme='light']) .headerTitle {
-  background: linear-gradient(135deg, #4B45A0 0%, #5B54B0 50%, #7B75C0 100%);
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   filter: none;
 }
-:global([data-theme='light']) .headerMono { color: #4A4A5A; }
+:global([data-theme='light']) .headerMono { color: #6B7280; }
 :global([data-theme='light']) .healthPill {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
-  color: #4A4A5A;
+  border: 1px solid #FFFFFF;
+  color: #6B7280;
 }
 :global([data-theme='light']) .healthOk {
   border-color: rgba(34, 197, 94, 0.40);
@@ -808,77 +808,77 @@
 
 :global([data-theme='light']) .section {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
+  border: 1px solid #FFFFFF;
   backdrop-filter: none;
-  box-shadow: 0 4px 14px rgba(75, 69, 160, 0.06);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.06);
 }
-:global([data-theme='light']) .sectionHead h3 { color: #4B45A0; }
-:global([data-theme='light']) .subtle  { color: #4A4A5A; }
-:global([data-theme='light']) .subhead { color: #5B54B0; }
-:global([data-theme='light']) .linkBtn { color: #4A4A5A; }
+:global([data-theme='light']) .sectionHead h3 { color: #4F46E5; }
+:global([data-theme='light']) .subtle  { color: #6B7280; }
+:global([data-theme='light']) .subhead { color: #6366F1; }
+:global([data-theme='light']) .linkBtn { color: #6B7280; }
 :global([data-theme='light']) .linkBtn:hover { color: #DC2626; }
 :global([data-theme='light']) .syncBtn {
-  background: rgba(91, 84, 176, 0.08);
-  border: 1px solid rgba(91, 84, 176, 0.30);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.30);
+  color: #4F46E5;
 }
 :global([data-theme='light']) .syncBtn:hover:not(:disabled) {
-  background: rgba(91, 84, 176, 0.16);
-  border-color: rgba(91, 84, 176, 0.50);
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.50);
 }
 
 :global([data-theme='light']) .deviceCard {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
-  border-left: 3px solid rgba(91, 84, 176, 0.55);
+  border: 1px solid #FFFFFF;
+  border-left: 3px solid rgba(99, 102, 241, 0.55);
 }
 :global([data-theme='light']) .deviceCard:hover {
-  border-color: rgba(91, 84, 176, 0.30);
-  background: rgba(91, 84, 176, 0.04);
+  border-color: rgba(99, 102, 241, 0.30);
+  background: rgba(99, 102, 241, 0.04);
 }
 :global([data-theme='light']) .deviceCardOpen {
-  border-left-color: #5B54B0;
-  background: rgba(91, 84, 176, 0.04);
+  border-left-color: #6366F1;
+  background: rgba(99, 102, 241, 0.04);
 }
 :global([data-theme='light']) .deviceCardDim {
-  border-left-color: #C8C4E4;
+  border-left-color: #E5E7EB;
 }
-:global([data-theme='light']) .deviceName  { color: #4B45A0; }
-:global([data-theme='light']) .deviceClass { color: #4A4A5A; }
-:global([data-theme='light']) .modelTag    { color: #1A1A2E; }
-:global([data-theme='light']) .ipTag       { color: #4A4A5A; }
-:global([data-theme='light']) .unmanaged   { color: #4A4A5A; }
-:global([data-theme='light']) .chev        { color: #5B54B0; }
-:global([data-theme='light']) .cnt         { color: #1A1A2E; }
-:global([data-theme='light']) .cnt i       { color: #4A4A5A; }
+:global([data-theme='light']) .deviceName  { color: #4F46E5; }
+:global([data-theme='light']) .deviceClass { color: #6B7280; }
+:global([data-theme='light']) .modelTag    { color: #111827; }
+:global([data-theme='light']) .ipTag       { color: #6B7280; }
+:global([data-theme='light']) .unmanaged   { color: #6B7280; }
+:global([data-theme='light']) .chev        { color: #6366F1; }
+:global([data-theme='light']) .cnt         { color: #111827; }
+:global([data-theme='light']) .cnt i       { color: #6B7280; }
 :global([data-theme='light']) .cntUp b     { color: #16A34A; }
-:global([data-theme='light']) .cntDown b   { color: #4A4A5A; }
-:global([data-theme='light']) .cntDown i   { color: #4A4A5A; }
-:global([data-theme='light']) .cntLive b   { color: #5B54B0; }
+:global([data-theme='light']) .cntDown b   { color: #6B7280; }
+:global([data-theme='light']) .cntDown i   { color: #6B7280; }
+:global([data-theme='light']) .cntLive b   { color: #6366F1; }
 
 :global([data-theme='light']) .deviceBody {
-  border-top: 1px solid #E8E6EF;
-  background: #F8F7FB;
+  border-top: 1px solid #FFFFFF;
+  background: #FAFAFC;
 }
 
 /* Match table */
-:global([data-theme='light']) .matchHead { color: #5B54B0; }
+:global([data-theme='light']) .matchHead { color: #6366F1; }
 :global([data-theme='light']) .matchRow {
   background: #FFFFFF;
-  border: 1px solid #E8E6EF;
-  border-left: 3px solid rgba(91, 84, 176, 0.55);
+  border: 1px solid #FFFFFF;
+  border-left: 3px solid rgba(99, 102, 241, 0.55);
 }
 :global([data-theme='light']) .matchRow:hover {
-  background: rgba(91, 84, 176, 0.05);
-  border-color: rgba(91, 84, 176, 0.28);
+  background: rgba(99, 102, 241, 0.05);
+  border-color: rgba(99, 102, 241, 0.28);
 }
 :global([data-theme='light']) .matchRowSel {
-  background: rgba(91, 84, 176, 0.05);
-  border-color: rgba(91, 84, 176, 0.40);
-  border-left-color: #5B54B0;
+  background: rgba(99, 102, 241, 0.05);
+  border-color: rgba(99, 102, 241, 0.40);
+  border-left-color: #6366F1;
 }
-:global([data-theme='light']) .matchScan strong { color: #4B45A0; }
-:global([data-theme='light']) .matchNd strong   { color: #1A1A2E; }
+:global([data-theme='light']) .matchScan strong { color: #4F46E5; }
+:global([data-theme='light']) .matchNd strong   { color: #111827; }
 
 :global([data-theme='light']) .portCount {
   color: #16A34A;
@@ -886,9 +886,9 @@
   border-color: rgba(34, 197, 94, 0.30);
 }
 :global([data-theme='light']) .connCount {
-  color: #4B45A0;
-  background: rgba(91, 84, 176, 0.10);
-  border-color: rgba(91, 84, 176, 0.30);
+  color: #4F46E5;
+  background: rgba(99, 102, 241, 0.10);
+  border-color: rgba(99, 102, 241, 0.30);
 }
 :global([data-theme='light']) .tag_mgmt_ip {
   background: rgba(34, 197, 94, 0.10);
@@ -896,82 +896,82 @@
   border-color: rgba(34, 197, 94, 0.30);
 }
 :global([data-theme='light']) .tag_ocr_model {
-  background: rgba(91, 84, 176, 0.10);
-  color: #4B45A0;
-  border-color: rgba(91, 84, 176, 0.30);
+  background: rgba(99, 102, 241, 0.10);
+  color: #4F46E5;
+  border-color: rgba(99, 102, 241, 0.30);
 }
 
 :global([data-theme='light']) .detailGrid {
-  background: rgba(91, 84, 176, 0.04);
-  border-color: rgba(91, 84, 176, 0.20);
+  background: rgba(99, 102, 241, 0.04);
+  border-color: rgba(99, 102, 241, 0.20);
 }
-:global([data-theme='light']) .fieldKey { color: #5B54B0; }
-:global([data-theme='light']) .fieldVal { color: #1A1A2E; }
+:global([data-theme='light']) .fieldKey { color: #6366F1; }
+:global([data-theme='light']) .fieldVal { color: #111827; }
 
 :global([data-theme='light']) .filterBtn {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #4A4A5A;
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
 }
 :global([data-theme='light']) .filterBtn:hover {
-  color: #4B45A0;
-  border-color: #7B75C0;
+  color: #4F46E5;
+  border-color: #818CF8;
 }
 :global([data-theme='light']) .filterBtnActive {
-  background: rgba(91, 84, 176, 0.10);
-  border-color: rgba(91, 84, 176, 0.45);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.10);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: #4F46E5;
 }
 
 :global([data-theme='light']) .portTable {
-  border: 1px solid #E8E6EF;
+  border: 1px solid #FFFFFF;
 }
 :global([data-theme='light']) .portHead {
-  background: #F8F7FB;
-  color: #5B54B0;
-  border-bottom: 1px solid #E8E6EF;
+  background: #FAFAFC;
+  color: #6366F1;
+  border-bottom: 1px solid #FFFFFF;
 }
 :global([data-theme='light']) .portRow {
-  border-bottom: 1px solid #E8E6EF;
+  border-bottom: 1px solid #FFFFFF;
 }
-:global([data-theme='light']) .portRow:nth-child(even) { background: #F8F7FB; }
+:global([data-theme='light']) .portRow:nth-child(even) { background: #FAFAFC; }
 :global([data-theme='light']) .portName strong,
-:global([data-theme='light']) .portNb strong { color: #1A1A2E; }
-:global([data-theme='light']) .portVlan { color: #4A4A5A; }
+:global([data-theme='light']) .portNb strong { color: #111827; }
+:global([data-theme='light']) .portVlan { color: #6B7280; }
 :global([data-theme='light']) .dotActive {
   background: #22C55E;
   box-shadow: 0 0 6px rgba(34, 197, 94, 0.55);
 }
-:global([data-theme='light']) .dotIdle { background: #C8C4E4; }
+:global([data-theme='light']) .dotIdle { background: #E5E7EB; }
 :global([data-theme='light']) .macChip {
-  background: rgba(91, 84, 176, 0.08);
-  border: 1px solid rgba(91, 84, 176, 0.28);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  color: #4F46E5;
 }
-:global([data-theme='light']) .macChip:hover { background: rgba(91, 84, 176, 0.16); }
+:global([data-theme='light']) .macChip:hover { background: rgba(99, 102, 241, 0.16); }
 
 /* MAC lookup */
 :global([data-theme='light']) .macSection {
-  background: #F8F7FB;
-  border: 1px solid #E8E6EF;
+  background: #FAFAFC;
+  border: 1px solid #FFFFFF;
 }
-:global([data-theme='light']) .macLabel { color: #5B54B0; }
+:global([data-theme='light']) .macLabel { color: #6366F1; }
 :global([data-theme='light']) .macInput {
   background: #FFFFFF;
-  border: 1px solid #C8C4E4;
-  color: #1A1A2E;
+  border: 1px solid #E5E7EB;
+  color: #111827;
 }
 :global([data-theme='light']) .macInput:focus {
-  border-color: #7B75C0;
+  border-color: #818CF8;
 }
 :global([data-theme='light']) .macBtn {
-  background: rgba(91, 84, 176, 0.10);
-  border-color: rgba(91, 84, 176, 0.40);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.10);
+  border-color: rgba(99, 102, 241, 0.40);
+  color: #4F46E5;
 }
 :global([data-theme='light']) .macBtn:hover:not(:disabled) {
-  background: rgba(91, 84, 176, 0.20);
-  border-color: rgba(91, 84, 176, 0.55);
+  background: rgba(99, 102, 241, 0.20);
+  border-color: rgba(99, 102, 241, 0.55);
 }
 
 :global([data-theme='light']) .currentLoc {
@@ -979,27 +979,27 @@
   border-color: rgba(34, 197, 94, 0.30);
 }
 :global([data-theme='light']) .currentLabel { color: #16A34A; }
-:global([data-theme='light']) .currentLoc strong { color: #1A1A2E; }
+:global([data-theme='light']) .currentLoc strong { color: #111827; }
 
-:global([data-theme='light']) .miniRow { background: #F8F7FB; }
-:global([data-theme='light']) .miniRow:nth-child(even) { background: #F0EFF5; }
-:global([data-theme='light']) .miniRow strong { color: #1A1A2E; }
+:global([data-theme='light']) .miniRow { background: #FAFAFC; }
+:global([data-theme='light']) .miniRow:nth-child(even) { background: #F5F5F7; }
+:global([data-theme='light']) .miniRow strong { color: #111827; }
 
-:global([data-theme='light']) .loading { color: #4A4A5A; }
-:global([data-theme='light']) .empty   { color: #4A4A5A; }
+:global([data-theme='light']) .loading { color: #6B7280; }
+:global([data-theme='light']) .empty   { color: #6B7280; }
 :global([data-theme='light']) .error {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.32);
   color: #DC2626;
 }
 :global([data-theme='light']) .warn {
-  background: rgba(91, 84, 176, 0.06);
-  border-color: rgba(91, 84, 176, 0.28);
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.28);
+  color: #4F46E5;
 }
 :global([data-theme='light']) .warn code {
-  background: #F8F7FB;
-  color: #4B45A0;
+  background: #FAFAFC;
+  color: #4F46E5;
 }
 :global([data-theme='light']) .success {
   background: rgba(34, 197, 94, 0.08);

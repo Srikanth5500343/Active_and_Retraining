@@ -1,0 +1,384 @@
+{
+  "_doc": "Curated firmware-version overrides. Consulted before web scraping in pipeline.firmware_check. Edit lastChecked when refreshing entries. Vendor sites block our scraper (Cisco/Aruba/Arista return 403, Dell pages are PDFs/JS-rendered) so this file is the authoritative source for the 'latest known firmware' badge.",
+  "schemaVersion": 1,
+  "lastSchemaUpdate": "2026-05-08",
+  "matchingRules": "vendor: case-insensitive substring match against the entry's `vendor` (or any of `vendor_aliases`). model: alphanumeric-only, case-insensitive substring match against `model_pattern`. Longest matching pattern wins so 'S5248F-ON' beats 'S5200'. Add new entries freely.",
+  "entries": [
+    {
+      "vendor": "Dell",
+      "vendor_aliases": ["Dell EMC", "Dell Technologies"],
+      "model_pattern": "S5248F-ON",
+      "latestVersion": "10.5.7.0",
+      "releaseNotesUrl": "https://www.dell.com/support/kbdoc/en-us/000211893/dell-os10-software-release-notes",
+      "lastChecked": "2026-05-08",
+      "note": "Dell OS10 LTS branch — verify against Dell support site before scheduling upgrades"
+    },
+    {
+      "vendor": "Dell",
+      "model_pattern": "S5212F-ON",
+      "latestVersion": "10.5.7.0",
+      "releaseNotesUrl": "https://www.dell.com/support/kbdoc/en-us/000211893/dell-os10-software-release-notes",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Dell",
+      "model_pattern": "S4148F-ON",
+      "latestVersion": "10.5.7.0",
+      "releaseNotesUrl": "https://www.dell.com/support/kbdoc/en-us/000211893/dell-os10-software-release-notes",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Dell",
+      "model_pattern": "S4112T-ON",
+      "latestVersion": "10.5.7.0",
+      "releaseNotesUrl": "https://www.dell.com/support/kbdoc/en-us/000211893/dell-os10-software-release-notes",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Dell",
+      "model_pattern": "N3248",
+      "latestVersion": "10.5.7.0",
+      "releaseNotesUrl": "https://www.dell.com/support/kbdoc/en-us/000211893/dell-os10-software-release-notes",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "Cisco",
+      "model_pattern": "C9300",
+      "latestVersion": "17.15.3",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/catalyst-9300-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08",
+      "note": "IOS XE Cupertino LTS train"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "C9200",
+      "latestVersion": "17.15.3",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/catalyst-9200-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "C9400",
+      "latestVersion": "17.15.3",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/catalyst-9400-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "C9500",
+      "latestVersion": "17.15.3",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/catalyst-9500-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "Catalyst 9300",
+      "latestVersion": "17.15.3",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/catalyst-9300-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "Catalyst 9200",
+      "latestVersion": "17.15.3",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/catalyst-9200-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "Nexus 93",
+      "latestVersion": "10.4(3)F",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/nexus-9000-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08",
+      "note": "NX-OS 10.4 LTS"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "Nexus 9",
+      "latestVersion": "10.4(3)F",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/nexus-9000-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "Nexus 3432D",
+      "latestVersion": "10.6(1)F",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/nexus-3000-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08",
+      "note": "Cisco Nexus 3432D-S running NX-OS 10.6 train"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "3432D",
+      "latestVersion": "10.6(1)F",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/nexus-3000-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "Nexus 3232",
+      "latestVersion": "10.4(3)F",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/nexus-3000-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Cisco",
+      "model_pattern": "Nexus 3548",
+      "latestVersion": "10.4(3)F",
+      "releaseNotesUrl": "https://www.cisco.com/c/en/us/support/switches/nexus-3000-series-switches/products-release-notes-list.html",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "Juniper",
+      "vendor_aliases": ["Juniper Networks"],
+      "model_pattern": "EX4400",
+      "latestVersion": "23.4R2-S2",
+      "releaseNotesUrl": "https://www.juniper.net/documentation/product/us/en/junos-os/",
+      "lastChecked": "2026-05-08",
+      "note": "Junos 23.4 LTS"
+    },
+    {
+      "vendor": "Juniper",
+      "model_pattern": "EX4300",
+      "latestVersion": "23.4R2-S2",
+      "releaseNotesUrl": "https://www.juniper.net/documentation/product/us/en/junos-os/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Juniper",
+      "model_pattern": "QFX5100",
+      "latestVersion": "21.4R3-S9",
+      "releaseNotesUrl": "https://www.juniper.net/documentation/product/us/en/junos-os/",
+      "lastChecked": "2026-05-08",
+      "note": "QFX5100 EOL'd from newer trains, 21.4R3 is the final maintenance line"
+    },
+    {
+      "vendor": "Juniper",
+      "model_pattern": "QFX5120",
+      "latestVersion": "23.4R2-S2",
+      "releaseNotesUrl": "https://www.juniper.net/documentation/product/us/en/junos-os/",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "Aruba",
+      "vendor_aliases": ["HPE Aruba", "Aruba (HPE)", "HPE"],
+      "model_pattern": "6300",
+      "latestVersion": "10.14.1000",
+      "releaseNotesUrl": "https://www.arubanetworks.com/techdocs/AOS-CX/",
+      "lastChecked": "2026-05-08",
+      "note": "AOS-CX 10.14 LTS"
+    },
+    {
+      "vendor": "Aruba",
+      "model_pattern": "6400",
+      "latestVersion": "10.14.1000",
+      "releaseNotesUrl": "https://www.arubanetworks.com/techdocs/AOS-CX/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Aruba",
+      "model_pattern": "8320",
+      "latestVersion": "10.14.1000",
+      "releaseNotesUrl": "https://www.arubanetworks.com/techdocs/AOS-CX/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Aruba",
+      "model_pattern": "8325",
+      "latestVersion": "10.14.1000",
+      "releaseNotesUrl": "https://www.arubanetworks.com/techdocs/AOS-CX/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Aruba",
+      "model_pattern": "JL675A",
+      "latestVersion": "10.14.1000",
+      "releaseNotesUrl": "https://www.arubanetworks.com/techdocs/AOS-CX/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Aruba",
+      "model_pattern": "2930F",
+      "latestVersion": "16.11.0017",
+      "releaseNotesUrl": "https://support.hpe.com/hpesc/public/home?",
+      "lastChecked": "2026-05-08",
+      "note": "AOS-Switch (legacy ProCurve line) — different OS from AOS-CX"
+    },
+
+    {
+      "vendor": "Arista",
+      "vendor_aliases": ["Arista Networks"],
+      "model_pattern": "7050",
+      "latestVersion": "4.32.2F",
+      "releaseNotesUrl": "https://www.arista.com/en/support/software-download",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Arista",
+      "model_pattern": "7060",
+      "latestVersion": "4.32.2F",
+      "releaseNotesUrl": "https://www.arista.com/en/support/software-download",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Arista",
+      "model_pattern": "7280",
+      "latestVersion": "4.32.2F",
+      "releaseNotesUrl": "https://www.arista.com/en/support/software-download",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Arista",
+      "model_pattern": "DCS-7050SX",
+      "latestVersion": "4.32.2F",
+      "releaseNotesUrl": "https://www.arista.com/en/support/software-download",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "Fortinet",
+      "model_pattern": "FortiGate-100F",
+      "latestVersion": "7.4.7",
+      "releaseNotesUrl": "https://docs.fortinet.com/document/fortigate/7.4.7/fortios-release-notes",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Fortinet",
+      "model_pattern": "FortiGate",
+      "latestVersion": "7.4.7",
+      "releaseNotesUrl": "https://docs.fortinet.com/document/fortigate/7.4.7/fortios-release-notes",
+      "lastChecked": "2026-05-08",
+      "note": "FortiOS 7.4 LTS"
+    },
+    {
+      "vendor": "Fortinet",
+      "model_pattern": "FortiSwitch",
+      "latestVersion": "7.4.4",
+      "releaseNotesUrl": "https://docs.fortinet.com/product/fortiswitch",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "MikroTik",
+      "model_pattern": "CCR2004",
+      "latestVersion": "7.17.1",
+      "releaseNotesUrl": "https://mikrotik.com/download/changelogs/stable-tree",
+      "lastChecked": "2026-05-08",
+      "note": "RouterOS 7 stable channel"
+    },
+    {
+      "vendor": "MikroTik",
+      "model_pattern": "CCR",
+      "latestVersion": "7.17.1",
+      "releaseNotesUrl": "https://mikrotik.com/download/changelogs/stable-tree",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "MikroTik",
+      "model_pattern": "CRS",
+      "latestVersion": "7.17.1",
+      "releaseNotesUrl": "https://mikrotik.com/download/changelogs/stable-tree",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "Ubiquiti",
+      "vendor_aliases": ["UniFi"],
+      "model_pattern": "USW-Pro",
+      "latestVersion": "8.0.36",
+      "releaseNotesUrl": "https://community.ui.com/releases",
+      "lastChecked": "2026-05-08",
+      "note": "UniFi Switch firmware (current GA)"
+    },
+    {
+      "vendor": "Ubiquiti",
+      "model_pattern": "USW",
+      "latestVersion": "8.0.36",
+      "releaseNotesUrl": "https://community.ui.com/releases",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "TP-Link",
+      "model_pattern": "TL-SG3428",
+      "latestVersion": "4.0.4",
+      "releaseNotesUrl": "https://www.tp-link.com/us/support/download/tl-sg3428/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Netgear",
+      "model_pattern": "M4250",
+      "latestVersion": "13.0.6.6",
+      "releaseNotesUrl": "https://www.netgear.com/support/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Netgear",
+      "model_pattern": "GS108Tv3",
+      "latestVersion": "7.0.4.4",
+      "releaseNotesUrl": "https://www.netgear.com/support/product/GS108Tv3.aspx",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "Huawei",
+      "model_pattern": "S5720",
+      "latestVersion": "V200R023C00",
+      "releaseNotesUrl": "https://support.huawei.com/enterprise/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Huawei",
+      "model_pattern": "S6730",
+      "latestVersion": "V200R023C00",
+      "releaseNotesUrl": "https://support.huawei.com/enterprise/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "Extreme",
+      "vendor_aliases": ["Extreme Networks"],
+      "model_pattern": "X465",
+      "latestVersion": "32.5.1.7",
+      "releaseNotesUrl": "https://www.extremenetworks.com/support/release-notes/",
+      "lastChecked": "2026-05-08"
+    },
+
+    {
+      "vendor": "nvidia",
+      "vendor_aliases": ["NVIDIA", "Mellanox", "NVIDIA Networking"],
+      "model_pattern": "SN4700",
+      "latestVersion": "5.10.0",
+      "releaseNotesUrl": "https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-510/",
+      "lastChecked": "2026-05-08",
+      "note": "NVIDIA Cumulus Linux on Spectrum-3 (SN4000 series). Cumulus 5.x replaced the 4.x line; 4.x is end-of-life."
+    },
+    {
+      "vendor": "nvidia",
+      "vendor_aliases": ["NVIDIA", "Mellanox", "NVIDIA Networking"],
+      "model_pattern": "SN3700",
+      "latestVersion": "5.10.0",
+      "releaseNotesUrl": "https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-510/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "nvidia",
+      "vendor_aliases": ["NVIDIA", "Mellanox"],
+      "model_pattern": "SN2700",
+      "latestVersion": "5.10.0",
+      "releaseNotesUrl": "https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-510/",
+      "lastChecked": "2026-05-08"
+    },
+    {
+      "vendor": "nvidia",
+      "vendor_aliases": ["NVIDIA", "Mellanox"],
+      "model_pattern": "SN5",
+      "latestVersion": "5.10.0",
+      "releaseNotesUrl": "https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-510/",
+      "lastChecked": "2026-05-08",
+      "note": "Spectrum-4 (SN5000 series)"
+    }
+  ]
+}

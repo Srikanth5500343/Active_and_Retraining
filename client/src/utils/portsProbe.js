@@ -55,8 +55,15 @@ export function resetProbe() {
 // Parse `show interface status` rows. Tolerant to TP-Link / Cisco-ish layouts.
 function parseInterfaceStatusTable(text) {
   if (!text) return [];
+  // Strip null bytes and paging prompts that remain after --More-- auto-advance.
+  // TP-Link emits: "Press any key to continue (Q to quit)\0<spaces><next line>"
+  const cleaned = text
+    .replace(/\x00/g, '')
+    .replace(/Press any key to continue[^\n]*/gi, '\n')
+    .replace(/--More--[^\n]*/g, '\n')
+    .replace(/<--- More --->[^\n]*/g, '\n');
   const out = [];
-  for (const rawLine of text.split('\n')) {
+  for (const rawLine of cleaned.split('\n')) {
     const line = rawLine.replace(/\r$/, '').trim();
     if (!line) continue;
     if (/^port\b/i.test(line)) continue;
@@ -65,10 +72,11 @@ function parseInterfaceStatusTable(text) {
     const m = line.match(/^(\S+)\s+(\S+)(?:\s+(\S+))?(?:\s+(\S+))?(?:\s+(\S+))?(?:\s+(\S+))?(?:\s+(.*))?$/);
     if (!m) continue;
     const iface = m[1];
-    if (!/^([A-Za-z]{1,3}\d+(\/\d+){0,3}|Eth\d+(\/\d+)?)$/i.test(iface)) continue;
+    if (!/^([A-Za-z]{1,4}\d+(\/\d+){0,3}|Eth\d+(\/\d+)?)$/i.test(iface)) continue;
     out.push({
       iface,
       status: (m[2] || '').toLowerCase(),
+      medium: (m[6] || '').trim().toLowerCase(),   // 'copper' | 'fiber' | ''
       description: (m[7] || '').trim(),
     });
   }

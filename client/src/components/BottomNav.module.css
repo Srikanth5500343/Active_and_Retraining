@@ -1,4 +1,4 @@
-/* ══════════════════════════════════════════════════════════════════════
+﻿/* ══════════════════════════════════════════════════════════════════════
    Slim floating bottom navigation with a true scoop notch
    – Bar's painted background lives on a ::before pseudo so mask doesn't
      clip the floating icon circle.
@@ -286,68 +286,68 @@
 :global([data-theme='light']) .bar::before {
   background: rgba(255, 255, 255, 0.96);
   filter:
-    drop-shadow(0 12px 28px rgba(75, 69, 160, 0.22))
-    drop-shadow(0 4px 12px rgba(75, 69, 160, 0.10));
+    drop-shadow(0 12px 28px rgba(99, 102, 241, 0.22))
+    drop-shadow(0 4px 12px rgba(99, 102, 241, 0.10));
 }
 
 :global([data-theme='light']) .iconWrap {
-  color: #4A4A5A;
+  color: #6B7280;
 }
 
 :global([data-theme='light']) .label {
-  color: #6B6B7A;
+  color: #9CA3AF;
 }
 
 :global([data-theme='light']) .active .iconWrap {
-  background: linear-gradient(135deg, #5B54B0 0%, #7B75C0 100%);
+  background: linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
   color: #FFFFFF;
   border: 2px solid rgba(255, 255, 255, 0.85);
   box-shadow:
-    0 10px 22px rgba(75, 69, 160, 0.38),
-    0 4px 10px rgba(123, 117, 192, 0.25),
+    0 10px 22px rgba(99, 102, 241, 0.38),
+    0 4px 10px rgba(129, 140, 248, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 :global([data-theme='light']) .active .iconWrap::before {
-  background: radial-gradient(circle, rgba(123, 117, 192, 0.28) 0%, rgba(91, 84, 176, 0.10) 50%, transparent 72%);
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.28) 0%, rgba(99, 102, 241, 0.10) 50%, transparent 72%);
 }
 
 :global([data-theme='light']) .active .label {
-  color: #4B45A0;
+  color: #4F46E5;
 }
 :global([data-theme='light']) .active .label::after {
-  background: linear-gradient(135deg, #5B54B0, #7B75C0);
+  background: linear-gradient(135deg, #6366F1, #818CF8);
 }
 
 :global([data-theme='light']) .item:not(.active):hover .iconWrap {
-  color: #5B54B0;
-  background: rgba(91, 84, 176, 0.10);
+  color: #6366F1;
+  background: rgba(99, 102, 241, 0.10);
 }
 :global([data-theme='light']) .item:not(.active):hover .label {
-  color: #5B54B0;
+  color: #6366F1;
 }
 
 /* Shutter — light theme */
 :global([data-theme='light']) .shutterItem .iconWrap {
-  background: rgba(75, 69, 160, 0.10);
-  border: 2.5px solid #7B75C0;
-  color: #4B45A0;
+  background: rgba(99, 102, 241, 0.10);
+  border: 2.5px solid #818CF8;
+  color: #4F46E5;
   box-shadow:
-    0 10px 22px rgba(75, 69, 160, 0.28),
+    0 10px 22px rgba(99, 102, 241, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 :global([data-theme='light']) .shutterItem .shutterDot {
-  background: rgba(75, 69, 160, 0.45);
+  background: rgba(99, 102, 241, 0.45);
 }
 :global([data-theme='light']) .shutterItem .label {
-  color: #4B45A0;
+  color: #4F46E5;
 }
 :global([data-theme='light']) .shutterItem.shutterReady .iconWrap {
   background: #FFFFFF;
   border-color: #22C55E;
   box-shadow:
     0 0 22px rgba(34, 197, 94, 0.5),
-    0 10px 22px rgba(75, 69, 160, 0.22),
+    0 10px 22px rgba(99, 102, 241, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 :global([data-theme='light']) .shutterItem.shutterReady .shutterDot {

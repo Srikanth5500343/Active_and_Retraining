@@ -23,6 +23,7 @@
  */
 const express = require('express');
 const path    = require('path');
+const { logger, recordEvent } = require('./lib/observability');
 const fs      = require('fs');
 const { spawn } = require('child_process');
 const auth    = require('./auth');
@@ -128,7 +129,7 @@ function safeAsync(handler) {
       await handler(req, res);
     } catch (err) {
       const status = err.statusCode || 500;
-      console.error(`[netdisco] ${req.method} ${req.originalUrl} — ${err.message}`);
+      logger.error(`[netdisco] ${req.method} ${req.originalUrl} — ${err.message}`);
       res.status(status).json({ error: err.message });
     }
   };
@@ -548,12 +549,12 @@ function scheduleNetdiscoSync(rackId, delayMs = 1500) {
     try {
       const r = await runPushScript(rackId);
       if (r.ok) {
-        console.log(`[netdisco] ${rackId} synced — ${r.devices} devices, ${r.ports} ports, ${r.edges} edges`);
+        logger.info(`[netdisco] ${rackId} synced — ${r.devices} devices, ${r.ports} ports, ${r.edges} edges`);
       } else {
-        console.warn(`[netdisco] ${rackId} sync failed — ${r.error}`);
+        logger.warn(`[netdisco] ${rackId} sync failed — ${r.error}`);
       }
     } catch (err) {
-      console.warn(`[netdisco] ${rackId} sync threw — ${err.message}`);
+      logger.warn(`[netdisco] ${rackId} sync threw — ${err.message}`);
     }
   }, delayMs));
 }
@@ -562,7 +563,7 @@ router.post('/api/netdisco/sync/:rackId', safeAsync(async (req, res) => {
   const { rackId } = req.params;
   const r = await runPushScript(rackId);
   if (!r.ok) {
-    console.warn(`[netdisco] sync ${rackId} failed:`, r.error);
+    logger.warn(`[netdisco] sync ${rackId} failed:`, r.error);
     return res.status(502).json({ ok: false, error: 'Network View sync is temporarily unavailable.' });
   }
   res.json(r);

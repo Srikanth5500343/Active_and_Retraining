@@ -23,10 +23,26 @@ const express = require('express');
 const path    = require('path');
 const fs      = require('fs');
 const { spawn } = require('child_process');
+const { logger, recordEvent } = require('./lib/observability');
 const auth    = require('./auth');
 
 const router = express.Router();
+const tenant = require('./lib/tenant');
 const PROJECT_ROOT  = path.resolve(__dirname, '..');
+
+// Tenant ownership guard for any route that takes :rackId on this router.
+// app.param doesn't propagate from the parent app to mounted routers, so
+// we register it here too. requireAuth already runs before this fires
+// (router.use('/api/cmdb/ticket', auth.requireAuth) below), so req.user
+// is populated.
+router.param('rackId', (req, res, next, rackId) => {
+  const tid = req.user?.tenant_id;
+  if (!tid) return next();   // not authenticated → fall through (legacy)
+  if (!tenant.tenantOwnsRack(tid, rackId)) {
+    return res.status(404).json({ ok: false, error: 'Rack not found' });
+  }
+  next();
+});
 const TICKET_SCRIPT = path.join(PROJECT_ROOT, 'servicenow', 'cmdb_ticket.py');
 const PYTHON_CMD    = process.env.PYTHON_CMD ||
                       (process.platform === 'win32' ? 'python' : 'python3');
@@ -84,7 +100,7 @@ function safeAsync(handler) {
   return async (req, res) => {
     try { await handler(req, res); }
     catch (err) {
-      console.error(`[cmdb-ticket] ${req.method} ${req.originalUrl} — ${err.message}`);
+      logger.error(`[cmdb-ticket] ${req.method} ${req.originalUrl} — ${err.message}`);
       res.status(500).json({ error: err.message });
     }
   };
@@ -150,12 +166,12 @@ function scheduleCmdbTicket(rackId, delayMs = 4000) {
       if (r.ok) {
         const action = r.action || 'unknown';
         const num    = r.ticket?.number || '—';
-        console.log(`[cmdb-ticket] ${rackId} ${action} ${num !== '—' ? `(${num})` : ''}`);
+        logger.info(`[cmdb-ticket] ${rackId} ${action} ${num !== '—' ? `(${num})` : ''}`);
       } else {
-        console.warn(`[cmdb-ticket] ${rackId} create failed: ${r.error}`);
+        logger.warn(`[cmdb-ticket] ${rackId} create failed: ${r.error}`);
       }
     } catch (err) {
-      console.warn(`[cmdb-ticket] ${rackId} threw: ${err.message}`);
+      logger.warn(`[cmdb-ticket] ${rackId} threw: ${err.message}`);
     }
   }, delayMs));
 }
@@ -171,18 +187,18 @@ async function runPollCycle() {
         ['applied', 'rejected', 'cancelled', 'apply_failed'].includes(x.action)
       );
       if (swept > 0) {
-        console.log(`[cmdb-ticket] poll cycle — swept ${swept}, acted ${acted.length}`);
+        logger.info(`[cmdb-ticket] poll cycle — swept ${swept}, acted ${acted.length}`);
       }
       acted.forEach(x => {
         const t = x.ticket || {};
-        console.log(`[cmdb-ticket]   ${x.rack_id}: ${x.action}  ${t.number || ''}`);
+        logger.info(`[cmdb-ticket]   ${x.rack_id}: ${x.action}  ${t.number || ''}`);
       });
     } else {
-      console.warn(`[cmdb-ticket] poll cycle failed: ${r.error}`);
+      logger.warn(`[cmdb-ticket] poll cycle failed: ${r.error}`);
     }
     return r;
   } catch (err) {
-    console.warn(`[cmdb-ticket] poll cycle threw: ${err.message}`);
+    logger.warn(`[cmdb-ticket] poll cycle threw: ${err.message}`);
     return { ok: false, error: err.message };
   }
 }
@@ -194,7 +210,7 @@ function startTicketPoller(intervalMs = 5 * 60 * 1000) {
   // Fire one cycle ~30s after boot so existing tickets get caught up
   // without blocking startup.
   setTimeout(runPollCycle, 30_000);
-  console.log(`[cmdb-ticket] poller started (every ${Math.round(intervalMs / 1000)}s)`);
+  logger.info(`[cmdb-ticket] poller started (every ${Math.round(intervalMs / 1000)}s)`);
 }
 
 router.scheduleCmdbTicket = scheduleCmdbTicket;

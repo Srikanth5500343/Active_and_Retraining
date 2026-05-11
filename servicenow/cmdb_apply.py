@@ -156,6 +156,25 @@ def apply_rack(rack_id: str, *, dry_run: bool = False) -> dict:
         ip = host.get("mgmt_ip")
         if not ip or ip in ("0.0.0.0", "0", "unknown"):
             continue   # don't create CIs for unidentified placeholders
+        # Provenance line — what's real, what's synthesized, where OCR
+        # got us. Lives in `comments` (a standard CMDB field) so anyone
+        # browsing the CI in ServiceNow can see exactly where each
+        # populated field came from. The same info is repeated in the UI
+        # via the discovery_source field we expose through list_rack_switches.
+        disc = host.get("discovery_source") or "synth"
+        provenance_bits = [f"discovery_source={disc}"]
+        if host.get("ocr_make"):
+            provenance_bits.append(f"ocr_make={host['ocr_make']}")
+        if host.get("ocr_model"):
+            provenance_bits.append(f"ocr_model={host['ocr_model']}")
+        if host.get("ocr_version"):
+            provenance_bits.append(f"ocr_version={host['ocr_version']}")
+        if host.get("ocr_conf") is not None:
+            provenance_bits.append(f"ocr_conf={host['ocr_conf']}")
+        if disc.startswith("synth"):
+            provenance_bits.append("synthetic_data=true")
+        if host.get("ocr_raw"):
+            provenance_bits.append(f"ocr_raw='{host['ocr_raw'][:120]}'")
         sw_payload = {
             "model_number":      host.get("model_number") or "",
             "serial_number":     host.get("serial_number") or "",
@@ -163,6 +182,7 @@ def apply_rack(rack_id: str, *, dry_run: bool = False) -> dict:
             "mac_address":       host.get("mac") or "",
             "os_version":        host.get("os") or "",
             "short_description": host.get("short_description") or "",
+            "comments":          "; ".join(provenance_bits),
         }
         sw = upsert("cmdb_ci_ip_switch", name, sw_payload)
         if rack_sys_id and sw.get("sys_id"):
