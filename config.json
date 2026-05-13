@@ -3,7 +3,7 @@
     "units": "Models/unit.pt",
     "devices": "Models/best 32.pt",
     "server": "Models/best 33.pt",
-    "port_count": "Models/port_count.pt",
+    "port_count": "Models/port_best.pt",
     "cable_classifier": "Models/best_model_efficientnet.pth"
   },
   "paths": {
