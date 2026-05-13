@@ -204,6 +204,7 @@ export default function HomePage() {
   const { theme } = useTheme();
   const auth = useAuth();
   const userName =
+    (auth?.user?.username) ||
     (auth?.user?.name) ||
     (auth?.user?.email && String(auth.user.email).split('@')[0]) ||
     'Engineer';
@@ -337,6 +338,27 @@ export default function HomePage() {
             <span className={styles.primaryCtaSub}>Identify every device in seconds</span>
           </span>
           <span className={styles.primaryCtaGo}><ArrowR /></span>
+        </button>
+
+        {/* Dev/test entry to the on-device inference page */}
+        <button
+          type="button"
+          onClick={() => navigate('/benchmark')}
+          style={{
+            marginTop: 10,
+            padding: '8px 14px',
+            border: '1px dashed rgba(99,102,241,0.4)',
+            background: 'transparent',
+            color: 'rgba(99,102,241,0.85)',
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            cursor: 'pointer',
+            alignSelf: 'center',
+          }}
+        >
+          🧪 Test On-Device (dev)
         </button>
 
       </div>

@@ -9,6 +9,7 @@ import { useShutter } from '../ShutterContext.jsx';
 import RearImagePrompt from '../components/RearImagePrompt.jsx';
 import MiniRack3D from '../components/MiniRack3D.jsx';
 import { RackAR } from '../plugins/RackAR';
+import { useTheme } from '../ThemeContext.jsx';
 
 // ── Preview Card ─────────────────────────────────────────────
 function PreviewCard({ file, onClear }) {
@@ -122,7 +123,7 @@ function CameraCapture({ onCapture, onCancel }) {
   const [ready,    setReady]    = useState(false);
   const [error,    setError]    = useState(null);
   const [flash,    setFlash]    = useState(false);
-  const [mode,     setMode]     = useState('photo');   // 'photo' | 'video'
+  const [mode,     setMode]     = useState('photo');   // 'photo' | 'video' | 'ar'
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
   const [quality,  setQuality]  = useState({ sharp: false, framed: false, lit: false });
@@ -169,7 +170,14 @@ function CameraCapture({ onCapture, onCancel }) {
     streamRef.current = null; setReady(false);
   }, []);
 
-  useEffect(() => { startCamera(); return () => stopCamera(); }, [startCamera, stopCamera]);
+  // Photo/Video use the web getUserMedia stream. AR launches a native
+  // ARCore/ARKit session, so release the webcam first to avoid contention
+  // for the camera resource and restart it when the user toggles back.
+  useEffect(() => {
+    if (mode === 'ar') { stopCamera(); return; }
+    startCamera();
+    return () => stopCamera();
+  }, [mode, startCamera, stopCamera]);
 
   // ── Live quality sampling loop (photo mode only) ────────
   useEffect(() => {
@@ -461,11 +469,14 @@ function CameraCapture({ onCapture, onCancel }) {
     return () => { cancelled = true; clearInterval(interval); };
   }, [ready]);
 
-  // Expose capture/record toggle to the BottomNav's middle button via context
+  // Expose capture/record toggle to the BottomNav's middle button via context.
+  // AR mode owns its own start/stop UI inside <ARMode/> — leave the shutter
+  // unbound there so the bottom button doesn't show a stale capture action.
   useEffect(() => {
+    if (mode === 'ar') { clearShutter(); return; }
     registerShutter(handleShutter, canShoot);
     return () => clearShutter();
-  }, [handleShutter, canShoot, registerShutter, clearShutter]);
+  }, [mode, handleShutter, canShoot, registerShutter, clearShutter]);
 
   if (error) return (
     <div className={styles.camError}>
@@ -504,32 +515,38 @@ function CameraCapture({ onCapture, onCancel }) {
 
   return (
     <div className={`${styles.camWrap} ${styles.camWrapFull}`}>
-      <div className={`${styles.flashLayer} ${flash ? styles.flashOn : ''}`} />
-      <video ref={videoRef} className={styles.camVideo} playsInline muted autoPlay />
-      <canvas ref={canvasRef} style={{display:'none'}} />
-      <canvas ref={sampleRef} style={{display:'none'}} />
+      {mode !== 'ar' && (
+        <>
+          <div className={`${styles.flashLayer} ${flash ? styles.flashOn : ''}`} />
+          <video ref={videoRef} className={styles.camVideo} playsInline muted autoPlay />
+          <canvas ref={canvasRef} style={{display:'none'}} />
+          <canvas ref={sampleRef} style={{display:'none'}} />
 
-      {/* Live detection labels — positioned absolutely on top of the
-          video. Hidden during the photo flash so they don't leak into
-          the captured still (they wouldn't anyway since canvas pulls
-          from the <video> element directly, but it looks cleaner). */}
-      <div className={styles.liveOverlay} aria-hidden="true">
-        {liveDevices.map(d => (
-          <div key={d.id} className={styles.liveBox}
-            style={{
-              left:        d.left,
-              top:         d.top,
-              width:       d.width,
-              height:      d.height,
-              borderColor: d.color,
-            }}>
-            <div className={styles.liveChip}
-              style={{ background: d.color }}>
-              {d.label}
-            </div>
+          {/* Live detection labels — positioned absolutely on top of the
+              video. Hidden during the photo flash so they don't leak into
+              the captured still (they wouldn't anyway since canvas pulls
+              from the <video> element directly, but it looks cleaner). */}
+          <div className={styles.liveOverlay} aria-hidden="true">
+            {liveDevices.map(d => (
+              <div key={d.id} className={styles.liveBox}
+                style={{
+                  left:        d.left,
+                  top:         d.top,
+                  width:       d.width,
+                  height:      d.height,
+                  borderColor: d.color,
+                }}>
+                <div className={styles.liveChip}
+                  style={{ background: d.color }}>
+                  {d.label}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
+
+      {mode === 'ar' && <ARMode />}
 
       {onCancel && (
         <button className={styles.camCloseBtn} onClick={onCancel} aria-label="Close camera">
@@ -540,20 +557,24 @@ function CameraCapture({ onCapture, onCancel }) {
       )}
 
       <div className={styles.hud}>
-        <div className={styles.hudGrid} />
+        {mode !== 'ar' && (
+          <>
+            <div className={styles.hudGrid} />
 
-        {/* Rack-shaped guide box. Photo mode: green when all checks pass. Video mode: red while recording. */}
-        <div className={`${styles.guideBox} ${
-          mode === 'photo' && canShoot ? styles.guideBoxOn : ''
-        } ${recording ? styles.guideBoxRec : ''}`} />
+            {/* Rack-shaped guide box. Photo mode: green when all checks pass. Video mode: red while recording. */}
+            <div className={`${styles.guideBox} ${
+              mode === 'photo' && canShoot ? styles.guideBoxOn : ''
+            } ${recording ? styles.guideBoxRec : ''}`} />
 
-        <div className={styles.hudTop}>
-          <span className={styles.hudBadge}>
-            {recording
-              ? <><span className={styles.recDot}/> REC {fmtTimer(recordSecs)}</>
-              : <><span className="dot dot-cyan" style={{width:5,height:5}}/> RACK SCAN</>}
-          </span>
-        </div>
+            <div className={styles.hudTop}>
+              <span className={styles.hudBadge}>
+                {recording
+                  ? <><span className={styles.recDot}/> REC {fmtTimer(recordSecs)}</>
+                  : <><span className="dot dot-cyan" style={{width:5,height:5}}/> RACK SCAN</>}
+              </span>
+            </div>
+          </>
+        )}
 
         <div className={styles.modeToggle}>
           <button type="button"
@@ -567,11 +588,19 @@ function CameraCapture({ onCapture, onCancel }) {
             onClick={() => setMode('video')}>
             Video
           </button>
+          <button type="button"
+            className={`${styles.modeBtn} ${mode === 'ar' ? styles.modeBtnOn : ''}`}
+            onClick={() => setMode('ar')}
+            disabled={recording}>
+            AR
+          </button>
         </div>
 
-        <div className={styles.hudBottom}>
-          <p className={styles.hudHint}>{hintText}</p>
-        </div>
+        {mode !== 'ar' && (
+          <div className={styles.hudBottom}>
+            <p className={styles.hudHint}>{hintText}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -834,6 +863,16 @@ function AnalyzingOverlay({ progress, step }) {
 // ── Page ─────────────────────────────────────────────────────
 export default function ScanPage() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  // Surface tokens for the incident picker — opaque white panel in light
+  // theme, dark navy in dark theme. Hover/divider use black-on-light vs
+  // white-on-dark so they're visible against either page background.
+  const pickerPanelBg   = isLight ? '#FFFFFF' : '#0f1420';
+  const pickerTriggerBg = isLight ? '#FFFFFF' : 'rgba(255,255,255,0.04)';
+  const pickerShadow    = isLight ? '0 8px 24px rgba(15,23,42,0.10)' : '0 12px 32px rgba(0,0,0,0.6)';
+  const pickerDivider   = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
+  const pickerHoverBg   = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)';
   const [tab,      setTab]      = useState('upload');
   const [file,     setFile]     = useState(null);
   const [loading,  setLoading]  = useState(false);
@@ -1152,7 +1191,6 @@ export default function ScanPage() {
           {[
             { id:'upload', label:'Upload', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
             { id:'camera', label:'Camera', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> },
-            { id:'ar',     label:'AR',     icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> },
           ].map(t => (
             <button key={t.id} className={`${styles.tab} ${tab===t.id ? styles.tabOn : ''}`}
               onClick={() => { setTab(t.id); setFile(null); setError(null); setQualityChoice(null); }}>
@@ -1221,12 +1259,10 @@ export default function ScanPage() {
             ? <PreviewCard file={file} onClear={() => setFile(null)}/>
             : tab === 'upload'
               ? <UploadZone onFile={setFile}/>
-              : tab === 'ar'
-                ? <ARMode/>
-                : <CameraCapture
-                    onCapture={(f) => { setFile(f); setTab('upload'); }}
-                    onCancel={() => setTab('upload')}
-                  />}
+              : <CameraCapture
+                  onCapture={(f) => { setFile(f); setTab('upload'); }}
+                  onCancel={() => setTab('upload')}
+                />}
         </div>
 
         {/* Selected-incident description — the short_description trimmed of any
@@ -1284,7 +1320,7 @@ export default function ScanPage() {
                 width:'100%',
                 padding:'10px 12px',
                 borderRadius:10,
-                background:'rgba(255,255,255,0.04)',
+                background: pickerTriggerBg,
                 color:'var(--text, #e5e7eb)',
                 border:`1px solid ${incidentMenuOpen ? 'rgba(239,68,68,0.55)' : 'rgba(239,68,68,0.35)'}`,
                 fontSize:14,
@@ -1331,10 +1367,10 @@ export default function ScanPage() {
                     ? `calc(100dvh - ${incidentMenuRect.bottom + 20}px)`
                     : '60vh',
                   zIndex:50,
-                  background:'#0f1420',
+                  background: pickerPanelBg,
                   border:'1px solid rgba(239,68,68,0.35)',
                   borderRadius:10,
-                  boxShadow:'0 12px 32px rgba(0,0,0,0.6)',
+                  boxShadow: pickerShadow,
                   overflowY:'auto',
                   WebkitOverflowScrolling:'touch',
                   overscrollBehavior:'contain',
@@ -1353,13 +1389,13 @@ export default function ScanPage() {
                       padding:'10px 12px',
                       borderRadius:8,
                       border:'none',
-                      borderBottom:'1px solid rgba(255,255,255,0.06)',
+                      borderBottom:`1px solid ${pickerDivider}`,
                       background: !ticket ? 'rgba(34,211,238,0.12)' : 'transparent',
                       color:'var(--text, #e5e7eb)',
                       cursor:'pointer',
                       marginBottom:2,
                     }}
-                    onMouseEnter={e => { if (ticket) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                    onMouseEnter={e => { if (ticket) e.currentTarget.style.background = pickerHoverBg; }}
                     onMouseLeave={e => { if (ticket) e.currentTarget.style.background = 'transparent'; }}>
                     <span style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:600}}>
                       {!ticket && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -1390,7 +1426,7 @@ export default function ScanPage() {
                           color:'var(--text, #e5e7eb)',
                           cursor:'pointer',
                         }}
-                        onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        onMouseEnter={e => { if (!sel) e.currentTarget.style.background = pickerHoverBg; }}
                         onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent'; }}>
                         <span style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:600}}>
                           {sel && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}

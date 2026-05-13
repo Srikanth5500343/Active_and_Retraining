@@ -162,6 +162,17 @@
 /* ALERT — rack centred but TILTED back, mid-size, shifted down */
 .v_alert    .rackStage { top: 140px; left: 50%;  width: 320px; height: 440px; transform: translateX(-50%) scale(1.30); }
 
+/* Phone-tuned rack sizing — the desktop values above are calibrated for the
+   ~600px webview, on a ~390px phone they overflow the screen edges. This
+   query shrinks each stage so the rack fits with margin on narrow viewports
+   without changing the desktop look. */
+@media (max-width: 480px) {
+  .v_controls .rackStage { bottom: 0px;  width: 320px; height: 470px; transform: translateX(-50%) scale(1.15); }
+  .v_scan     .rackStage { top: 180px;   width: 280px; height: 400px; transform: translateX(-50%) scale(1.15); }
+  .v_network  .rackStage { top: 130px;   width: 160px; height: 220px; transform: translateX(-50%) scale(0.78); }
+  .v_alert    .rackStage { top: 130px;   width: 300px; height: 420px; transform: translateX(-50%) scale(1.15); }
+}
+
 .rackSpot {
   position: absolute;
   inset: -10% -20%;
@@ -682,9 +693,9 @@
   align-items: center;
   justify-content: center;
   width: calc(100% + 32px);
-  height: 640px;
+  height: 460px;
   padding: 0;
-  margin: -16px -16px -24px;
+  margin: -8px -16px 0;
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -723,7 +734,7 @@
   max-width: 100%;
   width: 100%;
   object-fit: contain;
-  transform: translateY(40px);
+  transform: translateY(60px);
   filter:
     drop-shadow(0 24px 32px rgba(0, 0, 0, 0.40))
     drop-shadow(0 0 28px rgba(34, 211, 238, 0.28));
@@ -736,8 +747,8 @@
     drop-shadow(0 0 36px rgba(34, 211, 238, 0.40));
 }
 @keyframes heroFloat {
-  0%, 100% { transform: translateY(40px); }
-  50%      { transform: translateY(32px); }
+  0%, 100% { transform: translateY(60px); }
+  50%      { transform: translateY(52px); }
 }
 
 /* Tap-affordance ripple — concentric rings expanding from the base
@@ -747,7 +758,10 @@
   position: absolute;
   z-index: 0;
   left: 50%;
-  bottom: 56px;
+  /* The rack image is translated down 60px (see .rackHeroImg). We push the
+     ripple container the same direction so the ring centers sit at the
+     rack's visual base, not in the middle of the chassis. */
+  bottom: -60px;
   transform: translateX(-50%);
   width: 320px;
   height: 130px;
@@ -1158,7 +1172,7 @@
   gap: 14px;
   width: 100%;
   height: 68px;
-  margin-top: 56px;
+  margin-top: 90px;
   padding: 0 12px 0 14px;
   background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #8B5CF6 100%);
   background-size: 200% 100%;

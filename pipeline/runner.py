@@ -364,16 +364,15 @@ def main():
                 dev["sfp_ports"] = []
                 dev["connected_ports"] = []
 
-            # Unknown-status ports don't count: the port model couldn't tell
-            # connected from empty, so treat them as non-ports for the purpose
-            # of validating the device class. A port-bearing device with zero
-            # known-status ports (across main/console/sfp) is almost certainly
-            # a misclassification.
-            all_detected_ports = (dev["ports"] + dev["console_ports"]
-                                  + dev["sfp_ports"])
-            known_ports = [p for p in all_detected_ports
-                           if p.get("status") in ("connected", "empty")]
-            if not known_ports:
+            # If the port detector found no ports at all on a port-bearing
+            # device, the YOLO class is almost certainly wrong — demote to
+            # Unidentified. Status ('connected' vs 'empty') is no longer
+            # required: the class-aware port_best.pt labels port *category*
+            # (main/sfp/console) but doesn't infer occupancy, so legitimate
+            # ports come back with status='unknown'.
+            detected_ports = (dev["ports"] + dev["console_ports"]
+                              + dev["sfp_ports"])
+            if not detected_ports:
                 dev["class_name"] = "Unidentified"
                 dev["port_count"] = 0
                 dev["ports"] = []

@@ -609,6 +609,88 @@ function registerRoutes(app) {
     res.json({ ok: true, email: emailNorm });
   });
 
+  // ── Forgot password — stage 1.5: verify the code WITHOUT consuming it ─
+  // The UI uses this after the user enters the 6-digit code, so it can show
+  // a "Do you want to change your password?" confirmation step before
+  // collecting the new password. The reset row stays in the DB and is
+  // consumed by /reset-password later if the user proceeds.
+  app.post('/api/auth/verify-reset-code', (req, res) => {
+    const { email, code } = req.body || {};
+    if (!email || !code) {
+      audit.log({ req, action: 'auth.forgot_password.verify', status: 'fail',
+        error: 'missing fields' });
+      return res.status(400).json({ error: 'email and code required' });
+    }
+    const emailNorm = String(email).trim().toLowerCase();
+    const reset = db.prepare('SELECT * FROM password_resets WHERE email = ?').get(emailNorm);
+    if (!reset) {
+      audit.log({ req, action: 'auth.forgot_password.verify', status: 'fail',
+        error: 'no pending reset', payload: { email: emailNorm } });
+      return res.status(404).json({ error: 'No pending reset for that email — request a new code' });
+    }
+    if (Date.now() > reset.code_expires_at) {
+      db.prepare('DELETE FROM password_resets WHERE email = ?').run(emailNorm);
+      audit.log({ req, action: 'auth.forgot_password.verify', status: 'fail',
+        error: 'code expired', payload: { email: emailNorm } });
+      return res.status(410).json({ error: 'Reset code has expired — request a new one' });
+    }
+    if (String(code).trim() !== reset.code) {
+      audit.log({ req, action: 'auth.forgot_password.verify', status: 'fail',
+        error: 'wrong code', payload: { email: emailNorm } });
+      return res.status(400).json({ error: 'Incorrect reset code' });
+    }
+    audit.log({ req, action: 'auth.forgot_password.verify', status: 'ok',
+      payload: { email: emailNorm } });
+    res.json({ ok: true });
+  });
+
+  // ── Forgot password — alternative stage 2: skip the password change and
+  // sign in directly with the OTP. The 6-digit code is treated as proof of
+  // identity (the user controls the inbox), so we issue a fresh token
+  // without touching password_hash. The reset row is consumed so the same
+  // code can't be replayed for another login.
+  app.post('/api/auth/login-with-code', (req, res) => {
+    const { email, code } = req.body || {};
+    if (!email || !code) {
+      audit.log({ req, action: 'auth.forgot_password.login_with_code', status: 'fail',
+        error: 'missing fields' });
+      return res.status(400).json({ error: 'email and code required' });
+    }
+    const emailNorm = String(email).trim().toLowerCase();
+    const reset = db.prepare('SELECT * FROM password_resets WHERE email = ?').get(emailNorm);
+    if (!reset) {
+      audit.log({ req, action: 'auth.forgot_password.login_with_code', status: 'fail',
+        error: 'no pending reset', payload: { email: emailNorm } });
+      return res.status(404).json({ error: 'No pending reset for that email — request a new code' });
+    }
+    if (Date.now() > reset.code_expires_at) {
+      db.prepare('DELETE FROM password_resets WHERE email = ?').run(emailNorm);
+      audit.log({ req, action: 'auth.forgot_password.login_with_code', status: 'fail',
+        error: 'code expired', payload: { email: emailNorm } });
+      return res.status(410).json({ error: 'Reset code has expired — request a new one' });
+    }
+    if (String(code).trim() !== reset.code) {
+      audit.log({ req, action: 'auth.forgot_password.login_with_code', status: 'fail',
+        error: 'wrong code', payload: { email: emailNorm } });
+      return res.status(400).json({ error: 'Incorrect reset code' });
+    }
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(emailNorm);
+    if (!user) {
+      db.prepare('DELETE FROM password_resets WHERE email = ?').run(emailNorm);
+      audit.log({ req, action: 'auth.forgot_password.login_with_code', status: 'fail',
+        error: 'user gone', payload: { email: emailNorm } });
+      return res.status(404).json({ error: 'No account exists for that email' });
+    }
+
+    // Consume the reset row — same code can't be replayed.
+    db.prepare('DELETE FROM password_resets WHERE email = ?').run(emailNorm);
+
+    audit.log({ req, user, action: 'auth.forgot_password.login_with_code',
+      status: 'ok', targetType: 'user', targetId: user.id });
+
+    res.json({ ok: true, token: makeToken(user), user: publicUser(user) });
+  });
+
   // ── Forgot password — stage 2: verify code + set new password ─
   app.post('/api/auth/reset-password', (req, res) => {
     const { email, code, password } = req.body || {};

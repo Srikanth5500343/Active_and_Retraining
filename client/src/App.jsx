@@ -22,6 +22,7 @@ import MultiRackTopologyPage from './pages/MultiRackTopologyPage.jsx';
 import MultiRackRedirect from './pages/MultiRackRedirect.jsx';
 import PortHistoryPage from './pages/PortHistoryPage.jsx';
 import TenantMatPage from './pages/TenantMatPage.jsx';
+import BenchmarkPage from './pages/BenchmarkPage.jsx';
 import { ShutterProvider } from './ShutterContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ThemeProvider } from './ThemeContext.jsx';
@@ -69,6 +70,7 @@ export default function App() {
             <AndroidBackHandler />
             <Routes>
             <Route path="/" element={<><HomePage /><BottomNav /></>} />
+            <Route path="/benchmark" element={<BenchmarkPage />} />
             <Route path="/login"  element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />

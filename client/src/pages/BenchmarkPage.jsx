@@ -1,0 +1,559 @@
+import { useState, useRef, useEffect } from 'react';
+import * as ort from 'onnxruntime-web/wasm';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+
+ort.env.wasm.wasmPaths = '/ort-wasm/';
+ort.env.wasm.numThreads = 1;
+ort.env.wasm.proxy = false;
+
+// Lower confidence than before — matches what the server pipeline uses.
+const CONF_THRESH = 0.12;
+const NMS_IOU = 0.45;
+// Cap how many device crops we run Pass 2 on (keeps total time tolerable).
+const MAX_CROPS = 6;
+
+// First pass — these run on the WHOLE rack image.
+const PASS_1 = [
+  { name: 'unit',         file: 'unit_int8.onnx',           size: 11.5, input: 640, kind: 'yolo', color: '#2563eb', note: 'rack-unit detector' },
+  { name: 'best 33',      file: 'best_33_int8.onnx',        size: 11.5, input: 640, kind: 'yolo', color: '#dc2626', note: 'server detector' },
+  { name: 'Units',        file: 'Units_int8.onnx',          size: 26.3, input: 640, kind: 'yolo', color: '#d97706', note: 'units (alt)' },
+  { name: 'port_count',   file: 'port_count_int8.onnx',     size: 26.3, input: 640, kind: 'yolo', color: '#0891b2', note: 'port locator/counter' },
+  { name: 'Device_final', file: 'Device_final_int8.onnx',   size: 44.1, input: 640, kind: 'yolo', color: '#db2777', note: 'final device pass' },
+  { name: 'best 32',      file: 'best_32_int8.onnx',        size: 44.1, input: 640, kind: 'yolo', color: '#65a30d', note: 'non-server detector' },
+];
+
+// Second pass — these run on each CROP of a detected device.
+const PASS_2 = [
+  { name: 'switch_patch', file: 'switch_patch_int8.onnx',                  size: 11.5, input: 640, kind: 'yolo',         color: '#16a34a', note: 'patch-panel ports (per crop)' },
+  { name: 'port_best',    file: 'port_best_int8.onnx',                     size: 26.3, input: 640, kind: 'yolo',         color: '#9333ea', note: 'class-aware ports (per crop)' },
+  { name: 'efficientnet', file: 'best_model_efficientnet_int8.onnx',       size:  4.4, input: 224, kind: 'efficientnet', color: '#475569', note: 'cable / port-type class (per crop)' },
+];
+
+const ALL_MODELS = [...PASS_1, ...PASS_2];
+
+async function preprocess(imgUrl, size) {
+  const img = new Image();
+  img.src = imgUrl;
+  await new Promise((r) => { img.onload = r; });
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, size, size);
+  const px = ctx.getImageData(0, 0, size, size).data;
+  const n = size * size;
+  const data = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) {
+    data[i] = px[i * 4] / 255;
+    data[i + n] = px[i * 4 + 1] / 255;
+    data[i + 2 * n] = px[i * 4 + 2] / 255;
+  }
+  return new ort.Tensor('float32', data, [1, 3, size, size]);
+}
+
+async function cropDataUrl(imgUrl, box, pad = 0.02) {
+  const img = new Image();
+  img.src = imgUrl;
+  await new Promise((r) => { img.onload = r; });
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const x = Math.max(0, (box.x - pad) * W);
+  const y = Math.max(0, (box.y - pad) * H);
+  const w = Math.min(W - x, (box.w + 2 * pad) * W);
+  const h = Math.min(H - y, (box.h + 2 * pad) * H);
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h);
+  return c.toDataURL('image/jpeg', 0.85);
+}
+
+function decodeYolo(output, imgSize, confThresh = CONF_THRESH) {
+  const [, , numDet] = output.dims;
+  const d = output.data;
+  const boxes = [];
+  for (let i = 0; i < numDet; i++) {
+    const cx = d[0 * numDet + i];
+    const cy = d[1 * numDet + i];
+    const w  = d[2 * numDet + i];
+    const h  = d[3 * numDet + i];
+    const conf = d[4 * numDet + i];
+    if (conf > confThresh) {
+      boxes.push({ x: (cx - w/2)/imgSize, y: (cy - h/2)/imgSize, w: w/imgSize, h: h/imgSize, conf });
+    }
+  }
+  return nms(boxes, NMS_IOU);
+}
+
+function iou(a, b) {
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.w, b.x + b.w);
+  const y2 = Math.min(a.y + a.h, b.y + b.h);
+  const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  const union = a.w * a.h + b.w * b.h - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+function nms(boxes, thresh) {
+  const sorted = [...boxes].sort((p, q) => q.conf - p.conf);
+  const kept = [];
+  for (const b of sorted) {
+    if (kept.every((k) => iou(k, b) < thresh)) kept.push(b);
+  }
+  return kept;
+}
+
+function topClass(output) {
+  const d = output.data;
+  let maxIdx = 0, maxVal = -Infinity;
+  for (let i = 0; i < d.length; i++) {
+    if (d[i] > maxVal) { maxVal = d[i]; maxIdx = i; }
+  }
+  return { idx: maxIdx, score: maxVal };
+}
+
+function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled) {
+  const img = new Image();
+  img.src = imgUrl;
+  img.onload = () => {
+    const maxW = 900;
+    const scale = Math.min(1, maxW / img.naturalWidth);
+    canvas.width = img.naturalWidth * scale;
+    canvas.height = img.naturalHeight * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 2;
+    models.forEach((m) => {
+      const r = results[m.name];
+      if (!r?.boxes) return;
+      if (enabled && enabled[m.name] === false) return;
+      ctx.strokeStyle = m.color;
+      r.boxes.forEach((b) => {
+        ctx.strokeRect(
+          b.x * canvas.width,
+          b.y * canvas.height,
+          b.w * canvas.width,
+          b.h * canvas.height,
+        );
+      });
+    });
+  };
+}
+
+function drawCropCanvas(canvas, imgUrl, perModelBoxes, models) {
+  const img = new Image();
+  img.src = imgUrl;
+  img.onload = () => {
+    const maxW = 600;
+    const scale = Math.min(1, maxW / img.naturalWidth);
+    canvas.width = img.naturalWidth * scale;
+    canvas.height = img.naturalHeight * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 2;
+    models.forEach((m) => {
+      const boxes = perModelBoxes[m.name] || [];
+      ctx.strokeStyle = m.color;
+      boxes.forEach((b) => {
+        ctx.strokeRect(
+          b.x * canvas.width,
+          b.y * canvas.height,
+          b.w * canvas.width,
+          b.h * canvas.height,
+        );
+      });
+    });
+  };
+}
+
+export default function BenchmarkPage() {
+  const [imageDataUrl, setImageDataUrl] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [results, setResults] = useState({});
+  const [status, setStatus] = useState('');
+  const [overallMs, setOverallMs] = useState(null);
+  const [enabledMain, setEnabledMain] = useState({});
+  const [crops, setCrops] = useState([]); // [{dataUrl, box, perModel: {switch_patch: [...], port_best: [...]}, classifierResult: {...}}]
+  const mainCanvasRef = useRef(null);
+  const cropRefs = useRef({});
+
+  useEffect(() => {
+    setEnabledMain(Object.fromEntries(PASS_1.map((m) => [m.name, true])));
+  }, []);
+
+  useEffect(() => {
+    if (imageDataUrl && mainCanvasRef.current) {
+      drawBoxesOnCanvas(mainCanvasRef.current, imageDataUrl, results, PASS_1, enabledMain);
+    }
+  }, [imageDataUrl, results, enabledMain]);
+
+  useEffect(() => {
+    crops.forEach((c, i) => {
+      const ref = cropRefs.current[i];
+      if (ref && c.dataUrl) {
+        drawCropCanvas(ref, c.dataUrl, c.perModel || {}, PASS_2.filter((m) => m.kind === 'yolo'));
+      }
+    });
+  }, [crops]);
+
+  const updateResult = (name, patch) =>
+    setResults((prev) => ({ ...prev, [name]: { ...(prev[name] || {}), ...patch } }));
+
+  const runAll = async () => {
+    setRunning(true);
+    setResults(Object.fromEntries(ALL_MODELS.map((m) => [m.name, { status: 'pending' }])));
+    setOverallMs(null);
+    setCrops([]);
+    cropRefs.current = {};
+
+    try {
+      setStatus('Opening camera...');
+      const photo = await Camera.getPhoto({
+        quality: 80,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        allowEditing: false,
+      });
+      setImageDataUrl(photo.dataUrl);
+
+      const tStart = performance.now();
+      const deviceBoxes = [];
+
+      // ── PASS 1: 6 whole-image models ───────────────────────────────
+      for (const m of PASS_1) {
+        setStatus(`Pass 1 — ${m.name}`);
+        updateResult(m.name, { status: 'loading' });
+        const loadT0 = performance.now();
+        const session = await ort.InferenceSession.create(`/models/${m.file}`, {
+          executionProviders: ['wasm'],
+        });
+        const loadMs = performance.now() - loadT0;
+        updateResult(m.name, { status: 'inferring', loadMs });
+
+        const tensor = await preprocess(photo.dataUrl, m.input);
+        const inferT0 = performance.now();
+        const out = await session.run({ [session.inputNames[0]]: tensor });
+        const inferMs = performance.now() - inferT0;
+        const firstOut = out[session.outputNames[0]];
+        const boxes = decodeYolo(firstOut, m.input);
+        updateResult(m.name, {
+          status: 'done', loadMs, inferMs, boxes,
+          summary: `${boxes.length} detection(s)`,
+        });
+        // Collect device boxes from the 3 device detectors.
+        if (m.name === 'best 32' || m.name === 'best 33' || m.name === 'Device_final') {
+          boxes.forEach((b) => deviceBoxes.push(b));
+        }
+        await session.release();
+      }
+
+      // ── Combine + NMS the device boxes across detectors, take top N ─
+      const dedupedDevices = nms(deviceBoxes, 0.5).slice(0, MAX_CROPS);
+      setStatus(`Found ${dedupedDevices.length} device(s) to crop for Pass 2`);
+
+      if (dedupedDevices.length === 0) {
+        PASS_2.forEach((m) => updateResult(m.name, {
+          status: 'skipped',
+          summary: 'no device crops (Pass 1 found nothing)',
+        }));
+      } else {
+        // Pre-render crops so the UI shows them while Pass 2 runs.
+        const cropList = [];
+        for (const box of dedupedDevices) {
+          const dataUrl = await cropDataUrl(photo.dataUrl, box);
+          cropList.push({ dataUrl, box, perModel: {}, classifierResult: null });
+        }
+        setCrops(cropList);
+
+        // Initialize Pass 2 model running state — these will run many times.
+        PASS_2.forEach((m) => updateResult(m.name, {
+          status: 'loading',
+          totalLoadMs: 0,
+          totalInferMs: 0,
+          totalBoxes: 0,
+          cropsRun: 0,
+        }));
+
+        // ── PASS 2: load each model ONCE, run it on every crop ──────
+        for (const m of PASS_2) {
+          setStatus(`Pass 2 — loading ${m.name}`);
+          updateResult(m.name, { status: 'loading' });
+          const loadT0 = performance.now();
+          const session = await ort.InferenceSession.create(`/models/${m.file}`, {
+            executionProviders: ['wasm'],
+          });
+          const loadMs = performance.now() - loadT0;
+          updateResult(m.name, { status: 'inferring', totalLoadMs: loadMs });
+
+          let totalInfer = 0;
+          let totalBoxes = 0;
+          let lastClass = null;
+          for (let i = 0; i < cropList.length; i++) {
+            setStatus(`Pass 2 — ${m.name} on crop ${i + 1}/${cropList.length}`);
+            const tensor = await preprocess(cropList[i].dataUrl, m.input);
+            const t0 = performance.now();
+            const out = await session.run({ [session.inputNames[0]]: tensor });
+            const dt = performance.now() - t0;
+            totalInfer += dt;
+            const firstOut = out[session.outputNames[0]];
+            if (m.kind === 'yolo') {
+              const boxes = decodeYolo(firstOut, m.input);
+              cropList[i].perModel[m.name] = boxes;
+              totalBoxes += boxes.length;
+            } else {
+              const c = topClass(firstOut);
+              cropList[i].classifierResult = c;
+              lastClass = c;
+            }
+            // refresh state every crop so user sees boxes appear
+            setCrops([...cropList]);
+            updateResult(m.name, {
+              status: 'inferring',
+              totalInferMs: totalInfer,
+              totalBoxes,
+              cropsRun: i + 1,
+            });
+          }
+
+          let summary;
+          if (m.kind === 'yolo') {
+            summary = `${totalBoxes} detection(s) across ${cropList.length} crop(s)`;
+          } else {
+            summary = `top class ${lastClass?.idx} (last crop score ${lastClass?.score.toFixed(2)})`;
+          }
+          updateResult(m.name, {
+            status: 'done',
+            loadMs,
+            inferMs: totalInfer,
+            summary,
+          });
+          await session.release();
+        }
+      }
+
+      setOverallMs(performance.now() - tStart);
+      setStatus(`Done — ${dedupedDevices.length} device crop(s) processed`);
+    } catch (err) {
+      setStatus(`ERROR: ${err.message || err}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const allRows = ALL_MODELS.map((m, i) => ({ m, r: results[m.name] || {}, i }));
+  const totalLoad = allRows.reduce((s, x) => s + (x.r.loadMs || 0), 0);
+  const totalInfer = allRows.reduce((s, x) => s + (x.r.inferMs || 0), 0);
+
+  return (
+    <div style={{
+      padding: 16,
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      color: '#0f172a',
+      minHeight: '100vh',
+      background: '#fff',
+    }}>
+      <h1 style={{ fontSize: 22, margin: '0 0 6px' }}>Full Pipeline On-Device</h1>
+      <p style={{ color: '#475569', fontSize: 13, margin: '0 0 14px' }}>
+        Two-pass pipeline, all on the phone.
+        <strong> Pass 1:</strong> 6 models on the whole rack.
+        <strong> Pass 2:</strong> 3 models on each detected device crop (up to {MAX_CROPS}).
+        Conf threshold: {CONF_THRESH}.
+      </p>
+
+      <button
+        onClick={runAll}
+        disabled={running}
+        style={{
+          background: running ? '#94a3b8' : '#2563eb',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          padding: '14px 20px',
+          fontSize: 16,
+          fontWeight: 600,
+          width: '100%',
+          marginBottom: 14,
+        }}
+      >
+        {running ? 'Running...' : 'Take Photo & Run All 9 Models'}
+      </button>
+
+      {status && (
+        <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>
+          Status: <strong>{status}</strong>
+        </div>
+      )}
+
+      {imageDataUrl && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: '14px 0 6px' }}>
+            Pass 1 — whole rack
+          </div>
+          <div style={{
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            overflow: 'hidden',
+            marginBottom: 8,
+            background: '#000',
+          }}>
+            <canvas ref={mainCanvasRef} style={{ width: '100%', display: 'block' }} />
+          </div>
+          <Legend models={PASS_1} results={results} enabled={enabledMain} setEnabled={setEnabledMain} />
+        </>
+      )}
+
+      {crops.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: '20px 0 6px' }}>
+            Pass 2 — {crops.length} device crop(s)
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+            gap: 8,
+            marginBottom: 12,
+          }}>
+            {crops.map((c, i) => (
+              <div key={i} style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                overflow: 'hidden',
+                background: '#000',
+              }}>
+                <canvas
+                  ref={(el) => { cropRefs.current[i] = el; }}
+                  style={{ width: '100%', display: 'block' }}
+                />
+                <div style={{
+                  background: '#fff',
+                  padding: '6px 8px',
+                  fontSize: 10,
+                  color: '#475569',
+                }}>
+                  Crop {i + 1} · conf {c.box?.conf.toFixed(2)}
+                  {c.classifierResult && (
+                    <div style={{ color: '#475569' }}>
+                      class {c.classifierResult.idx} ({c.classifierResult.score.toFixed(2)})
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16, marginBottom: 14 }}>
+        {allRows.map(({ m, r, i }) => (
+          <div key={m.name} style={{
+            borderLeft: `4px solid ${m.color}`,
+            border: '1px solid #e2e8f0',
+            borderLeftWidth: 4,
+            borderRadius: 8,
+            padding: '10px 12px',
+            fontSize: 12,
+            background: r.status === 'done' ? '#f0fdf4'
+                       : r.status === 'inferring' || r.status === 'loading' ? '#eff6ff'
+                       : r.status === 'skipped' ? '#fffbeb'
+                       : '#f8fafc',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <strong style={{ color: '#0f172a' }}>{i + 1}. {m.name}
+                <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500, marginLeft: 6 }}>
+                  {i < PASS_1.length ? '(Pass 1)' : '(Pass 2)'}
+                </span>
+              </strong>
+              <span style={{ color: '#64748b' }}>{m.size} MB</span>
+            </div>
+            <div style={{ color: '#64748b', marginTop: 2 }}>{m.note}</div>
+            {r.status === 'pending' && <div style={{ color: '#94a3b8', marginTop: 4 }}>waiting...</div>}
+            {r.status === 'loading' && <div style={{ color: '#2563eb', marginTop: 4 }}>loading...</div>}
+            {r.status === 'inferring' && i < PASS_1.length && (
+              <div style={{ color: '#2563eb', marginTop: 4 }}>running inference...</div>
+            )}
+            {r.status === 'inferring' && i >= PASS_1.length && (
+              <div style={{ color: '#2563eb', marginTop: 4 }}>
+                running on crop {r.cropsRun}/{crops.length}... ({r.totalBoxes || 0} boxes so far)
+              </div>
+            )}
+            {r.status === 'skipped' && (
+              <div style={{ color: '#d97706', marginTop: 4 }}>⊘ skipped — {r.summary}</div>
+            )}
+            {r.status === 'done' && (
+              <div style={{ marginTop: 4 }}>
+                <span style={{ color: '#16a34a' }}>✓</span>{' '}
+                load {r.loadMs?.toFixed(0)} ms, infer {r.inferMs?.toFixed(0)} ms — {r.summary}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {overallMs !== null && (
+        <div style={{
+          background: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          borderRadius: 8,
+          padding: 14,
+          fontSize: 13,
+          lineHeight: 1.7,
+        }}>
+          <strong style={{ color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11 }}>SUMMARY</strong>
+          <div>Total wall-clock: <strong>{(overallMs / 1000).toFixed(1)} s</strong></div>
+          <div>Total load time: <strong>{(totalLoad / 1000).toFixed(1)} s</strong></div>
+          <div>Total inference: <strong>{(totalInfer / 1000).toFixed(1)} s</strong></div>
+          <div>Device crops processed: <strong>{crops.length}</strong></div>
+          <div style={{ color: '#475569', marginTop: 6, fontSize: 12 }}>
+            Conf threshold {CONF_THRESH}, Pass 2 ran on every detected device.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Legend({ models, results, enabled, setEnabled }) {
+  return (
+    <div style={{
+      background: '#f8fafc',
+      border: '1px solid #e2e8f0',
+      borderRadius: 8,
+      padding: '8px 10px',
+      marginBottom: 8,
+      fontSize: 12,
+    }}>
+      <div style={{ fontWeight: 600, marginBottom: 6, color: '#0f172a', fontSize: 11 }}>Tap to toggle</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {models.map((m) => {
+          const r = results[m.name] || {};
+          const on = enabled[m.name];
+          return (
+            <button
+              key={m.name}
+              onClick={() => setEnabled((e) => ({ ...e, [m.name]: !e[m.name] }))}
+              style={{
+                border: `1px solid ${on ? m.color : '#cbd5e1'}`,
+                background: on ? '#fff' : '#f1f5f9',
+                color: on ? m.color : '#94a3b8',
+                borderRadius: 999,
+                padding: '3px 9px',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{
+                display: 'inline-block',
+                width: 8, height: 8, borderRadius: 2,
+                background: on ? m.color : '#cbd5e1',
+                marginRight: 5,
+                verticalAlign: 'middle',
+              }} />
+              {m.name}{r.boxes ? ` (${r.boxes.length})` : ''}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

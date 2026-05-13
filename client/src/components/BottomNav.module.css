@@ -280,77 +280,22 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   LIGHT THEME OVERRIDES
+   LIGHT THEME — bar stays DARK navy in both themes (matches the Profile
+   hero band aesthetic). Only the outer drop-shadow swaps to an indigo
+   glow so the dark nav frames nicely against light page content. All
+   other elements (icons, labels, active state, shutter) keep their
+   dark-theme styling unchanged.
    ══════════════════════════════════════════════════════════════════════ */
 
 :global([data-theme='light']) .bar::before {
-  background: rgba(255, 255, 255, 0.96);
+  /* Solid dark navy in light theme so the page's cream bg doesn't bleed
+     through the 85% opaque fill and wash the bar out to grey-blue.
+     Use the same gradient as the Profile hero band so they read as one
+     family. */
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(99,102,241,0.30) 0%, transparent 65%),
+    linear-gradient(160deg, #0a1230 0%, #131641 45%, #0c1535 100%);
   filter:
-    drop-shadow(0 12px 28px rgba(99, 102, 241, 0.22))
-    drop-shadow(0 4px 12px rgba(99, 102, 241, 0.10));
-}
-
-:global([data-theme='light']) .iconWrap {
-  color: #6B7280;
-}
-
-:global([data-theme='light']) .label {
-  color: #9CA3AF;
-}
-
-:global([data-theme='light']) .active .iconWrap {
-  background: linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
-  color: #FFFFFF;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow:
-    0 10px 22px rgba(99, 102, 241, 0.38),
-    0 4px 10px rgba(129, 140, 248, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-:global([data-theme='light']) .active .iconWrap::before {
-  background: radial-gradient(circle, rgba(129, 140, 248, 0.28) 0%, rgba(99, 102, 241, 0.10) 50%, transparent 72%);
-}
-
-:global([data-theme='light']) .active .label {
-  color: #4F46E5;
-}
-:global([data-theme='light']) .active .label::after {
-  background: linear-gradient(135deg, #6366F1, #818CF8);
-}
-
-:global([data-theme='light']) .item:not(.active):hover .iconWrap {
-  color: #6366F1;
-  background: rgba(99, 102, 241, 0.10);
-}
-:global([data-theme='light']) .item:not(.active):hover .label {
-  color: #6366F1;
-}
-
-/* Shutter — light theme */
-:global([data-theme='light']) .shutterItem .iconWrap {
-  background: rgba(99, 102, 241, 0.10);
-  border: 2.5px solid #818CF8;
-  color: #4F46E5;
-  box-shadow:
-    0 10px 22px rgba(99, 102, 241, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-:global([data-theme='light']) .shutterItem .shutterDot {
-  background: rgba(99, 102, 241, 0.45);
-}
-:global([data-theme='light']) .shutterItem .label {
-  color: #4F46E5;
-}
-:global([data-theme='light']) .shutterItem.shutterReady .iconWrap {
-  background: #FFFFFF;
-  border-color: #22C55E;
-  box-shadow:
-    0 0 22px rgba(34, 197, 94, 0.5),
-    0 10px 22px rgba(99, 102, 241, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-:global([data-theme='light']) .shutterItem.shutterReady .shutterDot {
-  background: #22C55E;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.55);
+    drop-shadow(0 12px 28px rgba(99, 102, 241, 0.30))
+    drop-shadow(0 4px 12px rgba(99, 102, 241, 0.14));
 }

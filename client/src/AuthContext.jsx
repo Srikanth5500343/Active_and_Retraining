@@ -65,10 +65,32 @@ export function AuthProvider({ children }) {
     return await callApi('/api/auth/forgot-password', { body: { email } });
   }, []);
 
+  // Validates the 6-digit code without consuming it. The page uses this
+  // before asking "Do you want to change your password?" so a wrong/expired
+  // code can't slip past that confirmation step.
+  const verifyResetCode = useCallback(async (email, code) => {
+    setLoading(true);
+    try {
+      return await callApi('/api/auth/verify-reset-code', { body: { email, code } });
+    } finally { setLoading(false); }
+  }, []);
+
   const resetPassword = useCallback(async (email, code, password) => {
     setLoading(true);
     try {
       const data = await callApi('/api/auth/reset-password', { body: { email, code, password } });
+      setState({ token: data.token, user: data.user });
+      return data.user;
+    } finally { setLoading(false); }
+  }, []);
+
+  // Sign in via the verified reset code WITHOUT changing the password.
+  // The code stays valid only until this call (the server consumes it),
+  // and the existing password remains unchanged.
+  const loginWithCode = useCallback(async (email, code) => {
+    setLoading(true);
+    try {
+      const data = await callApi('/api/auth/login-with-code', { body: { email, code } });
       setState({ token: data.token, user: data.user });
       return data.user;
     } finally { setLoading(false); }
@@ -105,7 +127,7 @@ export function AuthProvider({ children }) {
       user, token, loading,
       isAuthed: !!user,
       login, signup, verifyCode, resendCode, logout,
-      forgotPassword, resetPassword,
+      forgotPassword, verifyResetCode, resetPassword, loginWithCode,
     }}>
       {children}
     </AuthContext.Provider>
