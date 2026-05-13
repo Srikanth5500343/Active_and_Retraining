@@ -1,0 +1,5 @@
+{
+  "name": "netdisco-backend Container",
+  "image": "ghcr.io/netdisco/netdisco:latest-backend",
+  "features": {}
+}

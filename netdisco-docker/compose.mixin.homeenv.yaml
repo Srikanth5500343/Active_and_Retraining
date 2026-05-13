@@ -1,0 +1,13 @@
+services:
+
+  netdisco-db-init:
+    volumes:
+      - "~/environments:/home/netdisco/environments"
+
+  netdisco-backend:
+    volumes:
+      - "~/environments:/home/netdisco/environments"
+
+  netdisco-web:
+    volumes:
+      - "~/environments:/home/netdisco/environments"
