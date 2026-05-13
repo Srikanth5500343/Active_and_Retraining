@@ -33,6 +33,7 @@ const { appendLineWithRotation } = require('./lib/jsonl_rotation');
 const orphanGC = require('./lib/orphan_gc');
 const jwt = require('jsonwebtoken');
 const sshCreds = require('./lib/ssh-creds');
+const { uploadLimiter } = require('./lib/rate_limit');
 // Central observability — must be required before anything that wants to
 // log structured events. Provides logger + metrics + middleware + helpers.
 const o11y = require('./lib/observability');
@@ -214,6 +215,10 @@ const upload = multer({
   },
 });
 
+// Shared rate limiter for all upload-bound routes. Keyed by user id when
+// available so multiple techs behind one NAT aren't starved by each other.
+const scanLimit = uploadLimiter();
+
 // ── Image normalization ───────────────────────────────────────
 // Converts HEIC/HEIF to JPEG and applies EXIF rotation so downstream
 // code (cv2, pipeline) always sees an upright standard JPEG.
@@ -260,13 +265,21 @@ function computeRackId(filePath) {
 const pythonCmd = process.env.PYTHON_PATH || (process.platform === 'win32' ? 'py' : 'python3');
 const WORKER_COUNT = Math.max(1, parseInt(process.env.RACKTRACK_WORKERS, 10) || 1);
 
-const pool = new WorkerPool({
-  size: WORKER_COUNT,
-  pythonCmd,
-  pythonArgs: ['-u', '-m', 'pipeline.worker'],
-  cwd: PROJECT_ROOT,
-  env: { ...process.env, PYTHONUNBUFFERED: '1', YOLO_VERBOSE: 'False' },
-});
+// In test/smoke mode we skip spawning the Python worker pool — it would
+// otherwise fork subprocesses that keep the event loop alive past the
+// last test and (in CI) noisily fail on missing pipeline deps. Routes
+// that need the pool will throw if hit, which is fine for smoke tests
+// that only exercise /healthz, /metrics, and 404 handling.
+const pool = process.env.RACKTRACK_SKIP_WORKER_POOL === '1'
+  ? { request: () => { throw new Error('worker pool disabled (RACKTRACK_SKIP_WORKER_POOL=1)'); },
+      shutdown: () => Promise.resolve() }
+  : new WorkerPool({
+      size: WORKER_COUNT,
+      pythonCmd,
+      pythonArgs: ['-u', '-m', 'pipeline.worker'],
+      cwd: PROJECT_ROOT,
+      env: { ...process.env, PYTHONUNBUFFERED: '1', YOLO_VERBOSE: 'False' },
+    });
 
 async function runQualityCheck(imagePath) {
   return withSpan('pipeline.quality_check', async (log) => {
@@ -1497,7 +1510,7 @@ setInterval(() => {
  * Response: { devices: [{ class_name, confidence, bbox:[x,y,w,h] }],
  *             image_size: { w, h } }
  */
-app.post('/api/detect', upload.single('image'), async (req, res) => {
+app.post('/api/detect', scanLimit, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image file provided' });
   const tmpPath = req.file.path;
   try {
@@ -1526,7 +1539,7 @@ app.post('/api/detect', upload.single('image'), async (req, res) => {
  * 2. If outputs/RK-XXXXXXXX/device_unit_map.json exists → return cached result
  * 3. Otherwise run pipeline --detect_only, save outputs, return fresh result
  */
-app.post('/api/analyze', upload.single('image'), async (req, res) => {
+app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image file provided' });
 
   let tmpPath = req.file.path;
@@ -1713,7 +1726,7 @@ function runOcrLabels(imagePath) {
   });
 }
 
-app.post('/api/ocr/labels', upload.single('image'), async (req, res) => {
+app.post('/api/ocr/labels', scanLimit, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image file provided' });
 
   const side   = (req.body?.side === 'rear') ? 'rear' : 'front';
@@ -2502,7 +2515,7 @@ function resolveTicketDevice(rackDir, cmdbDeviceName, cmdbHint = null) {
  *       { rackId, position, label, deviceCount, score, cached }
  *     ] }
  */
-app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
+app.post('/api/analyze-video', scanLimit, upload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No video file provided' });
   const reqStart = Date.now();
   const videoPath = req.file.path;
@@ -2739,7 +2752,7 @@ app.get('/api/incidents/:inc/expected-rack', (req, res) => {
  *
  * Always returns `detected` and `expected` so the client can show a diff.
  */
-app.post('/api/incidents/:inc/verify-rack', upload.single('image'), async (req, res) => {
+app.post('/api/incidents/:inc/verify-rack', scanLimit, upload.single('image'), async (req, res) => {
   const incNumber = req.params.inc;
   const ticket = readTicketByNumber(incNumber);
   if (!ticket) return res.status(404).json({ ok: false, error: `Ticket ${incNumber} not in inbox` });
@@ -2821,7 +2834,7 @@ app.post('/api/incidents/:inc/verify-rack', upload.single('image'), async (req, 
  *   4. Try LLDP over SSH to the switch's mgmt_ip for the interface
  * Returns the bundled payload so the client has one round trip.
  */
-app.post('/api/analyze-for-ticket', upload.single('image'), async (req, res) => {
+app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (req, res) => {
   const incNumber = req.body?.incident_number;
   if (!incNumber) return res.status(400).json({ error: 'incident_number is required' });
 
@@ -4782,6 +4795,7 @@ module.exports.renderHTMLReport        = renderHTMLReport;
 module.exports.renderJSONReport        = renderJSONReport;
 module.exports.renderCSVReport         = renderCSVReport;
 module.exports.runSwitchCommandsSequential = runSwitchCommandsSequential;
+module.exports.app                       = app;
 
 // ── User feedback on port identification ──────────────────────
 const feedbackDir      = path.join(__dirname, 'feedback');

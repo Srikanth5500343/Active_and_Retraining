@@ -8,6 +8,7 @@ import { prefetchScan } from '../utils/scanPrefetch';
 import { useShutter } from '../ShutterContext.jsx';
 import RearImagePrompt from '../components/RearImagePrompt.jsx';
 import MiniRack3D from '../components/MiniRack3D.jsx';
+import { RackAR } from '../plugins/RackAR';
 
 // ── Preview Card ─────────────────────────────────────────────
 function PreviewCard({ file, onClear }) {
@@ -138,8 +139,11 @@ function CameraCapture({ onCapture, onCancel }) {
   const tracksRef        = useRef(new Map());
   const nextTrackIdRef   = useRef(1);
   const TRACK_IOU_MIN     = 0.2;
-  const TRACK_TTL_FRAMES  = 3;   // ~3 detection cycles before a missed label disappears
-  const NMS_IOU           = 0.4; // two tracks overlapping > this collapse to one
+  const TRACK_TTL_FRAMES  = 1;   // single missed cycle (~400ms) drops the box — kills ghost-pan lingering
+  const NMS_IOU           = 0.25; // tighter NMS so panning duplicates collapse onto the just-observed track
+  const BBOX_EMA_ALPHA    = 0.6;  // when re-observing a track: 60% new + 40% old → reduces per-frame jitter
+  const MIN_CONF          = 0.45; // drop low-confidence detections before they enter the tracker
+  const MIN_HITS_TO_SHOW  = 2;    // single-frame false positives never render (need 2 consecutive matches)
   const DETECT_INTERVAL_MS = 400;
 
   const allGood = quality.sharp && quality.framed && quality.lit;
@@ -352,15 +356,18 @@ function CameraCapture({ onCapture, onCancel }) {
         const observations = rawDevices
           .map(d => {
             const bb = normalizeBbox(d);
-            return bb ? { ...d, _xywh: bb.map(v => v * back) } : null;
+            if (!bb) return null;
+            const conf = Number(d.confidence ?? d.score ?? 1);
+            if (conf < MIN_CONF) return null;
+            return {
+              bbox:  bb.map(v => v * back),
+              cls:   String(d.class_name || d.class || 'Device'),
+              color: colorForClass(d.class_name || d.class || ''),
+              conf,
+            };
           })
           .filter(Boolean)
-          .slice(0, 32)
-          .map(d => ({
-            bbox:  d._xywh,
-            cls:   String(d.class_name || d.class || 'Device'),
-            color: colorForClass(d.class_name || d.class || ''),
-          }));
+          .slice(0, 32);
 
         const tracks = tracksRef.current;
         const claimed = new Set();
@@ -374,8 +381,15 @@ function CameraCapture({ onCapture, onCancel }) {
           }
           if (bestId !== null) {
             const t = tracks.get(bestId);
-            t.bbox   = obs.bbox;
+            const a = BBOX_EMA_ALPHA;
+            t.bbox = [
+              a * obs.bbox[0] + (1 - a) * t.bbox[0],
+              a * obs.bbox[1] + (1 - a) * t.bbox[1],
+              a * obs.bbox[2] + (1 - a) * t.bbox[2],
+              a * obs.bbox[3] + (1 - a) * t.bbox[3],
+            ];
             t.misses = 0;
+            t.hits   = (t.hits || 0) + 1;
             claimed.add(bestId);
           } else {
             const id = `t${nextTrackIdRef.current++}`;
@@ -386,6 +400,7 @@ function CameraCapture({ onCapture, onCancel }) {
               color:  obs.color,
               bbox:   obs.bbox,
               misses: 0,
+              hits:   1,
             });
             claimed.add(id);
           }
@@ -419,15 +434,17 @@ function CameraCapture({ onCapture, onCancel }) {
         const scale = Math.max(dispW / sw, dispH / sh);
         const offX = (sw * scale - dispW) / 2;
         const offY = (sh * scale - dispH) / 2;
-        const positioned = kept.map(t => ({
-          id:     t.id,
-          label:  t.label,
-          color:  t.color,
-          left:   Math.round(t.bbox[0] * scale - offX),
-          top:    Math.round(t.bbox[1] * scale - offY),
-          width:  Math.round(t.bbox[2] * scale),
-          height: Math.round(t.bbox[3] * scale),
-        }));
+        const positioned = kept
+          .filter(t => t.hits >= MIN_HITS_TO_SHOW)
+          .map(t => ({
+            id:     t.id,
+            label:  t.label,
+            color:  t.color,
+            left:   Math.round(t.bbox[0] * scale - offX),
+            top:    Math.round(t.bbox[1] * scale - offY),
+            width:  Math.round(t.bbox[2] * scale),
+            height: Math.round(t.bbox[3] * scale),
+          }));
         if (!cancelled) setLiveDevices(positioned);
       } catch (e) {
         // Keep the loop alive — single-frame failures (network blips,
@@ -556,6 +573,181 @@ function CameraCapture({ onCapture, onCancel }) {
           <p className={styles.hudHint}>{hintText}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── AR Mode ──────────────────────────────────────────────────
+// Launches the native fullscreen ARCore session (Android) / ARKit (iOS) via
+// the RackAR Capacitor plugin. While running, each emitted camera frame is
+// POSTed to /api/detect; the returned bounding boxes are pushed back into
+// the AR view via RackAR.setOverlay so labels track the live scene.
+function ARMode() {
+  const [support, setSupport]   = useState(null);  // { ar, camera, platform } | null while probing
+  const [running, setRunning]   = useState(false);
+  const [error,   setError]     = useState(null);
+  const [lastN,   setLastN]     = useState(0);     // last detection count (status chip)
+  const inflightRef = useRef(false);
+  const frameSubRef = useRef(null);
+  const endedSubRef = useRef(null);
+  const tapSubRef   = useRef(null);
+  const runningRef  = useRef(false);
+
+  // Probe on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await RackAR.isSupported();
+        if (!cancelled) setSupport(s);
+      } catch (e) {
+        if (!cancelled) setError(`Probe failed: ${e?.message || e}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const teardownListeners = useCallback(() => {
+    try { frameSubRef.current?.remove?.(); } catch {}
+    try { endedSubRef.current?.remove?.(); } catch {}
+    try { tapSubRef.current?.remove?.();   } catch {}
+    frameSubRef.current = endedSubRef.current = tapSubRef.current = null;
+  }, []);
+
+  const handleStart = useCallback(async () => {
+    setError(null);
+    try {
+      const perm = await RackAR.requestPermissions();
+      setSupport(perm);
+      if (!perm.ar) {
+        setError(`AR not available on this device (platform: ${perm.platform})`);
+        return;
+      }
+      if (perm.camera === 'denied') {
+        setError('Camera permission denied — enable in system settings');
+        return;
+      }
+
+      // Subscribe BEFORE start so we don't miss early frame/ended events.
+      frameSubRef.current = await RackAR.addListener('frame', async (f) => {
+        if (inflightRef.current || !runningRef.current) return;
+        inflightRef.current = true;
+        try {
+          const blob = base64ToBlob(f.jpegBase64, 'image/jpeg');
+          const fd = new FormData();
+          fd.append('image', blob, 'ar-frame.jpg');
+          const r = await authFetch(apiUrl('/api/detect'), { method: 'POST', body: fd });
+          const data = await r.json().catch(() => ({}));
+          const rawDevices = data?.devices || [];
+          const devices = rawDevices
+            .map((d, i) => {
+              const bb = normalizeBbox(d);
+              if (!bb) return null;
+              const conf = Number(d.confidence ?? d.score ?? 1);
+              if (conf < 0.45) return null;
+              return {
+                id:    `ar_${i}`,
+                label: String(d.class_name || d.class || 'Device'),
+                bbox:  bb,
+                color: colorForClass(d.class_name || d.class || ''),
+              };
+            })
+            .filter(Boolean)
+            .slice(0, 32);
+          await RackAR.setOverlay({ devices });
+          setLastN(devices.length);
+        } catch (e) {
+          // Network blips are expected during a long AR session — keep going.
+          console.warn('ar detect failed:', e?.message || e);
+        } finally {
+          inflightRef.current = false;
+        }
+      });
+
+      endedSubRef.current = await RackAR.addListener('ended', () => {
+        runningRef.current = false;
+        setRunning(false);
+        teardownListeners();
+      });
+
+      tapSubRef.current = await RackAR.addListener('tap', (e) => {
+        console.log('AR label tapped:', e?.id);
+      });
+
+      await RackAR.start({ frameRateHz: 1 });
+      runningRef.current = true;
+      setRunning(true);
+    } catch (e) {
+      setError(`Start failed: ${e?.message || e}`);
+      teardownListeners();
+    }
+  }, [teardownListeners]);
+
+  const handleStop = useCallback(async () => {
+    try { await RackAR.stop(); } catch {}
+    runningRef.current = false;
+    setRunning(false);
+    teardownListeners();
+  }, [teardownListeners]);
+
+  // Tear down on unmount.
+  useEffect(() => () => {
+    teardownListeners();
+    if (runningRef.current) RackAR.stop().catch(() => {});
+  }, [teardownListeners]);
+
+  const wrap = {
+    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+    gap:14, padding:'28px 20px', minHeight:280, textAlign:'center',
+  };
+
+  if (!support) {
+    return <div style={wrap}><p style={{color:'#9ca3af'}}>Probing AR capabilities…</p></div>;
+  }
+  if (!support.ar) {
+    return (
+      <div style={wrap}>
+        <div style={{fontSize:36}}>🚫</div>
+        <p style={{fontSize:15, fontWeight:600, color:'#e5e7eb'}}>AR unavailable on this device</p>
+        <p style={{fontSize:12, color:'#9ca3af', lineHeight:1.5}}>
+          Platform: {support.platform}<br/>
+          Camera permission: {support.camera}<br/>
+          {support.platform === 'web'
+            ? 'Open the app on an ARCore/ARKit-capable phone.'
+            : 'Device is not on the ARCore certified list, or ARCore service is missing.'}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div style={wrap}>
+      <div style={{
+        fontSize:10, fontWeight:700, letterSpacing:'0.10em', color:'#34d399',
+        textTransform:'uppercase',
+      }}>
+        AR ready
+      </div>
+      <p style={{fontSize:13, color:'#9ca3af'}}>
+        Platform: {support.platform} · camera: {support.camera}
+        {running && <> · last frame: <b style={{color:'#e5e7eb'}}>{lastN}</b> devices</>}
+      </p>
+      {error && (
+        <p style={{fontSize:12, color:'#ef4444', maxWidth:320, lineHeight:1.4}}>{error}</p>
+      )}
+      {!running ? (
+        <button className="btn btn-primary btn-lg" onClick={handleStart}>
+          Start AR
+        </button>
+      ) : (
+        <>
+          <p style={{fontSize:12, color:'#9ca3af'}}>
+            AR view active. Back-press on the phone to end.
+          </p>
+          <button className="btn btn-ghost" onClick={handleStop}>
+            Stop AR
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -960,6 +1152,7 @@ export default function ScanPage() {
           {[
             { id:'upload', label:'Upload', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
             { id:'camera', label:'Camera', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> },
+            { id:'ar',     label:'AR',     icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> },
           ].map(t => (
             <button key={t.id} className={`${styles.tab} ${tab===t.id ? styles.tabOn : ''}`}
               onClick={() => { setTab(t.id); setFile(null); setError(null); setQualityChoice(null); }}>
@@ -1028,10 +1221,12 @@ export default function ScanPage() {
             ? <PreviewCard file={file} onClear={() => setFile(null)}/>
             : tab === 'upload'
               ? <UploadZone onFile={setFile}/>
-              : <CameraCapture
-                  onCapture={(f) => { setFile(f); setTab('upload'); }}
-                  onCancel={() => setTab('upload')}
-                />}
+              : tab === 'ar'
+                ? <ARMode/>
+                : <CameraCapture
+                    onCapture={(f) => { setFile(f); setTab('upload'); }}
+                    onCancel={() => setTab('upload')}
+                  />}
         </div>
 
         {/* Selected-incident description — the short_description trimmed of any

@@ -1,0 +1,27 @@
+# Root requirements for the full RackTrack stack (CV pipeline + integrations).
+# The Dockerfile installs these for the unified container; servicenow/ has its
+# own narrower requirements.txt for the standalone ServiceNow bridge.
+
+# --- CV pipeline (pipeline/) ---
+opencv-python-headless>=4.9.0
+numpy>=1.26.0,<2.0
+Pillow>=10.0.0
+torch>=2.1.0
+torchvision>=0.16.0
+ultralytics>=8.1.0
+easyocr>=1.7.1
+
+# --- Vendor matrix / firmware scraper ---
+beautifulsoup4>=4.12.0
+openpyxl>=3.1.2
+requests>=2.31.0
+urllib3>=2.0.0
+
+# --- Notification channels (Slack / Teams / Outlook) ---
+msal>=1.30.0
+
+# --- Netdisco bridge ---
+psycopg2-binary>=2.9.9
+
+# --- Shared utilities ---
+python-dotenv>=1.0.0

@@ -1,0 +1,61 @@
+# Gitleaks config for RackTrack.
+#
+# Used by .github/workflows/ci.yml (secret-scan job) and recommended for
+# local pre-commit. Install:
+#   - brew install gitleaks            (mac)
+#   - choco install gitleaks            (windows)
+#   - https://github.com/gitleaks/gitleaks/releases
+#
+# Run locally:
+#   gitleaks detect --config .gitleaks.toml --redact -v
+#   gitleaks protect --staged --config .gitleaks.toml      # pre-commit
+
+[extend]
+# Inherit the default ruleset (AWS keys, GitHub tokens, Slack tokens, etc.).
+useDefault = true
+
+[allowlist]
+description = "RackTrack allowlist — false positives only, never real secrets."
+
+# Paths that legitimately contain high-entropy strings but no real secrets.
+paths = [
+  # JS/Python dependency trees — third-party code, scanning these just slows
+  # the run and produces noise from minified bundles.
+  '''(^|[/\\])node_modules([/\\]|$)''',
+  '''(^|[/\\])__pycache__([/\\]|$)''',
+  # Vendor/wheel binaries committed via LFS.
+  '''(^|[/\\])(Models|Test_Image)([/\\]|$)''',
+  # Lockfiles — package-lock.json contains integrity hashes that trip
+  # generic high-entropy heuristics.
+  '''package-lock\.json$''',
+  # Server data dir: jwt.secret is a generated secret meant to live on the
+  # host filesystem, not be committed; keep it out of LFS scan results
+  # but a separate rule below flags it as a *commit* failure.
+  '''(^|[/\\])server[/\\]data[/\\]auth\.db.*$''',
+]
+
+# Specific commits in history that already shipped secrets (now rotated).
+# Add SHAs here after the secret is revoked + replaced, so future scans
+# don't keep re-reporting the same dead leak.
+commits = []
+
+# Known-safe placeholder values that gitleaks' generic detectors might flag.
+regexes = [
+  '''xoxp-EXAMPLE.*''',     # docs/examples
+  '''ci-only-jwt-secret-do-not-use-in-prod''',
+]
+
+# Force-fail the scan when these specific tracked paths are present in a
+# commit — even if their *contents* don't match a known token pattern. They
+# must never be pushed.
+[[rules]]
+id = "racktrack-jwt-secret-committed"
+description = "server/data/jwt.secret must never be committed (per-host runtime file)"
+path = '''server[/\\]data[/\\]jwt\.secret$'''
+regex = '''(?s).*'''
+
+[[rules]]
+id = "racktrack-env-files-committed"
+description = "server/.env and *.env.key must never be committed (per-host secrets)"
+path = '''(^|[/\\])(server[/\\]\.env(\.key)?|\.env\.local|\.env\.production\.local)$'''
+regex = '''(?s).*'''
