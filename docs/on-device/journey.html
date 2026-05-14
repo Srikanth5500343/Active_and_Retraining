@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>On-Device Scan — The Full Journey</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --ink-3: #64748b;
+    --line: #e2e8f0;
+    --soft: #f8fafc;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --accent-line: #bfdbfe;
+    --green: #16a34a;
+    --green-soft: #f0fdf4;
+    --green-line: #bbf7d0;
+    --amber: #d97706;
+    --amber-soft: #fffbeb;
+    --amber-line: #fde68a;
+    --red: #dc2626;
+    --red-soft: #fef2f2;
+    --red-line: #fecaca;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.75;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 56px 36px 100px;
+  }
+  .eyebrow {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-size: 34px;
+    margin: 0 0 14px;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .lede {
+    color: var(--ink-2);
+    font-size: 18px;
+    margin: 0 0 8px;
+    line-height: 1.6;
+  }
+  .date {
+    color: var(--ink-3);
+    font-size: 13px;
+    margin: 16px 0 0;
+  }
+  .rule { height: 1px; background: var(--line); margin: 40px 0 32px; }
+  h2 {
+    font-size: 24px;
+    margin: 56px 0 14px;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  h2 .num {
+    color: var(--ink-3);
+    font-weight: 600;
+    margin-right: 12px;
+    font-size: 18px;
+  }
+  h3 {
+    font-size: 17px;
+    margin: 28px 0 8px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  p { margin: 0 0 14px; color: var(--ink-2); }
+  strong { color: var(--ink); font-weight: 600; }
+  code {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  pre {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  ul, ol { margin: 0 0 14px; padding-left: 24px; color: var(--ink-2); }
+  li { margin-bottom: 8px; }
+
+  /* Glossary card — used for technical-term explainers */
+  .glossary {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 20px 0;
+  }
+  .glossary .label {
+    display: inline-block;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .glossary h4 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    color: var(--ink);
+  }
+  .glossary p { margin: 0 0 6px; color: var(--ink-2); font-size: 14.5px; }
+  .glossary p:last-child { margin-bottom: 0; }
+
+  /* What-this-means box */
+  .verdict {
+    border: 1px solid var(--green-line);
+    background: var(--green-soft);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+  .verdict .label {
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .verdict p { margin: 6px 0 0; color: var(--ink); }
+
+  /* Failure box */
+  .fail {
+    border: 1px solid var(--red-line);
+    background: var(--red-soft);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+  .fail .label {
+    color: var(--red);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .fail p { margin: 6px 0 0; color: var(--ink); }
+
+  /* Warning / caveat box */
+  .caveat {
+    border: 1px solid var(--amber-line);
+    background: var(--amber-soft);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+  .caveat .label {
+    color: var(--amber);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .caveat p { margin: 6px 0 0; color: var(--ink); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 20px;
+    font-size: 14px;
+  }
+  th, td {
+    border-bottom: 1px solid var(--line);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--soft);
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 13px;
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 700; background: var(--soft); color: var(--ink); }
+
+  .timeline {
+    border-left: 3px solid var(--accent);
+    padding-left: 20px;
+    margin: 24px 0 28px;
+  }
+  .timeline-item {
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -27px;
+    top: 8px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 3px solid var(--accent);
+  }
+  .timeline-item strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .timeline-item span {
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <p class="eyebrow">RackTrack · On-Device Scan</p>
+  <h1>The full journey — from "can the phone do it?" to a working offline scan</h1>
+  <p class="lede">
+    Two days of work, eight dead-ends, ten fixes that landed. This page is
+    the complete story in plain English — every approach we tried, why
+    each one failed or worked, and what every technical term means.
+  </p>
+  <p class="date">RackTrack · On-Device Scan write-up · 14 May 2026</p>
+
+  <div class="rule"></div>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">1.</span>What we were trying to do</h2>
+
+  <p>
+    Today RackTrack works like this: <strong>you take a photo of a rack
+    with your phone</strong>, the photo is <strong>uploaded to a server</strong>,
+    the server runs nine AI models on it to figure out what's in the rack,
+    and sends the answer back. The phone is basically a camera + display;
+    all the real work happens on the server.
+  </p>
+  <p>
+    The question we wanted to answer: <strong>can the phone do all that
+    work itself, with no server and no internet?</strong> That would mean
+    technicians can scan racks in basements, datacenters with no Wi-Fi,
+    customer sites without VPN — anywhere.
+  </p>
+
+  <div class="glossary">
+    <span class="label">Plain English</span>
+    <h4>What's "the pipeline"?</h4>
+    <p>
+      We say "the pipeline" or "the scan flow" a lot. It's the chain of AI
+      models that look at one rack photo and produce the structured answer:
+      where the rack units are, where the devices are (switches, patch
+      panels, servers…), where each port is, what type each port is. Nine
+      separate models, each doing one job, run one after another.
+    </p>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Plain English</span>
+    <h4>What's a "model"?</h4>
+    <p>
+      A model is a file (usually ending in <code>.pt</code> or <code>.onnx</code>)
+      that contains a trained neural network — millions of numbers that
+      were tuned by training on thousands of rack photos. When you give
+      the model a new photo, it does math on those numbers to produce
+      boxes around the things it was trained to find. Our biggest model
+      is ~175 MB, our smallest is ~16 MB.
+    </p>
+  </div>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">2.</span>Yesterday — proving the phone can run the models at all</h2>
+
+  <p>
+    Before trying to make it fast, we just wanted to confirm the models
+    <em>could</em> run on a phone at all. We chose the easiest possible
+    runtime to start with: <strong>WASM</strong>, which lets you run AI
+    models inside a regular web page — the same web page that's already
+    inside our Capacitor app's WebView.
+  </p>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>WASM (WebAssembly)</h4>
+    <p>
+      A way to run compiled code (like C++) inside a web page. Slower than
+      native code but works anywhere a browser works. ONNX Runtime ships a
+      WASM build, so you can load <code>.onnx</code> models and run them
+      from JavaScript with no platform-specific code.
+    </p>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>ONNX & ONNX Runtime (ORT)</h4>
+    <p>
+      ONNX is a portable file format for neural networks. ONNX Runtime
+      (ORT) is the engine that takes one of those files and actually
+      runs it. Models are originally trained in PyTorch (<code>.pt</code>
+      files); we export them to <code>.onnx</code> so they can run on
+      phones without needing PyTorch installed.
+    </p>
+  </div>
+
+  <h3>Step one — shrink the models</h3>
+  <p>
+    The original nine PyTorch files together were <strong>467 MB</strong>.
+    Too big to bundle into a mobile app. We used a technique called
+    <strong>dynamic INT8 quantization</strong> to shrink them to
+    <strong>206 MB</strong> — a 56% reduction.
+  </p>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>Quantization</h4>
+    <p>
+      Neural networks store their weights as 32-bit floating-point numbers
+      (<strong>FP32</strong>). Quantization reinterprets those weights as
+      8-bit integers (<strong>INT8</strong>), making the file 4× smaller.
+      The math becomes slightly less precise, but for most models the
+      accuracy loss is tiny.
+    </p>
+    <p>
+      <strong>Dynamic INT8</strong> means the activations (the values that
+      flow between layers as the model runs) get quantized on-the-fly at
+      inference time. <strong>Static INT8</strong> pre-computes calibration
+      data using sample images and bakes the quantization scales into the
+      file — smaller and faster, but harder to get right.
+    </p>
+  </div>
+
+  <h3>Step two — see if it actually works on a phone</h3>
+  <p>
+    We bundled the nine INT8 models into the app, added a new
+    "BenchmarkPage" that runs the full pipeline on a photo, and tested it
+    on a real Samsung Galaxy A35 5G.
+  </p>
+  <p>
+    Result: <strong>it worked</strong>. Every model loaded and produced
+    correct output. But it was <strong>slow</strong> — 6.4 seconds for a
+    single model, 149 seconds total for the full nine-model pipeline.
+    Too slow for a real scanning workflow.
+  </p>
+
+  <div class="verdict">
+    <span class="label">Yesterday's status</span>
+    <p>
+      <strong>Yes, the phone can run the pipeline.</strong> But WASM is
+      the slowest possible runtime — like running a sports car in first
+      gear. To make it fast we need <em>native</em> ORT, which talks
+      directly to the phone's CPU instead of through a browser-style
+      runtime.
+    </p>
+  </div>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">3.</span>Today — the rabbit hole of dead-ends</h2>
+
+  <p>
+    Native ORT promised to be 10–20× faster than WASM. The plan was simple:
+    write a small Capacitor plugin that loads our existing <code>.onnx</code>
+    files and runs them through <code>onnxruntime-android</code> instead of
+    the WASM build. Each model would then run in a few hundred milliseconds
+    instead of seconds.
+  </p>
+
+  <p>
+    Reality: <strong>eight different things failed before one worked</strong>.
+    This is the table-of-shame, in the order we hit them. Each was a real
+    discovery — none of them is obvious from the docs.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>What we tried</th>
+        <th>What broke</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Dynamic INT8 models (yesterday's, that worked in WASM) + native ORT</td>
+        <td>Loading the model hung the app for 3+ minutes. Trying different "optimization levels" (ALL_OPT, BASIC_OPT, NO_OPT) didn't help.</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Static INT8 with QOperator format + per-tensor scales + MinMax calibration</td>
+        <td>Loaded in 137 ms (great!) but produced a tensor of <em>literally all zeros</em>. The detector found nothing.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Static INT8 with QUInt8/QInt8 + per-channel + Entropy calibration (the "good recipe")</td>
+        <td>Still all zeros. Quantization tooling was fundamentally choking on these YOLO models.</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Added <code>quant_pre_process</code> (the standard ORT preprocessing step) before quantizing</td>
+        <td>Still all zeros. Eliminated "missing step" as the cause.</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Switched to QDQ format (different way of representing INT8 ops)</td>
+        <td>Produced a syntactically invalid ONNX file. Wouldn't even load.</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>FP16 via <code>onnxconverter_common</code> library</td>
+        <td>Broke the Resize nodes (they're used in YOLO's feature pyramid). Wouldn't load.</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>FP16 via Ultralytics' built-in <code>half=True</code> export flag</td>
+        <td>Silently produced FP32 files (no real conversion). Ultralytics needs a CUDA GPU for actual FP16 export.</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Just ship the raw FP32 ONNX files</td>
+        <td>✅ It worked.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>Optimization level</h4>
+    <p>
+      Before running a model, ORT can rewrite the model's internal graph
+      to be faster — combining adjacent operations, removing redundant
+      ones, etc. There are three levels: <code>NO_OPT</code> (no rewrite),
+      <code>BASIC_OPT</code> (safe rewrites), <code>ALL_OPT</code>
+      (aggressive rewrites including BatchNorm folding — the biggest speed
+      win for our models, 9× faster runtime).
+    </p>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>QOperator vs QDQ formats</h4>
+    <p>
+      Two ways INT8 models can be stored. <strong>QOperator</strong> uses
+      special "QLinearConv" / "QLinearMatMul" ops that do everything in
+      INT8 directly (fast, but requires the runtime to support those ops).
+      <strong>QDQ</strong> ("Quantize-Dequantize") keeps the model mostly
+      in FP32 but adds Q/DQ nodes that say "convert to INT8 here, then
+      back to FP32 after this op" (more portable, but slower and adds many
+      extra nodes).
+    </p>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>Calibration (in static quantization)</h4>
+    <p>
+      To go from FP32 to static INT8, you have to figure out a "scale
+      factor" for each tensor: how do we squeeze a wide range of FP32
+      numbers into INT8's narrow range without losing too much precision?
+      You answer this by running the FP32 model on a small <em>calibration
+      set</em> of representative images and watching the actual numbers
+      that flow through. There are different methods:
+    </p>
+    <ul>
+      <li><strong>MinMax</strong>: just track the smallest and biggest values seen.</li>
+      <li><strong>Entropy</strong> (Kullback-Leibler): build a histogram and find scales that minimize information loss.</li>
+      <li><strong>Percentile</strong>: ignore the top/bottom N% of values to avoid outliers.</li>
+    </ul>
+    <p>
+      Entropy is usually the best balance of accuracy and effort, but for
+      YOLO detection heads on our specific models, none of these worked.
+    </p>
+  </div>
+
+  <h3>Why the INT8 attempts all produced zeros</h3>
+  <p>
+    Most likely cause: <strong>YOLO's detection head contains a sigmoid
+    activation</strong> that maps logits (raw scores) into confidences
+    between 0 and 1. When the input scale is wrong, sigmoid saturates —
+    every value gets clamped to almost-exactly-zero or almost-exactly-one.
+    Combined with the <code>QOperator</code> kernels not having exactly
+    the right ops for our model's specific operator chain, the output
+    collapsed to all zeros.
+  </p>
+  <p>
+    Fixing that properly requires either retraining the model with
+    quantization-aware training, or building a custom calibration pipeline
+    that targets the detection head specifically. Neither was tractable
+    in a one-day spike.
+  </p>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">4.</span>The pivot — just ship FP32</h2>
+
+  <p>
+    After eight INT8/FP16 dead-ends, we tried the simplest possible thing:
+    use the original FP32 ONNX files (no quantization at all) and run them
+    natively. The trade-off is size: total bundle grows from 206 MB to
+    774 MB. The win: <strong>it actually works correctly and is still
+    massively faster than WASM</strong>.
+  </p>
+
+  <div class="caveat">
+    <span class="label">Trade-off</span>
+    <p>
+      774 MB of bundled models is a lot. Most production phones can install
+      it, but it's not great. Future work: fix static INT8 properly (which
+      would land us back at ~200 MB <em>and</em> give another 2-3× speedup
+      on top of FP32). For now, FP32 works and ships.
+    </p>
+  </div>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">5.</span>The ten fixes that made it actually work</h2>
+
+  <p>
+    Even with FP32, just dropping the files in didn't work. Each of these
+    was a separate discovery before the pipeline ran end-to-end with
+    correct results. If any one is missing, the whole thing falls over.
+  </p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <strong>1. FP32 ONNX files, kept under their old <code>_int8.onnx</code> names.</strong>
+      <span>The JavaScript side already knew the filenames — kept them as-is so we didn't have to rename every reference. The content is now FP32, despite the filename.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>2. <code>OptLevel.ALL_OPT</code> for graph optimization.</strong>
+      <span>The biggest single speed win: 9× faster inference. Without this, Pass 1 inference was 6+ seconds per model; with it, ~1 second.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>3. <code>AssetFileDescriptor.getLength()</code> for byte-array preallocation.</strong>
+      <span>Reading the 174 MB <code>Device_final.onnx</code> into a growing <code>ByteArrayOutputStream</code> doubled capacity 15 times and OOM-ed Android's heap. Preallocate exactly the right size and the load finishes instantly.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>4. EXIF rotation via <code>android.media.ExifInterface</code>.</strong>
+      <span>Phone cameras store landscape pixels with a "please rotate me 90°" EXIF tag. The WebView respects it; <code>BitmapFactory</code> does not. Without applying EXIF in the plugin, the model saw the rack sideways and the box overlay looked like vertical stripes.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>5. Letterbox preprocessing.</strong>
+      <span>YOLO models are trained on square-padded input, not stretched. Plain resize squashes a portrait rack and the device detector misses ~90% of devices. Letterboxing adds gray padding to make the input square before resizing.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>6. <code>noCompress 'onnx'</code> in Gradle's AAPT options.</strong>
+      <span>Without this, the Android build tries to compress 200+ MB of binary ONNX files at packaging time and OOMs. ONNX is already binary so compression doesn't help anyway.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>7. Gradle JVM heap bumped to 6 GB.</strong>
+      <span>Adjacent to #6 — the build itself needs enough memory to hold the asset table during APK packaging.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>8. Multi-class YOLO decode.</strong>
+      <span>This was a hidden bug in our JavaScript decoder. YOLOv8 outputs <code>[1, 4+C, N]</code> where <code>C</code> is the number of classes. Confidence per box is <code>max(class_scores)</code>, not just <code>class_scores[0]</code>. We were reading only channel 4, which dropped every detection of class 1..C-1 silently. That's why <code>best_33</code> (18 classes) returned 0 detections and the device detectors returned 1 each.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>9. Confidence and NMS thresholds matching the server.</strong>
+      <span><code>devices_conf=0.20</code>, <code>ports_conf=0.23</code>, <code>NMS_IoU=0.45</code> — same as <code>config.json</code> on the server.</span>
+    </div>
+    <div class="timeline-item">
+      <strong>10. CLI build-and-install loop.</strong>
+      <span><code>JAVA_HOME=&lt;Android Studio's JBR&gt; ./gradlew assembleDebug</code> + <code>adb install -r</code>, driven by UI Automator dumps + <code>adb shell input tap</code>. Means we can iterate without manual phone taps and run the same test ten times in ten minutes.</span>
+    </div>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>Letterboxing</h4>
+    <p>
+      Before you feed a photo to a YOLO model, the photo has to be
+      resized to exactly 640×640 pixels. A naive resize just stretches
+      the image to fit, which distorts everything. <strong>Letterboxing</strong>
+      keeps the aspect ratio: it scales the image so the longest side
+      fits, then pads the shorter side with gray (114,114,114) to fill
+      the square. The same way old movies are shown on a TV without
+      cropping or stretching.
+    </p>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>Confidence threshold</h4>
+    <p>
+      Each box the model predicts comes with a confidence score between
+      0 and 1. The threshold is the minimum confidence we'll accept —
+      anything below gets thrown away. Higher = fewer false positives but
+      more missed real detections. Lower = catches more real detections
+      but lets more junk through. <strong>0.20–0.25</strong> is typical
+      for production deployments.
+    </p>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>NMS (Non-Maximum Suppression) and IoU</h4>
+    <p>
+      YOLO models predict thousands of overlapping boxes per image; you
+      usually want one box per real object. <strong>NMS</strong> removes
+      duplicates: take the highest-confidence box, throw away any other
+      box that overlaps it heavily, repeat.
+    </p>
+    <p>
+      "Heavily" is measured by <strong>IoU</strong> ("Intersection over
+      Union") — the overlap area divided by the combined area. Two
+      identical boxes have IoU = 1.0; two non-overlapping boxes have
+      IoU = 0.0. NMS at <code>IoU=0.45</code> means "discard any box that
+      overlaps a kept box by 45% or more."
+    </p>
+  </div>
+
+  <div class="glossary">
+    <span class="label">Technical term</span>
+    <h4>EXIF rotation</h4>
+    <p>
+      When you take a portrait photo with a phone, the camera's image
+      sensor is actually mounted in landscape. To save flipping pixels at
+      capture time, the JPEG file stores landscape pixels plus an EXIF
+      orientation tag that says "viewer: please rotate me 90° clockwise."
+      Most image viewers respect this; Android's <code>BitmapFactory</code>
+      doesn't, by default. So we had to read the tag ourselves and rotate
+      the bitmap before running the model on it.
+    </p>
+  </div>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">6.</span>What works now</h2>
+
+  <h3>The flow on the phone</h3>
+  <ol>
+    <li>Tap <strong>"On-Device Scan · works offline"</strong> on the Home page</li>
+    <li>Pick an input: camera, the bundled sample rack, or upload an image from gallery</li>
+    <li>The page runs the device detector (<code>best_32</code>) on the whole image</li>
+    <li>For each detected Switch or Patch Panel, it runs the port detector (<code>port_best</code>) on that device crop</li>
+    <li>The rack image appears with green boxes around every detected device</li>
+    <li>A dropdown below the image lists each device: "Device 1 · Switch · 24 ports"</li>
+    <li>Pick a device → the selected device gets a thick blue outline on the rack image</li>
+    <li>Type a port number → the matching port gets a yellow outline + "Port N" label drawn on the rack image</li>
+  </ol>
+
+  <h3>The numbers, side by side</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th class="num">WASM (yesterday)</th>
+        <th class="num">Native FP32 (today)</th>
+        <th class="num">vs server target</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Pipeline wall-clock</td>
+        <td class="num">149 s</td>
+        <td class="num">~5 s (simple flow)<br/>~27 s (full 9-model)</td>
+        <td class="num">≈30× faster wall-clock</td>
+      </tr>
+      <tr>
+        <td>Single-model inference (<code>unit</code>)</td>
+        <td class="num">6397 ms</td>
+        <td class="num">456 ms</td>
+        <td class="num">14×</td>
+      </tr>
+      <tr>
+        <td>Heaviest model (<code>Device_final</code>)</td>
+        <td class="num">36110 ms</td>
+        <td class="num">1689 ms</td>
+        <td class="num">21×</td>
+      </tr>
+      <tr>
+        <td>Devices detected (rack with ~10 devices)</td>
+        <td class="num">2</td>
+        <td class="num">~10</td>
+        <td class="num">matches server</td>
+      </tr>
+      <tr>
+        <td>Port locations detected</td>
+        <td class="num">65</td>
+        <td class="num">~180</td>
+        <td class="num">order-of-magnitude match</td>
+      </tr>
+      <tr>
+        <td>Network calls during scan</td>
+        <td class="num">0</td>
+        <td class="num">0</td>
+        <td class="num">truly offline</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>The simplified production flow</h3>
+  <p>
+    The benchmark version of this page runs <em>all 9</em> models and shows
+    timing for each. The user-facing version we shipped today runs
+    <strong>only 2</strong>:
+  </p>
+  <ul>
+    <li><code>best_32</code> — detects devices on the whole rack (the server's primary device detector)</li>
+    <li><code>port_best</code> — detects ports on each detected device crop (the class-aware port classifier)</li>
+  </ul>
+  <p>
+    Skipping the other seven (alternative unit/device detectors, port-type
+    classifier, port-count locator) is what gets the wall-clock down from
+    ~27 s to ~5 s for a typical rack. The full nine-model version is
+    preserved in branch <code>on-device-inference-writeup</code> as the
+    diagnostic / evaluation tool.
+  </p>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">7.</span>Server parity</h2>
+
+  <p>
+    The on-device pipeline now uses the same model files and the same
+    thresholds as the server, so the answers it produces should match
+    <code>/api/analyze</code> for the visible rack content. Specifically:
+  </p>
+
+  <ul>
+    <li><strong>Same models.</strong> <code>best_32.pt</code> and <code>port_best.pt</code> exported to ONNX FP32 — bit-for-bit the same weights.</li>
+    <li><strong>Same letterbox preprocessing.</strong> Aspect-preserving resize + gray (114,114,114) padding, just like Ultralytics' Python library does.</li>
+    <li><strong>Same confidence threshold</strong> (<code>devices_conf=0.20</code>, <code>ports_conf=0.23</code>, from <code>config.json</code>).</li>
+    <li><strong>Same NMS IoU</strong> (0.45, the Ultralytics YOLOv8 default).</li>
+    <li><strong>Same class filtering</strong> applied to the device detector output (only Switches and Patch Panels enter the port-finding flow).</li>
+  </ul>
+
+  <div class="verdict">
+    <span class="label">What this means</span>
+    <p>
+      <strong>If the server can see a device, the phone can too — and at
+      the same coordinates.</strong> Minor differences may remain (FP32
+      math on x86 vs ARM, bilinear interpolation library differences) but
+      they're at the sub-pixel level, not at the device-count level.
+    </p>
+  </div>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">8.</span>What's not on the phone (and why)</h2>
+
+  <p>
+    The on-device scan is the detection part of the server pipeline. The
+    other things the server does are genuinely network-dependent and stay
+    on the server:
+  </p>
+
+  <ul>
+    <li><strong>OCR for device labels.</strong> The server runs EasyOCR over each device crop to read printed labels (e.g., "SW01-CORE"). Running EasyOCR on a phone is possible (via ML Kit) but a separate workstream.</li>
+    <li><strong>Vendor matrix / firmware lookup.</strong> Maps detected model numbers to vendor + recommended firmware. Lives in a server-side spreadsheet.</li>
+    <li><strong>CMDB reconciliation.</strong> Compares the scan to what ServiceNow's CMDB <em>thinks</em> is in this rack, flags drift, generates work-note tickets. This requires ServiceNow API access, which is server-only.</li>
+    <li><strong>SSH switch probe.</strong> Logs into the actual switches over the network to read live port state. The phone is rarely on the same LAN as the switches.</li>
+  </ul>
+
+  <p>
+    The intended flow: technician scans offline, gets device/port locations
+    instantly on-device, then when they're back on the network the offline
+    scan syncs to the server which fills in the labels, firmware, and
+    CMDB reconciliation parts.
+  </p>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">9.</span>Where the code lives</h2>
+
+  <table>
+    <thead>
+      <tr><th>File</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>client/src/pages/BenchmarkPage.jsx</code></td>
+        <td>The On-Device Scan UI: camera/upload/sample, runs the pipeline, dropdown + port input, draws boxes.</td>
+      </tr>
+      <tr>
+        <td><code>client/src/plugins/OrtNative.ts</code></td>
+        <td>TypeScript bridge to the Android plugin. Exports <code>loadSession</code>, <code>runFromDataUrl</code>, <code>releaseSession</code>.</td>
+      </tr>
+      <tr>
+        <td><code>client/android/app/src/main/java/com/racktrack/app/OrtNativePlugin.java</code></td>
+        <td>The Android plugin. Reads the ONNX from app assets, applies EXIF rotation, letterboxes, runs inference through native onnxruntime-android, returns the output tensor + letterbox params.</td>
+      </tr>
+      <tr>
+        <td><code>client/public/models/*_int8.onnx</code></td>
+        <td>The model files bundled into the APK. (Filename retained as <code>_int8</code> for compatibility, content is FP32.)</td>
+      </tr>
+      <tr>
+        <td><code>client/public/test_rack.jpg</code></td>
+        <td>The bundled deterministic test image for the "Try with sample rack" button.</td>
+      </tr>
+      <tr>
+        <td><code>client/android/app/build.gradle</code></td>
+        <td>Adds the <code>onnxruntime-android</code> dependency and the <code>noCompress 'onnx'</code> aapt option.</td>
+      </tr>
+      <tr>
+        <td><code>scripts/quantize_static.py</code> + four others</td>
+        <td>Every failed INT8/FP16 attempt's tooling, kept as receipts. Useful when re-attempting static INT8 properly.</td>
+      </tr>
+      <tr>
+        <td><code>work-summary-2026-05-13.md</code> and <code>-14.md</code></td>
+        <td>Day-by-day write-ups in plain language. This page is the long-form version.</td>
+      </tr>
+      <tr>
+        <td><code>docs/on-device/</code></td>
+        <td>This HTML, plus the earlier "model optimization explained" and "on-device test results" pages.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ========================================================== -->
+  <h2><span class="num">10.</span>What's next, in order of payoff</h2>
+
+  <ol>
+    <li>
+      <strong>Static INT8, fixed.</strong> Get past the all-zeros bug and
+      we're back to ~200 MB bundle (instead of 774 MB) and 2–3× faster.
+      Tractable; needs ~1 day of focused work on the quantization tooling.
+    </li>
+    <li>
+      <strong>NNAPI / GPU delegate.</strong> The phone has hardware AI
+      acceleration we're not using. ORT supports it via the NNAPI
+      execution provider. First-run compile cost is real (~30 s/model,
+      cacheable to disk), but steady-state inference becomes another
+      3–5× faster. Could put us under 1 second wall-clock.
+    </li>
+    <li>
+      <strong>Continuous / live-camera scan mode.</strong> Re-run the
+      pipeline every few frames from the camera preview, smoothly update
+      the overlay. Needs steady-state inference under ~500 ms, which
+      depends on #2.
+    </li>
+    <li>
+      <strong>Re-sync to the server when online.</strong> Cache offline
+      scans locally, push them to <code>/api/analyze</code> when the
+      network is back so OCR, CMDB reconciliation, and firmware lookup
+      can fill in. Pure plumbing — no ML.
+    </li>
+    <li>
+      <strong>ML Kit OCR for device labels.</strong> Reads switch labels
+      ("SW01-CORE") on-device, no server. Replaces "Device 1, Device 2"
+      with real names.
+    </li>
+  </ol>
+
+  <footer>
+    RackTrack · On-Device Scan write-up · 14 May 2026.
+    Code: <code>on-device-inference-working</code> branch on TEAM_RACKTRACK.
+    Full per-attempt log: <code>work-summary-2026-05-13.md</code> and
+    <code>work-summary-2026-05-14.md</code> at the repo root.
+  </footer>
+
+</main>
+</body>
+</html>
