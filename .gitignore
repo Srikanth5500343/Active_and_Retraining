@@ -42,3 +42,17 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Server runtime state (DB backups, last-host tracking)
+server/data/backups/
+server/data/last-hosts/
+
+# Scratch test artifacts at repo root (one-shot captures, leading dot)
+/.benchmark_*.png
+/.full_pipeline_*.png
+/.test_rack_*.jpg
+/.test_response.json
+
+# ONNX fp32 sources — re-derivable from .pt files; the int8 builds we ship
+# live in client/public/models/. Skipped here to keep the repo lean.
+Models/exported/

@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Can we shrink the models? — RackTrack</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #0f172a;
+    --ink-2: #334155;
+    --ink-3: #64748b;
+    --line: #e2e8f0;
+    --soft: #f8fafc;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --accent-line: #bfdbfe;
+    --green: #16a34a;
+    --green-soft: #f0fdf4;
+    --green-line: #bbf7d0;
+    --amber: #d97706;
+    --amber-soft: #fffbeb;
+    --amber-line: #fde68a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.7;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 64px 40px 80px;
+  }
+  .eyebrow {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-size: 32px;
+    margin: 0 0 12px;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+  }
+  .lede {
+    color: var(--ink-2);
+    font-size: 17px;
+    margin: 0;
+  }
+  .rule { height: 1px; background: var(--line); margin: 36px 0 32px; }
+  h2 {
+    font-size: 22px;
+    margin: 44px 0 14px;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  h2 .emoji { margin-right: 10px; }
+  p { margin: 0 0 14px; color: var(--ink-2); }
+  strong { color: var(--ink); font-weight: 600; }
+  code {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+  ul { margin: 0 0 14px; padding-left: 22px; color: var(--ink-2); }
+  li { margin-bottom: 8px; }
+
+  .qa {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 20px 0;
+  }
+  .qa .q {
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 8px;
+    font-size: 16px;
+  }
+  .qa .a { margin: 0; color: var(--ink-2); }
+
+  .technique {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 14px 0;
+    background: #fff;
+  }
+  .technique h3 {
+    margin: 0 0 6px;
+    font-size: 17px;
+    color: var(--ink);
+  }
+  .technique .analogy {
+    color: var(--ink-3);
+    font-style: italic;
+    font-size: 14px;
+    margin: 0 0 10px;
+  }
+  .technique .nums {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 13px;
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+  .pill.good { background: var(--green-soft); border-color: var(--green-line); color: var(--green); }
+  .pill.warn { background: var(--amber-soft); border-color: var(--amber-line); color: var(--amber); }
+
+  .verdict {
+    background: var(--green-soft);
+    border: 1px solid var(--green-line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 28px 0;
+  }
+  .verdict .label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--green);
+    background: #fff;
+    border: 1px solid var(--green-line);
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .verdict p { margin: 0 0 8px; }
+  .verdict p:last-child { margin-bottom: 0; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+
+  @media (max-width: 640px) {
+    main { padding: 40px 22px 60px; }
+    h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <p class="eyebrow">RackTrack · Plain-English Explainer</p>
+  <h1>Can we shrink the models without losing accuracy?</h1>
+  <p class="lede">
+    Your lead said yes. The research paper mostly agrees. Here's what
+    that actually means — in plain English.
+  </p>
+
+  <div class="rule"></div>
+
+
+  <h2>The short answer</h2>
+
+  <div class="qa">
+    <p class="q">Q: Can we make the AI models smaller without making them dumber?</p>
+    <p class="a"><strong>A: Mostly yes.</strong> We can usually shrink them by 2× to 4× and lose less than 1% accuracy. "Zero loss" is rare. "Tiny loss you probably can't see" is normal.</p>
+  </div>
+
+  <p>
+    So your lead is right in spirit. The honest version is:
+    <strong>"shrink a lot, lose a little."</strong> Not <strong>"shrink a lot, lose nothing."</strong>
+  </p>
+
+
+  <h2>Why models can be shrunk at all</h2>
+
+  <p>
+    Think of an AI model like a giant spreadsheet full of numbers.
+    Most of those numbers are stored with way more precision than
+    they actually need — like writing your weight as
+    <code>72.4738291847</code> kg when <code>72.5</code> kg is fine.
+  </p>
+
+  <p>
+    Shrinking a model means writing those numbers in a less wasteful way.
+    The model still works. It just takes up less space and runs faster.
+  </p>
+
+
+  <h2>The 4 main ways to shrink a model</h2>
+
+  <div class="technique">
+    <h3>1. Quantization — use simpler numbers</h3>
+    <p class="analogy">Like rounding 72.4738 kg to 72.5 kg. Still close enough.</p>
+    <p>
+      The model's numbers are stored as 32-bit decimals. We replace them with
+      16-bit decimals (FP16) or even 8-bit whole numbers (INT8). The model gets
+      2× to 4× smaller and runs faster.
+    </p>
+    <div class="nums">
+      <span class="pill good">2–4× smaller</span>
+      <span class="pill good">Under 1% accuracy lost</span>
+      <span class="pill">Easy to try</span>
+    </div>
+  </div>
+
+  <div class="technique">
+    <h3>2. Pruning — delete the parts that don't matter</h3>
+    <p class="analogy">Like trimming dead branches off a tree. The tree still grows.</p>
+    <p>
+      Most of the connections inside a neural network barely contribute.
+      We can find them and delete them. One paper (DropNet) cut 90% of a
+      model away with no accuracy drop.
+    </p>
+    <div class="nums">
+      <span class="pill good">Up to 10× smaller</span>
+      <span class="pill warn">Needs careful tuning</span>
+    </div>
+  </div>
+
+  <div class="technique">
+    <h3>3. Knowledge Distillation — teacher and student</h3>
+    <p class="analogy">A senior engineer teaching a junior. The junior is faster, almost as good.</p>
+    <p>
+      Train a small "student" model to copy what the big "teacher" model does.
+      The student is much smaller but performs nearly the same on the task we care about.
+    </p>
+    <div class="nums">
+      <span class="pill good">2–10× smaller</span>
+      <span class="pill warn">Needs retraining</span>
+    </div>
+  </div>
+
+  <div class="technique">
+    <h3>4. Use a smaller model from the start</h3>
+    <p class="analogy">Buy a Honda Civic instead of trying to shrink a truck.</p>
+    <p>
+      Models like MobileNet, EfficientNet, and ShuffleNet are built from the
+      ground up to be small and fast. If we ever retrain, we should retrain on these.
+    </p>
+    <div class="nums">
+      <span class="pill good">Designed for phones</span>
+      <span class="pill warn">Means retraining</span>
+    </div>
+  </div>
+
+
+  <h2>What the research paper actually said</h2>
+
+  <p>
+    The paper you sent (Wang et al., March 2025) is a <strong>survey</strong> —
+    meaning it doesn't run new experiments, it summarizes what 280+ other papers found.
+    The repeated phrasing throughout is:
+  </p>
+
+  <ul>
+    <li>"without significantly compromising accuracy"</li>
+    <li>"with minimal accuracy loss"</li>
+    <li>"while maintaining competitive accuracy"</li>
+  </ul>
+
+  <p>
+    Notice it says <strong>minimal</strong>, not <strong>zero</strong>. That's the
+    honest framing. The one place it gets close to "zero" is DropNet — 90% smaller,
+    "without compromising accuracy." That's one paper, one type of model, one dataset.
+  </p>
+
+
+  <h2>What this means for RackTrack</h2>
+
+  <p>
+    Our models total <strong>396 MB</strong>. That's too big to ship in an app.
+    If we use quantization (the easiest method), we'd realistically get to
+    around <strong>100 MB total</strong> — still big, but shippable as a post-install download.
+  </p>
+
+  <p>
+    But here's the catch: <strong>every paper that claims "minimal loss" tested
+    on their models, on their data.</strong> Nobody has tested on our specific
+    rack-detection models with our specific rack photos. Until we measure,
+    we don't know.
+  </p>
+
+
+  <div class="verdict">
+    <span class="label">Bottom line</span>
+    <p>
+      <strong>Your lead is right that this is possible.</strong> The research
+      strongly supports it. But we still need to actually try it on one of our
+      models and measure the result — because "minimal loss" only becomes a
+      real number after we run the experiment.
+    </p>
+    <p>
+      That's exactly the one-week test in the original brief. Start with the
+      smallest model (EfficientNet, 15.6 MB), shrink it, measure accuracy, see
+      what happens.
+    </p>
+  </div>
+
+
+  <footer>RackTrack · Model Optimization Explainer · 13 May 2026</footer>
+
+</main>
+</body>
+</html>
