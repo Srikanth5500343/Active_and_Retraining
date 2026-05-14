@@ -2912,6 +2912,16 @@ export default function ResultsPage() {
               </svg>
               Console
             </button>
+            <button className={styles.reportChip}
+              onClick={() => navigate(`/results/${rackId || scanId}/vr`)}
+              title="Walk through this rack in 3D">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 7l10-4 10 4-10 4-10-4z"/>
+                <path d="M2 17l10 4 10-4"/>
+                <path d="M2 12l10 4 10-4"/>
+              </svg>
+              VR
+            </button>
             <div className={styles.shareWrap}>
               <button className={`${styles.reportChip} ${styles.reportChipShare} ${shareStatus === 'sent' ? styles.reportChipSlackSent : ''} ${shareStatus === 'error' ? styles.reportChipSlackErr : ''}`}
                 onClick={() => { if (shareStatus !== 'sending') setShareMenuOpen(v => !v); }}

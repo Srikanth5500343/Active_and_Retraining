@@ -23,6 +23,7 @@ import MultiRackRedirect from './pages/MultiRackRedirect.jsx';
 import PortHistoryPage from './pages/PortHistoryPage.jsx';
 import TenantMatPage from './pages/TenantMatPage.jsx';
 import BenchmarkPage from './pages/BenchmarkPage.jsx';
+import VRPage from './pages/VRPage.jsx';
 import { ShutterProvider } from './ShutterContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ThemeProvider } from './ThemeContext.jsx';
@@ -116,6 +117,12 @@ export default function App() {
             } />
             <Route path="/results/:rackId/ports" element={
               <ProtectedRoute><PortsPage /></ProtectedRoute>
+            } />
+            <Route path="/vr" element={
+              <ProtectedRoute><VRPage /></ProtectedRoute>
+            } />
+            <Route path="/results/:rackId/vr" element={
+              <ProtectedRoute><VRPage /></ProtectedRoute>
             } />
             <Route path="/results/:rackId/topology" element={
               <ProtectedRoute><TopologyPage /></ProtectedRoute>

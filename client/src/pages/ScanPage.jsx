@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './ScanPage.module.css';
 import { validateMedia } from '../utils/validateMedia';
@@ -10,6 +10,9 @@ import RearImagePrompt from '../components/RearImagePrompt.jsx';
 import MiniRack3D from '../components/MiniRack3D.jsx';
 import { RackAR } from '../plugins/RackAR';
 import { useTheme } from '../ThemeContext.jsx';
+
+// Lazy so the (~140 kB) three-fiber bundle only loads when the user opens VR.
+const TopologyScene3D = lazy(() => import('./TopologyScene3D.jsx'));
 
 // ── Preview Card ─────────────────────────────────────────────
 function PreviewCard({ file, onClear }) {
@@ -123,7 +126,7 @@ function CameraCapture({ onCapture, onCancel }) {
   const [ready,    setReady]    = useState(false);
   const [error,    setError]    = useState(null);
   const [flash,    setFlash]    = useState(false);
-  const [mode,     setMode]     = useState('photo');   // 'photo' | 'video' | 'ar'
+  const [mode,     setMode]     = useState('photo');   // 'photo' | 'video' | 'ar' | 'vr'
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
   const [quality,  setQuality]  = useState({ sharp: false, framed: false, lit: false });
@@ -173,8 +176,9 @@ function CameraCapture({ onCapture, onCancel }) {
   // Photo/Video use the web getUserMedia stream. AR launches a native
   // ARCore/ARKit session, so release the webcam first to avoid contention
   // for the camera resource and restart it when the user toggles back.
+  // VR renders a WebXR scene and likewise doesn't need the live webcam.
   useEffect(() => {
-    if (mode === 'ar') { stopCamera(); return; }
+    if (mode === 'ar' || mode === 'vr') { stopCamera(); return; }
     startCamera();
     return () => stopCamera();
   }, [mode, startCamera, stopCamera]);
@@ -470,10 +474,10 @@ function CameraCapture({ onCapture, onCancel }) {
   }, [ready]);
 
   // Expose capture/record toggle to the BottomNav's middle button via context.
-  // AR mode owns its own start/stop UI inside <ARMode/> — leave the shutter
-  // unbound there so the bottom button doesn't show a stale capture action.
+  // AR and VR modes own their own start/stop UI — leave the shutter unbound
+  // there so the bottom button doesn't show a stale capture action.
   useEffect(() => {
-    if (mode === 'ar') { clearShutter(); return; }
+    if (mode === 'ar' || mode === 'vr') { clearShutter(); return; }
     registerShutter(handleShutter, canShoot);
     return () => clearShutter();
   }, [mode, handleShutter, canShoot, registerShutter, clearShutter]);
@@ -515,7 +519,7 @@ function CameraCapture({ onCapture, onCancel }) {
 
   return (
     <div className={`${styles.camWrap} ${styles.camWrapFull}`}>
-      {mode !== 'ar' && (
+      {mode !== 'ar' && mode !== 'vr' && (
         <>
           <div className={`${styles.flashLayer} ${flash ? styles.flashOn : ''}`} />
           <video ref={videoRef} className={styles.camVideo} playsInline muted autoPlay />
@@ -547,6 +551,7 @@ function CameraCapture({ onCapture, onCancel }) {
       )}
 
       {mode === 'ar' && <ARMode />}
+      {mode === 'vr' && <VRMode />}
 
       {onCancel && (
         <button className={styles.camCloseBtn} onClick={onCancel} aria-label="Close camera">
@@ -557,7 +562,7 @@ function CameraCapture({ onCapture, onCancel }) {
       )}
 
       <div className={styles.hud}>
-        {mode !== 'ar' && (
+        {mode !== 'ar' && mode !== 'vr' && (
           <>
             <div className={styles.hudGrid} />
 
@@ -594,9 +599,15 @@ function CameraCapture({ onCapture, onCancel }) {
             disabled={recording}>
             AR
           </button>
+          <button type="button"
+            className={`${styles.modeBtn} ${mode === 'vr' ? styles.modeBtnOn : ''}`}
+            onClick={() => setMode('vr')}
+            disabled={recording}>
+            VR
+          </button>
         </div>
 
-        {mode !== 'ar' && (
+        {mode !== 'ar' && mode !== 'vr' && (
           <div className={styles.hudBottom}>
             <p className={styles.hudHint}>{hintText}</p>
           </div>
@@ -777,6 +788,89 @@ function ARMode() {
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+// ── VR Mode ──────────────────────────────────────────────────
+// Loads the user's most recent scan from rackTrackHistory and renders it in
+// 3D via the existing TopologyScene3D (same scene used on the Topology tab).
+// On a non-VR phone this is a touch-orbit 3D walkthrough; the WebXR headset
+// path is a follow-up.
+function VRMode() {
+  const navigate = useNavigate();
+  const [topo, setTopo]     = useState(null);
+  const [error, setError]   = useState(null);
+  const [empty, setEmpty]   = useState(false);
+  const [rackId, setRackId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let history = [];
+      try {
+        history = JSON.parse(localStorage.getItem('rackTrackHistory') || '[]');
+      } catch { history = []; }
+      const recent = Array.isArray(history) && history.length ? history[0] : null;
+      if (!recent?.scanId) { if (!cancelled) setEmpty(true); return; }
+      if (!cancelled) setRackId(recent.scanId);
+
+      try {
+        const r = await authFetch(apiUrl(`/api/topology/${recent.scanId}`));
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        if (!cancelled) setTopo(data);
+      } catch (e) {
+        if (!cancelled) setError(e?.message || String(e));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const msgWrap = {
+    position:'absolute', inset:0,
+    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+    gap:14, padding:'28px 20px', textAlign:'center',
+  };
+
+  return (
+    <div style={{ position:'absolute', inset:0, background:'#0e1830' }}>
+      {topo ? (
+        <Suspense fallback={<div style={msgWrap}><p style={{color:'#9ca3af'}}>Initializing 3D scene…</p></div>}>
+          <TopologyScene3D topo={topo} setSelected={() => {}} />
+        </Suspense>
+      ) : empty ? (
+        <div style={msgWrap}>
+          <div style={{fontSize:36}}>🗄️</div>
+          <p style={{fontSize:15, fontWeight:600, color:'#e5e7eb'}}>No scans yet</p>
+          <p style={{fontSize:12, color:'#9ca3af', lineHeight:1.5, maxWidth:300}}>
+            Scan a rack first using Photo or Video, then come back here to walk
+            through it in 3D.
+          </p>
+        </div>
+      ) : error ? (
+        <div style={msgWrap}>
+          <div style={{fontSize:36}}>⚠️</div>
+          <p style={{fontSize:15, fontWeight:600, color:'#ef4444'}}>Couldn't load your rack</p>
+          <p style={{fontSize:12, color:'#9ca3af', maxWidth:300}}>{error}</p>
+          {rackId && (
+            <button className="btn btn-ghost" onClick={() => navigate(`/results/${rackId}/topology`)}>
+              Open in Topology tab
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={msgWrap}><p style={{color:'#9ca3af'}}>Loading your last scan…</p></div>
+      )}
+
+      <div style={{
+        position:'absolute', top:14, left:'50%', transform:'translateX(-50%)',
+        fontSize:10, fontWeight:700, letterSpacing:'0.10em',
+        color: topo ? '#34d399' : '#9ca3af', textTransform:'uppercase',
+        pointerEvents:'none', textShadow:'0 1px 2px rgba(0,0,0,0.6)',
+      }}>
+        {topo ? '3D walkthrough · your last scan' : 'VR mode'}
+      </div>
     </div>
   );
 }
