@@ -128,6 +128,28 @@ export default function LoginPage() {
           New here?
           <Link to="/signup" state={{ from }} className={styles.altLink}>Create an account</Link>
         </div>
+
+        {/* Escape hatch — On-Device Scan works without a server, so users
+            stuck on this page (no network, no server) can still get to it. */}
+        <button
+          type="button"
+          onClick={() => navigate('/benchmark')}
+          style={{
+            marginTop: 24,
+            padding: '10px 16px',
+            border: '1px solid rgba(34,197,94,0.45)',
+            background: 'rgba(34,197,94,0.08)',
+            color: '#16a34a',
+            borderRadius: 999,
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            cursor: 'pointer',
+            alignSelf: 'center',
+          }}
+        >
+          Continue offline · On-Device Scan
+        </button>
       </main>
     </div>
   );
