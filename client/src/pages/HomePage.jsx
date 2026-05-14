@@ -340,25 +340,25 @@ export default function HomePage() {
           <span className={styles.primaryCtaGo}><ArrowR /></span>
         </button>
 
-        {/* Dev/test entry to the on-device inference page */}
+        {/* On-Device Scan — runs the pipeline locally, works offline */}
         <button
           type="button"
           onClick={() => navigate('/benchmark')}
           style={{
             marginTop: 10,
-            padding: '8px 14px',
-            border: '1px dashed rgba(99,102,241,0.4)',
-            background: 'transparent',
-            color: 'rgba(99,102,241,0.85)',
+            padding: '10px 16px',
+            border: '1px solid rgba(34,197,94,0.45)',
+            background: 'rgba(34,197,94,0.08)',
+            color: '#16a34a',
             borderRadius: 999,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             letterSpacing: '0.02em',
             cursor: 'pointer',
             alignSelf: 'center',
           }}
         >
-          🧪 Test On-Device (dev)
+          On-Device Scan · works offline
         </button>
 
       </div>

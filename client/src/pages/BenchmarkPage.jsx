@@ -442,12 +442,12 @@ export default function BenchmarkPage() {
       minHeight: '100vh',
       background: '#fff',
     }}>
-      <h1 style={{ fontSize: 22, margin: '0 0 6px' }}>Full Pipeline On-Device</h1>
+      <h1 style={{ fontSize: 22, margin: '0 0 6px' }}>On-Device Scan</h1>
       <p style={{ color: '#475569', fontSize: 13, margin: '0 0 14px' }}>
-        Two-pass pipeline, all on the phone.
-        <strong> Pass 1:</strong> 6 models on the whole rack.
-        <strong> Pass 2:</strong> 3 models on each detected device crop (up to {MAX_CROPS}).
-        Conf threshold: {CONF_THRESH}.
+        Runs the full RackTrack vision pipeline on this phone — no server call,
+        no network traffic, works offline.
+        <strong> Pass 1</strong> finds rack units and devices on the whole image.
+        <strong> Pass 2</strong> identifies ports and port types on each detected device.
       </p>
 
       <div style={{
@@ -501,7 +501,7 @@ export default function BenchmarkPage() {
           marginBottom: 8,
         }}
       >
-        {running ? 'Running...' : `Take Photo & Run All 9 Models (${backend})`}
+        {running ? 'Scanning...' : `Take Photo & Scan`}
       </button>
       <button
         id="run-test-image"
@@ -520,7 +520,7 @@ export default function BenchmarkPage() {
           cursor: running ? 'not-allowed' : 'pointer',
         }}
       >
-        Run on bundled test rack (skip camera, deterministic)
+        Try with sample rack (no camera needed)
       </button>
 
       {status && (
