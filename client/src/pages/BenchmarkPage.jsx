@@ -30,7 +30,12 @@ async function runOne(sess, dataUrl, inputSize) {
       dataUrl,
       inputSize,
     });
-    return { dims: r.dims, data: new Float32Array(r.output), inferMs: r.inferMs };
+    return {
+      dims: r.dims,
+      data: new Float32Array(r.output),
+      inferMs: r.inferMs,
+      letterbox: r.letterbox,
+    };
   }
   const tensor = await preprocess(dataUrl, inputSize);
   const t0 = performance.now();
@@ -48,9 +53,15 @@ async function closeSession(sess) {
   }
 }
 
-// Lower confidence than before — matches what the server pipeline uses.
-const CONF_THRESH = 0.12;
-const NMS_IOU = 0.45;
+// CONF was 0.12 to catch dynamic-INT8 detections that had compressed
+// confidence. With FP32 native we get the full confidence range back, so
+// 0.25 drops the long tail of low-quality duplicates while still keeping
+// every real detection (server uses 0.20-0.25 too).
+const CONF_THRESH = 0.25;
+// NMS IoU = 0.3 (was 0.45) — merge more aggressively. YOLOv8 produces
+// many slightly-offset anchors for the same physical object; at 0.45
+// many of these survive as visual duplicates on the same port/device.
+const NMS_IOU = 0.3;
 // Cap how many device crops we run Pass 2 on (keeps total time tolerable).
 const MAX_CROPS = 6;
 
@@ -110,18 +121,45 @@ async function cropDataUrl(imgUrl, box, pad = 0.02) {
 }
 
 function decodeYolo(output, imgSize, confThresh = CONF_THRESH) {
-  const [, , numDet] = output.dims;
+  // YOLOv8 output shape is [1, 4+C, N]: 4 bbox channels + C class scores.
+  // Detection confidence per box is max(class_scores) — NOT just class 0.
+  // We were reading channel 4 only, which silently dropped every detection
+  // that belonged to class 1..C-1 for multi-class models like best_32 (12
+  // classes), Device_final (12), best_33 (18), and port_best (6).
+  const [, numChan, numDet] = output.dims;
+  const numClasses = numChan - 4;
   const d = output.data;
+  const lb = output.letterbox;
   const boxes = [];
   for (let i = 0; i < numDet; i++) {
     const cx = d[0 * numDet + i];
     const cy = d[1 * numDet + i];
     const w  = d[2 * numDet + i];
     const h  = d[3 * numDet + i];
-    const conf = d[4 * numDet + i];
-    if (conf > confThresh) {
-      boxes.push({ x: (cx - w/2)/imgSize, y: (cy - h/2)/imgSize, w: w/imgSize, h: h/imgSize, conf });
+    let conf = 0;
+    let cls = 0;
+    for (let c = 0; c < numClasses; c++) {
+      const v = d[(4 + c) * numDet + i];
+      if (v > conf) { conf = v; cls = c; }
     }
+    if (conf <= confThresh) continue;
+    let box;
+    if (lb) {
+      // cx,cy,w,h are pixel coordinates inside the lb.size x lb.size
+      // letterboxed input. The visible content sits in a lb.newW x lb.newH
+      // rect offset by (lb.dx, lb.dy). Map back to ratio-of-original-image.
+      box = {
+        x: (cx - w/2 - lb.dx) / lb.newW,
+        y: (cy - h/2 - lb.dy) / lb.newH,
+        w: w / lb.newW,
+        h: h / lb.newH,
+        conf, cls,
+      };
+    } else {
+      // WASM path — plain resize, output is in 0..imgSize squashed-image space.
+      box = { x: (cx - w/2)/imgSize, y: (cy - h/2)/imgSize, w: w/imgSize, h: h/imgSize, conf, cls };
+    }
+    boxes.push(box);
   }
   return nms(boxes, NMS_IOU);
 }
@@ -164,7 +202,7 @@ function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled) {
     canvas.height = img.naturalHeight * scale;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     models.forEach((m) => {
       const r = results[m.name];
       if (!r?.boxes) return;
@@ -192,7 +230,7 @@ function drawCropCanvas(canvas, imgUrl, perModelBoxes, models) {
     canvas.height = img.naturalHeight * scale;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     models.forEach((m) => {
       const boxes = perModelBoxes[m.name] || [];
       ctx.strokeStyle = m.color;
@@ -221,7 +259,11 @@ export default function BenchmarkPage() {
   const cropRefs = useRef({});
 
   useEffect(() => {
-    setEnabledMain(Object.fromEntries(PASS_1.map((m) => [m.name, true])));
+    // Default: show only ONE rack-unit detector + ONE device detector + port_count.
+    // The other detectors stack overlapping boxes that read as visual noise; the
+    // user can toggle them on individually from the legend below.
+    const DEFAULT_ON = new Set(['best 33', 'best 32', 'port_count']);
+    setEnabledMain(Object.fromEntries(PASS_1.map((m) => [m.name, DEFAULT_ON.has(m.name)])));
   }, []);
 
   useEffect(() => {
@@ -242,7 +284,21 @@ export default function BenchmarkPage() {
   const updateResult = (name, patch) =>
     setResults((prev) => ({ ...prev, [name]: { ...(prev[name] || {}), ...patch } }));
 
-  const runAll = async () => {
+  // Fetches /test_rack.jpg as a data URL so we can run the pipeline without
+  // touching the camera UI. Lets adb drive the whole flow.
+  const fetchTestImageDataUrl = async () => {
+    const resp = await fetch('/test_rack.jpg');
+    const blob = await resp.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const runAll = async (opts = {}) => {
+    const useTestImage = !!opts.useTestImage;
     setRunning(true);
     setResults(Object.fromEntries(ALL_MODELS.map((m) => [m.name, { status: 'pending' }])));
     setOverallMs(null);
@@ -250,14 +306,22 @@ export default function BenchmarkPage() {
     cropRefs.current = {};
 
     try {
-      setStatus('Opening camera...');
-      const photo = await Camera.getPhoto({
-        quality: 80,
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Camera,
-        allowEditing: false,
-      });
-      setImageDataUrl(photo.dataUrl);
+      let dataUrl;
+      if (useTestImage) {
+        setStatus('Loading bundled test rack image...');
+        dataUrl = await fetchTestImageDataUrl();
+      } else {
+        setStatus('Opening camera...');
+        const photo = await Camera.getPhoto({
+          quality: 80,
+          resultType: CameraResultType.DataUrl,
+          source: CameraSource.Camera,
+          allowEditing: false,
+        });
+        dataUrl = photo.dataUrl;
+      }
+      setImageDataUrl(dataUrl);
+      const photo = { dataUrl };   // keep the rest of the function unchanged below
 
       const tStart = performance.now();
       const deviceBoxes = [];
@@ -423,7 +487,7 @@ export default function BenchmarkPage() {
       </p>
 
       <button
-        onClick={runAll}
+        onClick={() => runAll()}
         disabled={running}
         style={{
           background: running ? '#94a3b8' : '#2563eb',
@@ -434,10 +498,29 @@ export default function BenchmarkPage() {
           fontSize: 16,
           fontWeight: 600,
           width: '100%',
-          marginBottom: 14,
+          marginBottom: 8,
         }}
       >
         {running ? 'Running...' : `Take Photo & Run All 9 Models (${backend})`}
+      </button>
+      <button
+        id="run-test-image"
+        onClick={() => runAll({ useTestImage: true })}
+        disabled={running}
+        style={{
+          background: 'transparent',
+          color: running ? '#94a3b8' : '#16a34a',
+          border: `1px solid ${running ? '#cbd5e1' : '#86efac'}`,
+          borderRadius: 8,
+          padding: '12px 20px',
+          fontSize: 13,
+          fontWeight: 600,
+          width: '100%',
+          marginBottom: 14,
+          cursor: running ? 'not-allowed' : 'pointer',
+        }}
+      >
+        Run on bundled test rack (skip camera, deterministic)
       </button>
 
       {status && (

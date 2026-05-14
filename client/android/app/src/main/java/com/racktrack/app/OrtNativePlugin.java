@@ -3,8 +3,10 @@ package com.racktrack.app;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.util.Base64;
 import android.util.Log;
+import android.media.ExifInterface;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -67,20 +69,35 @@ public class OrtNativePlugin extends Plugin {
             String assetPath = "public" + (modelPath.startsWith("/") ? modelPath : "/" + modelPath);
             AssetManager am = getContext().getAssets();
             byte[] modelBytes;
-            try (InputStream in = am.open(assetPath)) {
-                ByteArrayOutputStream buf = new ByteArrayOutputStream();
-                byte[] chunk = new byte[8192];
-                int n;
-                while ((n = in.read(chunk)) > 0) buf.write(chunk, 0, n);
-                modelBytes = buf.toByteArray();
+            // Preallocate exactly the right size from the asset length. The
+            // ByteArrayOutputStream-doubling approach blew up on the 174 MB
+            // Device_final model (300+ MB of transient allocations on a
+            // 256 MB heap = endless GC).
+            try (android.content.res.AssetFileDescriptor afd = am.openFd(assetPath)) {
+                long lenL = afd.getLength();
+                if (lenL <= 0 || lenL > Integer.MAX_VALUE) {
+                    call.reject("model size invalid: " + lenL);
+                    return;
+                }
+                int len = (int) lenL;
+                modelBytes = new byte[len];
+                try (java.io.InputStream in = afd.createInputStream()) {
+                    int off = 0;
+                    while (off < len) {
+                        int n = in.read(modelBytes, off, len - off);
+                        if (n < 0) break;
+                        off += n;
+                    }
+                }
             }
 
             SessionOptions opts = new SessionOptions();
-            // NO_OPT — both ALL_OPT and BASIC_OPT hung for minutes on the
-            // quantized YOLO graphs on Snapdragon 778G. Last-ditch attempt:
-            // skip optimization entirely and let ORT just run the graph
-            // as exported. Inference may be slower but should at least load.
-            opts.setOptimizationLevel(SessionOptions.OptLevel.NO_OPT);
+            // ALL_OPT for FP32 — folds BatchNorm into Conv weights and runs
+            // constant folding, which is roughly a 9x runtime win on these
+            // YOLOv8 graphs. (The NO_OPT we previously used was a workaround
+            // for the dynamic-INT8 createSession hang; FP32 doesn't have
+            // that pathology.)
+            opts.setOptimizationLevel(SessionOptions.OptLevel.ALL_OPT);
             if (useNnapi) {
                 try {
                     opts.addNnapi();
@@ -134,16 +151,64 @@ public class OrtNativePlugin extends Plugin {
             Bitmap raw = BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
             if (raw == null) { call.reject("failed to decode dataUrl"); return; }
 
-            // 2) Resize to model input.
+            // 1.5) Apply EXIF rotation. The phone camera stores landscape
+            //      pixels with an EXIF orientation tag telling viewers to
+            //      rotate. The WebView <img> respects it; BitmapFactory does
+            //      not. Without this step, the model sees the rack sideways
+            //      and the box overlay ends up as vertical stripes on the
+            //      upright image.
+            int exifOrient = ExifInterface.ORIENTATION_NORMAL;
+            try (java.io.ByteArrayInputStream bin = new java.io.ByteArrayInputStream(imgBytes)) {
+                ExifInterface exif = new ExifInterface(bin);
+                exifOrient = exif.getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            } catch (Throwable ignore) {}
+            Matrix rotMat = new Matrix();
+            boolean needRotate = true;
+            switch (exifOrient) {
+                case ExifInterface.ORIENTATION_ROTATE_90:  rotMat.postRotate(90);  break;
+                case ExifInterface.ORIENTATION_ROTATE_180: rotMat.postRotate(180); break;
+                case ExifInterface.ORIENTATION_ROTATE_270: rotMat.postRotate(270); break;
+                case ExifInterface.ORIENTATION_FLIP_HORIZONTAL: rotMat.preScale(-1f, 1f); break;
+                case ExifInterface.ORIENTATION_FLIP_VERTICAL:   rotMat.preScale(1f, -1f); break;
+                case ExifInterface.ORIENTATION_TRANSPOSE:  rotMat.postRotate(90);  rotMat.preScale(-1f, 1f); break;
+                case ExifInterface.ORIENTATION_TRANSVERSE: rotMat.postRotate(270); rotMat.preScale(-1f, 1f); break;
+                default: needRotate = false;
+            }
+            if (needRotate) {
+                Bitmap rotated = Bitmap.createBitmap(raw, 0, 0,
+                    raw.getWidth(), raw.getHeight(), rotMat, true);
+                if (rotated != raw) raw.recycle();
+                raw = rotated;
+                Log.i(TAG, "applied EXIF rotation " + exifOrient + " -> " + raw.getWidth() + "x" + raw.getHeight());
+            }
+
+            // 2) Letterbox to the model input (preserve aspect ratio, pad
+            //    with gray). YOLOv8 from Ultralytics is trained with this
+            //    preprocessing — plain createScaledBitmap squashes the rack
+            //    and the device detector returns garbage.
             int size = inputSize;
-            Bitmap resized = Bitmap.createScaledBitmap(raw, size, size, true);
-            if (resized != raw) raw.recycle();
+            int rawW = raw.getWidth();
+            int rawH = raw.getHeight();
+            float scale = Math.min((float) size / rawW, (float) size / rawH);
+            int newW = Math.max(1, Math.round(rawW * scale));
+            int newH = Math.max(1, Math.round(rawH * scale));
+            Bitmap scaled = Bitmap.createScaledBitmap(raw, newW, newH, true);
+            if (scaled != raw) raw.recycle();
+
+            Bitmap letterboxed = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new android.graphics.Canvas(letterboxed);
+            canvas.drawColor(android.graphics.Color.rgb(114, 114, 114));
+            int dx = (size - newW) / 2;
+            int dy = (size - newH) / 2;
+            canvas.drawBitmap(scaled, dx, dy, null);
+            scaled.recycle();
 
             // 3) Bitmap -> CHW float32 [1, 3, H, W], normalized 0-1.
             int n = size * size;
             int[] pixels = new int[n];
-            resized.getPixels(pixels, 0, size, 0, 0, size, size);
-            resized.recycle();
+            letterboxed.getPixels(pixels, 0, size, 0, 0, size, size);
+            letterboxed.recycle();
             FloatBuffer fb = FloatBuffer.allocate(3 * n);
             float[] arr = fb.array();
             for (int i = 0; i < n; i++) {
@@ -186,6 +251,15 @@ public class OrtNativePlugin extends Plugin {
                     ret.put("dims", dimsJs);
                     ret.put("inferMs", inferMs);
                     ret.put("outputName", outputName);
+                    // Letterbox params so JS can unmap box coordinates from
+                    // the padded 640x640 input back to the original image.
+                    JSObject lb = new JSObject();
+                    lb.put("dx", dx);
+                    lb.put("dy", dy);
+                    lb.put("newW", newW);
+                    lb.put("newH", newH);
+                    lb.put("size", size);
+                    ret.put("letterbox", lb);
                     call.resolve(ret);
                 } else {
                     call.reject("unexpected output type");
