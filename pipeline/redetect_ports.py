@@ -59,8 +59,7 @@ def _load_config() -> dict:
 def _detect_for_class(crop, main_model, pp_model, class_name: str, conf: float) -> dict:
     if class_name in PATCH_CLASSES:
         return detect_patch_panel_ports(crop, pp_model, conf=conf)
-    return classify_ports_by_pattern(crop, main_model, conf=conf,
-                                     status_model=pp_model)
+    return classify_ports_by_pattern(crop, main_model, conf=conf)
 
 
 def _safe_crop(img, box):

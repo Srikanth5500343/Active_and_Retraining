@@ -339,8 +339,7 @@ def _drop_phantom_edge_ports(img, ports,
 
 # ── Main entry point — class-aware classifier ──────────────────────────────
 
-def classify_ports_by_pattern(img, model, conf=CONF, skip_first_n_ports=0,
-                              status_model=None):
+def classify_ports_by_pattern(img, model, conf=CONF, skip_first_n_ports=0):
     """Detect and classify ports using the model's predicted class.
 
     Pipeline:
@@ -484,11 +483,6 @@ def classify_ports_by_pattern(img, model, conf=CONF, skip_first_n_ports=0,
     print(
         f"DEBUG: classified → main={len(main_ports)}, sfp={len(sfp_ports)}, "
         f"console={len(console_ports)}"
-    )
-
-    _apply_status_from_status_model(
-        img, main_ports + sfp_ports + console_ports,
-        status_model, conf=conf,
     )
 
     return {
@@ -708,62 +702,6 @@ def _iou(box_a, box_b):
     return inter / min(a, b)
 
 
-def _apply_status_from_status_model(img, ports, status_model,
-                                    conf=CONF, iou_thresh=0.3):
-    """Overlay connected/empty onto ports using a secondary status model.
-
-    port_best.pt is category-only (main/sfp/console) so every detection
-    comes out with status='unknown'. Callers pass the older port_count.pt
-    (Empty_port/Connected_port) here to get a real status by IoU-matching
-    its detections against the already-built port boxes. Ports without a
-    confident overlap keep their existing status.
-    """
-    if status_model is None or not ports:
-        return ports
-    try:
-        status_dets = get_port_detections(img, status_model, conf=conf)
-    except Exception as exc:
-        print(f"DEBUG: status sweep failed: {exc}")
-        return ports
-    if not status_dets:
-        return ports
-
-    status_dets = sorted(
-        status_dets,
-        key=lambda d: float(d.get('confidence', 0.0)),
-        reverse=True,
-    )
-
-    n_updated = 0
-    for port in ports:
-        box = port.get('box')
-        if not box or len(box) != 4:
-            continue
-        best = None
-        best_iou = 0.0
-        for d in status_dets:
-            bb = d.get('bbox')
-            if bb is None:
-                continue
-            iou = _iou(box, list(bb))
-            if iou > best_iou:
-                best_iou = iou
-                best = d
-        if best is None or best_iou < iou_thresh:
-            continue
-        new_status = infer_port_status(
-            best.get('class_name', ''),
-            float(best.get('confidence', 0.0)),
-        )
-        if new_status == 'unknown':
-            continue
-        port['status'] = new_status
-        n_updated += 1
-    if n_updated:
-        print(f"DEBUG: status sweep updated {n_updated}/{len(ports)} ports")
-    return ports
-
-
 def _template_match_peaks(img, template, score_threshold=0.45):
     """Return [(score, cx, cy)] peaks where ``template`` matches ``img``."""
     if template is None or template.size == 0:
@@ -783,8 +721,7 @@ def _template_match_peaks(img, template, score_threshold=0.45):
     return out
 
 
-def classify_ports_with_target_count(img, model, target_count, conf=CONF,
-                                     status_model=None):
+def classify_ports_with_target_count(img, model, target_count, conf=CONF):
     """Produce exactly ``target_count`` main_ports for the user.
 
     1. Run the normal classifier and keep its detections as anchors.
@@ -801,21 +738,7 @@ def classify_ports_with_target_count(img, model, target_count, conf=CONF,
     if target_count < 0:
         target_count = 0
 
-    # Defer the status sweep to the end so it covers template-padded
-    # ports too — pass status_model=None into the inner call.
-    base = classify_ports_by_pattern(img, model, conf=min(conf, 0.10),
-                                     status_model=None)
-
-    def _finalize(b):
-        _apply_status_from_status_model(
-            img,
-            (b.get('main_ports') or [])
-            + (b.get('sfp_ports') or [])
-            + (b.get('console_ports') or []),
-            status_model, conf=conf,
-        )
-        return b
-
+    base = classify_ports_by_pattern(img, model, conf=min(conf, 0.10))
     main = list(base.get('main_ports', []))
 
     if len(main) > target_count:
@@ -825,13 +748,13 @@ def classify_ports_with_target_count(img, model, target_count, conf=CONF,
         for i, p in enumerate(main, 1):
             p['index'] = i
         base['main_ports'] = main
-        return _finalize(base)
+        return base
 
     if len(main) == target_count:
-        return _finalize(base)
+        return base
 
     if not main:
-        return _finalize(base)
+        return base
 
     img_h, img_w = img.shape[:2]
     by_conf = sorted(main, key=lambda p: p.get('confidence', 0) or 0,
@@ -858,7 +781,7 @@ def classify_ports_with_target_count(img, model, target_count, conf=CONF,
         if t is not None and t.size > 0:
             templates.append(t)
     if not templates:
-        return _finalize(base)
+        return base
 
     rows_y = sorted({int(p['center'][1]) for p in main})
     box_h_anchor = main[0]['box'][3] - main[0]['box'][1]
@@ -911,4 +834,4 @@ def classify_ports_with_target_count(img, model, target_count, conf=CONF,
     for i, p in enumerate(final, 1):
         p['index'] = i
     base['main_ports'] = final
-    return _finalize(base)
+    return base
