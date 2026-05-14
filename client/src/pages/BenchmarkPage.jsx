@@ -189,7 +189,7 @@ function topClass(output) {
   return { idx: maxIdx, score: maxVal };
 }
 
-function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled, highlight) {
+function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled, highlight, selectedDeviceBox) {
   const img = new Image();
   img.src = imgUrl;
   img.onload = () => {
@@ -214,6 +214,18 @@ function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled, highlight) 
         );
       });
     });
+    // Selected device: thicker blue outline so the dropdown choice shows
+    // up visually on the rack image.
+    if (selectedDeviceBox) {
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#2563eb';
+      ctx.strokeRect(
+        selectedDeviceBox.x * canvas.width,
+        selectedDeviceBox.y * canvas.height,
+        selectedDeviceBox.w * canvas.width,
+        selectedDeviceBox.h * canvas.height,
+      );
+    }
     if (highlight) {
       // Port-on-crop coordinates are RATIO-OF-THE-CROP. The crop itself
       // occupies a rack-image rectangle defined by highlight.deviceBox
@@ -315,8 +327,6 @@ export default function BenchmarkPage() {
 
   useEffect(() => {
     if (imageDataUrl && mainCanvasRef.current) {
-      // Highlight info for the rack-level canvas: port coords need to be
-      // remapped from crop-local to rack-image via the crop's deviceBox.
       const mainHighlight = portResult?.box && crops[portResult.deviceIdx]
         ? {
             box: portResult.box,
@@ -324,9 +334,15 @@ export default function BenchmarkPage() {
             deviceBox: crops[portResult.deviceIdx].box,
           }
         : null;
-      drawBoxesOnCanvas(mainCanvasRef.current, imageDataUrl, results, PASS_1, enabledMain, mainHighlight);
+      const selectedDeviceBox = selectedDeviceIdx != null && crops[selectedDeviceIdx]
+        ? crops[selectedDeviceIdx].box
+        : null;
+      drawBoxesOnCanvas(
+        mainCanvasRef.current, imageDataUrl, results, PASS_1, enabledMain,
+        mainHighlight, selectedDeviceBox,
+      );
     }
-  }, [imageDataUrl, results, enabledMain, portResult, crops]);
+  }, [imageDataUrl, results, enabledMain, portResult, crops, selectedDeviceIdx]);
 
   useEffect(() => {
     crops.forEach((c, i) => {
@@ -661,129 +677,100 @@ export default function BenchmarkPage() {
 
       {crops.length > 0 && (
         <>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '20px 0 6px' }}>
-            Tap a device — {crops.length} found
-          </div>
+          {/* Device dropdown + port input — devices are listed top-to-bottom
+              by bbox Y so the order matches the visual rack. Selected device
+              gets a thick blue outline on the image above; chosen port gets
+              the yellow outline + "Port N" label. */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-            gap: 8,
-            marginBottom: 12,
+            border: '1px solid #bfdbfe',
+            background: '#eff6ff',
+            borderRadius: 10,
+            padding: '12px 14px',
+            marginBottom: 16,
           }}>
-            {crops.map((c, i) => {
-              const selected = i === selectedDeviceIdx;
-              return (
-                <div
-                  key={i}
-                  onClick={() => {
-                    setSelectedDeviceIdx(i);
-                    setPortNum('');
-                    setPortResult(null);
-                  }}
-                  style={{
-                    border: `2px solid ${selected ? '#2563eb' : '#e2e8f0'}`,
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    background: '#000',
-                    cursor: 'pointer',
-                    boxShadow: selected ? '0 0 0 3px rgba(37,99,235,0.18)' : 'none',
-                  }}>
-                  <canvas
-                    ref={(el) => { cropRefs.current[i] = el; }}
-                    style={{ width: '100%', display: 'block' }}
-                  />
-                  <div style={{
-                    background: selected ? '#eff6ff' : '#fff',
-                    padding: '6px 8px',
-                    fontSize: 10,
-                    color: '#475569',
-                  }}>
-                    Device {i + 1} · conf {c.box?.conf.toFixed(2)}
-                    {c.classifierResult && (
-                      <div style={{ color: '#475569' }}>
-                        type {c.classifierResult.idx} ({c.classifierResult.score.toFixed(2)})
-                      </div>
-                    )}
-                    <div style={{ color: selected ? '#2563eb' : '#94a3b8', marginTop: 2 }}>
-                      {(c.perModel?.port_best?.length || 0) + (c.perModel?.switch_patch?.length || 0)} ports detected
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {selectedDeviceIdx != null && (
-            <div style={{
-              border: '1px solid #bfdbfe',
-              background: '#eff6ff',
-              borderRadius: 10,
-              padding: '12px 14px',
-              marginBottom: 16,
-            }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#1e3a8a', marginBottom: 8 }}>
-                Find a port on Device {selectedDeviceIdx + 1}
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                <input
-                  type="number"
-                  min="1"
-                  inputMode="numeric"
-                  value={portNum}
-                  onChange={(e) => setPortNum(e.target.value)}
-                  placeholder="Port number"
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    fontSize: 14,
-                    border: '1px solid #cbd5e1',
-                    borderRadius: 8,
-                  }}
-                />
-                <button
-                  onClick={findPort}
-                  disabled={!portNum}
-                  style={{
-                    padding: '10px 18px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    background: portNum ? '#2563eb' : '#cbd5e1',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 8,
-                    cursor: portNum ? 'pointer' : 'not-allowed',
-                  }}>
-                  Find
-                </button>
-              </div>
-              {portResult && (
-                <div style={{ fontSize: 12, color: '#0f172a' }}>
-                  {portResult.error ? (
-                    <span style={{ color: '#dc2626' }}>{portResult.error}</span>
-                  ) : portResult.box ? (
-                    <>
-                      <strong style={{ color: '#16a34a' }}>✓</strong>{' '}
-                      Port {portResult.portIndex} located on Device {portResult.deviceIdx + 1}.
-                      {' '}({portResult.totalPorts} ports total)
-                      {portResult.label && (
-                        <div style={{ color: '#475569', marginTop: 2 }}>{portResult.label}</div>
-                      )}
-                      <div style={{ color: '#475569', marginTop: 2 }}>
-                        Highlighted in yellow on the device crop and on the rack image above.
-                      </div>
-                    </>
-                  ) : (
-                    <span style={{ color: '#dc2626' }}>
-                      Only {portResult.totalPorts} ports detected on this device. Port {portResult.portIndex} is out of range.
-                    </span>
-                  )}
-                </div>
-              )}
-              <div style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>
-                Ports are numbered left-to-right based on detected position. The numbering matches what's printed on most switches.
-              </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#1e3a8a', marginBottom: 8 }}>
+              Select a device, then enter the port number
             </div>
-          )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+              <select
+                value={selectedDeviceIdx ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSelectedDeviceIdx(v === '' ? null : parseInt(v, 10));
+                  setPortNum('');
+                  setPortResult(null);
+                }}
+                style={{
+                  flex: '1 1 140px',
+                  padding: '10px 12px',
+                  fontSize: 14,
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 8,
+                  background: '#fff',
+                }}>
+                <option value="">— Pick a device —</option>
+                {[...crops].map((c, i) => ({ c, i })).sort((a, b) => a.c.box.y - b.c.box.y).map(({ c, i }) => {
+                  const ports = (c.perModel?.port_best?.length || 0) + (c.perModel?.switch_patch?.length || 0);
+                  return (
+                    <option key={i} value={i}>
+                      Device {i + 1} · {ports} port{ports === 1 ? '' : 's'}
+                    </option>
+                  );
+                })}
+              </select>
+              <input
+                type="number"
+                min="1"
+                inputMode="numeric"
+                value={portNum}
+                onChange={(e) => setPortNum(e.target.value)}
+                placeholder="Port #"
+                disabled={selectedDeviceIdx == null}
+                style={{
+                  flex: '0 0 100px',
+                  padding: '10px 12px',
+                  fontSize: 14,
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 8,
+                  background: selectedDeviceIdx == null ? '#f1f5f9' : '#fff',
+                }}
+              />
+              <button
+                onClick={findPort}
+                disabled={!portNum || selectedDeviceIdx == null}
+                style={{
+                  flex: '0 0 auto',
+                  padding: '10px 18px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: (portNum && selectedDeviceIdx != null) ? '#2563eb' : '#cbd5e1',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: (portNum && selectedDeviceIdx != null) ? 'pointer' : 'not-allowed',
+                }}>
+                Find
+              </button>
+            </div>
+            {portResult && (
+              <div style={{ fontSize: 12, color: '#0f172a', marginTop: 4 }}>
+                {portResult.error ? (
+                  <span style={{ color: '#dc2626' }}>{portResult.error}</span>
+                ) : portResult.box ? (
+                  <>
+                    <strong style={{ color: '#16a34a' }}>✓</strong>{' '}
+                    Port {portResult.portIndex} located on Device {portResult.deviceIdx + 1}
+                    {' '}({portResult.totalPorts} ports total).
+                    {' '}Highlighted in yellow on the image above.
+                  </>
+                ) : (
+                  <span style={{ color: '#dc2626' }}>
+                    Only {portResult.totalPorts} ports detected on this device. Port {portResult.portIndex} is out of range.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
 
