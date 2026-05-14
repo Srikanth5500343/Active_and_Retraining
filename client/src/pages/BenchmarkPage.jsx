@@ -53,31 +53,34 @@ async function closeSession(sess) {
   }
 }
 
-// CONF defaults to 0.25 for the rack-level detectors (units/devices) —
-// drops the long tail of duplicates while keeping every real detection.
-// Ports are smaller objects with naturally lower per-anchor confidences,
-// so Pass 2 (port_best, switch_patch) uses a looser threshold or it
-// silently produces 0 detections per crop.
-const CONF_THRESH = 0.25;
-const PORT_CONF_THRESH = 0.10;
-// NMS IoU = 0.3 — merge YOLOv8's near-duplicate anchors for the same
-// physical object.
-const NMS_IOU = 0.3;
+// Thresholds match the server pipeline's config.json so on-device
+// results line up with what /api/analyze would have returned:
+//   devices_conf: 0.20  ports_conf: 0.23
+// NMS IoU defaults to the Ultralytics YOLOv8 value of 0.45.
+const CONF_THRESH = 0.20;
+const PORT_CONF_THRESH = 0.23;
+const NMS_IOU = 0.45;
 // Cap how many device crops we run Pass 2 on (keeps total time tolerable).
 const MAX_CROPS = 6;
 
-// Minimal pipeline for the user-facing scan flow:
-//   1. Detect devices on the rack
-//   2. For each detected device, detect ports
-// Everything else (rack-unit positions, alt detectors, port-type classifier)
-// is still available in the diag/benchmark code at branch
-// on-device-inference-writeup but skipped here for speed and clarity.
+// Minimal pipeline for the user-facing scan flow.
 const PASS_1 = [
   { name: 'best 32',   file: 'best_32_int8.onnx',   size: 44.1, input: 640, kind: 'yolo', color: '#65a30d', note: 'device detector' },
 ];
 const PASS_2 = [
   { name: 'port_best', file: 'port_best_int8.onnx', size: 26.3, input: 640, kind: 'yolo', color: '#9333ea', note: 'class-aware ports' },
 ];
+
+// best_32 class index -> human name (extracted from the .pt model).
+const BEST32_CLASSES = {
+  0: 'Closed Unit', 1: 'Empty', 2: 'Firewall', 3: 'Gateway', 4: 'PDU',
+  5: 'PSU', 6: 'Patch Panel', 7: 'Router', 8: 'Server', 9: 'Storage Unit',
+  10: 'Switch', 11: 'UPS',
+};
+// Only show switches and patch panels — those are the devices we can run
+// Pass 2 (port detection) against meaningfully. Servers, firewalls, PDUs,
+// etc. are filtered out at the decode stage.
+const DEVICE_CLASSES_KEEP = new Set([6, 10]);
 
 const ALL_MODELS = [...PASS_1, ...PASS_2];
 
@@ -416,10 +419,15 @@ export default function BenchmarkPage() {
         updateResult(m.name, { status: 'inferring', loadMs: sess.loadMs });
 
         const r = await runOne(sess, photo.dataUrl, m.input);
-        const boxes = decodeYolo(r, m.input);
+        // Decode, then filter to switches + patch panels only. Servers,
+        // firewalls, PDUs etc. aren't useful for the port-finding flow
+        // and tend to be the ones that bleed into adjacent equipment
+        // when drawn on the rack image.
+        const rawBoxes = decodeYolo(r, m.input);
+        const boxes = rawBoxes.filter((b) => DEVICE_CLASSES_KEEP.has(b.cls));
         updateResult(m.name, {
           status: 'done', loadMs: sess.loadMs, inferMs: r.inferMs, boxes,
-          summary: `${boxes.length} detection(s)`,
+          summary: `${boxes.length} device(s) (${rawBoxes.length - boxes.length} non-port-bearing skipped)`,
         });
         if (m.name === 'best 32' || m.name === 'best 33' || m.name === 'Device_final') {
           boxes.forEach((b) => deviceBoxes.push(b));
@@ -440,7 +448,9 @@ export default function BenchmarkPage() {
         // Pre-render crops so the UI shows them while Pass 2 runs.
         const cropList = [];
         for (const box of dedupedDevices) {
-          const dataUrl = await cropDataUrl(photo.dataUrl, box);
+          // pad=0 — tight crop so port detection on this device doesn't
+          // pick up the edge of the device above/below.
+          const dataUrl = await cropDataUrl(photo.dataUrl, box, 0);
           cropList.push({ dataUrl, box, perModel: {}, classifierResult: null });
         }
         setCrops(cropList);
@@ -711,9 +721,10 @@ export default function BenchmarkPage() {
                 <option value="">— Pick a device —</option>
                 {[...crops].map((c, i) => ({ c, i })).sort((a, b) => a.c.box.y - b.c.box.y).map(({ c, i }) => {
                   const ports = (c.perModel?.port_best?.length || 0) + (c.perModel?.switch_patch?.length || 0);
+                  const cls = BEST32_CLASSES[c.box?.cls] || 'Device';
                   return (
                     <option key={i} value={i}>
-                      Device {i + 1} · {ports} port{ports === 1 ? '' : 's'}
+                      Device {i + 1} · {cls} · {ports} port{ports === 1 ? '' : 's'}
                     </option>
                   );
                 })}
