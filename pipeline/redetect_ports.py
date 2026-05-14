@@ -49,16 +49,17 @@ PATCH_CLASSES        = {"Patch Panel"}
 def _load_config() -> dict:
     cfg_path = ROOT / "config.json"
     if not cfg_path.exists():
-        return {"models": {"port_count": "Models/port_count.pt"},
+        return {"models": {"port_count": "Models/port_best.pt",
+                           "port_patch_panel": "Models/port_count.pt"},
                 "detection": {"ports_conf": 0.23}}
     with open(cfg_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def _detect_for_class(crop, model, class_name: str, conf: float) -> dict:
+def _detect_for_class(crop, main_model, pp_model, class_name: str, conf: float) -> dict:
     if class_name in PATCH_CLASSES:
-        return detect_patch_panel_ports(crop, model, conf=conf)
-    return classify_ports_by_pattern(crop, model, conf=conf)
+        return detect_patch_panel_ports(crop, pp_model, conf=conf)
+    return classify_ports_by_pattern(crop, main_model, conf=conf)
 
 
 def _safe_crop(img, box):
@@ -115,8 +116,11 @@ def redetect(rack_id: str) -> int:
 
     cfg = _load_config()
     model_path = ROOT / cfg["models"]["port_count"]
+    pp_model_rel = cfg["models"].get("port_patch_panel")
+    pp_model_path = (ROOT / pp_model_rel) if pp_model_rel else model_path
     conf = float(cfg.get("detection", {}).get("ports_conf", 0.23))
     model = load_port_model(str(model_path))
+    pp_model = load_port_model(str(pp_model_path)) if str(pp_model_path) != str(model_path) else model
 
     with open(map_path, "r", encoding="utf-8") as f:
         m = json.load(f)
@@ -134,7 +138,7 @@ def redetect(rack_id: str) -> int:
         if crop is None:
             continue
         try:
-            classified = _detect_for_class(crop, model, cls, conf)
+            classified = _detect_for_class(crop, model, pp_model, cls, conf)
         except Exception as e:
             print(f"{i:>3}  detect failed: {e}")
             continue

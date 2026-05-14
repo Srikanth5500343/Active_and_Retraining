@@ -246,6 +246,10 @@ def handle_relabel_port_count(req):
     with open(config_path) as f:
         config = _json.load(f)
     port_model = load_model(config["models"]["port_count"])
+    # Patch panels run against the older count-only model (Empty_port /
+    # Connected_port); switches/firewalls/gateways stay on port_best.pt.
+    pp_model_rel = config["models"].get("port_patch_panel")
+    pp_port_model = load_model(pp_model_rel) if pp_model_rel else port_model
     ports_conf = config.get("detection", {}).get("ports_conf", 0.23)
 
     from pipeline.port_pattern import (
@@ -253,7 +257,18 @@ def handle_relabel_port_count(req):
         detect_patch_panel_ports,
     )
 
-    classified = classify_ports_with_target_count(crop, port_model, target_count, conf=ports_conf)
+    if device.get("class_name") == "Patch Panel":
+        classified = detect_patch_panel_ports(crop, pp_port_model, conf=ports_conf)
+        # Honor the user-supplied target count — patch panels are uniform
+        # grids of 24 or 48, so trimming/padding by index is meaningful.
+        mp = classified.get("main_ports", [])
+        if len(mp) > target_count:
+            mp = mp[:target_count]
+            for i, p in enumerate(mp, 1):
+                p["index"] = i
+            classified["main_ports"] = mp
+    else:
+        classified = classify_ports_with_target_count(crop, port_model, target_count, conf=ports_conf)
 
     main_ports = classified.get("main_ports", [])
     device["port_count"]      = len(main_ports)

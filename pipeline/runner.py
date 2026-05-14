@@ -130,6 +130,9 @@ def main():
     devices_model_path = config["models"]["devices"]
     server_model_path = config["models"].get("server")
     port_model_path = config["models"]["port_count"]
+    # Patch panels use the older count-only model (Empty_port / Connected_port);
+    # switches/firewalls/gateways use the class-aware port_best.pt above.
+    pp_port_model_path = config["models"].get("port_patch_panel")
     cable_model_path = config["models"].get("cable_classifier")
     port_identify_model_path = config["models"].get("port_identify")
 
@@ -274,6 +277,7 @@ def main():
 
     # --- Full rack with all devices' port boxes ---
     port_model_inst = load_model(port_model_path)
+    pp_port_model_inst = load_model(pp_port_model_path) if pp_port_model_path else port_model_inst
     rack_ports_img = img.copy()
     CLR_DEV = (0, 255, 0)
     CLR_CONSOLE = (255, 255, 0)   # cyan
@@ -293,7 +297,7 @@ def main():
             dev_crop, (ox, oy) = crop_device_with_origin(img, dev["box"])
 
             if dev["class_name"] in MAIN_PORTS_ONLY:
-                classified = detect_patch_panel_ports(dev_crop, port_model_inst, conf=ports_conf)
+                classified = detect_patch_panel_ports(dev_crop, pp_port_model_inst, conf=ports_conf)
             else:
                 classified = classify_ports_by_pattern(dev_crop, port_model_inst, conf=ports_conf)
             for p, clr in ((classified.get('console_ports', []), CLR_CONSOLE),
@@ -322,7 +326,7 @@ def main():
             try:
                 dev_crop, _ = crop_device_with_origin(img, dev["box"])
                 if dev["class_name"] in MAIN_PORTS_ONLY:
-                    classified = detect_patch_panel_ports(dev_crop, port_model_inst, conf=ports_conf)
+                    classified = detect_patch_panel_ports(dev_crop, pp_port_model_inst, conf=ports_conf)
                 else:
                     classified = classify_ports_by_pattern(dev_crop, port_model_inst, conf=ports_conf)
 
@@ -405,12 +409,13 @@ def main():
     cv2.imwrite(selected_device_path, device_crop)
     print(f"Saved selected device crop to: {selected_device_path}")
 
-    port_model_inst = load_model(port_model_path)
+    # port_model_inst and pp_port_model_inst were already loaded above for the
+    # full-rack pass; reuse them here instead of re-loading.
     cable_model = load_cable_model(cable_model_path, device='cpu') if cable_model_path else None
     port_id_model = load_port_identify_model(port_identify_model_path, device='cpu') if port_identify_model_path else None
 
     if selected["class_name"] in MAIN_PORTS_ONLY:
-        classified = detect_patch_panel_ports(device_crop, port_model_inst, conf=ports_conf)
+        classified = detect_patch_panel_ports(device_crop, pp_port_model_inst, conf=ports_conf)
     else:
         classified = classify_ports_by_pattern(device_crop, port_model_inst, conf=ports_conf)
 
