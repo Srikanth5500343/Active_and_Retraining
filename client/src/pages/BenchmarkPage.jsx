@@ -53,33 +53,30 @@ async function closeSession(sess) {
   }
 }
 
-// CONF was 0.12 to catch dynamic-INT8 detections that had compressed
-// confidence. With FP32 native we get the full confidence range back, so
-// 0.25 drops the long tail of low-quality duplicates while still keeping
-// every real detection (server uses 0.20-0.25 too).
+// CONF defaults to 0.25 for the rack-level detectors (units/devices) —
+// drops the long tail of duplicates while keeping every real detection.
+// Ports are smaller objects with naturally lower per-anchor confidences,
+// so Pass 2 (port_best, switch_patch) uses a looser threshold or it
+// silently produces 0 detections per crop.
 const CONF_THRESH = 0.25;
-// NMS IoU = 0.3 (was 0.45) — merge more aggressively. YOLOv8 produces
-// many slightly-offset anchors for the same physical object; at 0.45
-// many of these survive as visual duplicates on the same port/device.
+const PORT_CONF_THRESH = 0.10;
+// NMS IoU = 0.3 — merge YOLOv8's near-duplicate anchors for the same
+// physical object.
 const NMS_IOU = 0.3;
 // Cap how many device crops we run Pass 2 on (keeps total time tolerable).
 const MAX_CROPS = 6;
 
-// First pass — these run on the WHOLE rack image.
+// Minimal pipeline for the user-facing scan flow:
+//   1. Detect devices on the rack
+//   2. For each detected device, detect ports
+// Everything else (rack-unit positions, alt detectors, port-type classifier)
+// is still available in the diag/benchmark code at branch
+// on-device-inference-writeup but skipped here for speed and clarity.
 const PASS_1 = [
-  { name: 'unit',         file: 'unit_int8.onnx',           size: 11.5, input: 640, kind: 'yolo', color: '#2563eb', note: 'rack-unit detector' },
-  { name: 'best 33',      file: 'best_33_int8.onnx',        size: 11.5, input: 640, kind: 'yolo', color: '#dc2626', note: 'server detector' },
-  { name: 'Units',        file: 'Units_int8.onnx',          size: 26.3, input: 640, kind: 'yolo', color: '#d97706', note: 'units (alt)' },
-  { name: 'port_count',   file: 'port_count_int8.onnx',     size: 26.3, input: 640, kind: 'yolo', color: '#0891b2', note: 'port locator/counter' },
-  { name: 'Device_final', file: 'Device_final_int8.onnx',   size: 44.1, input: 640, kind: 'yolo', color: '#db2777', note: 'final device pass' },
-  { name: 'best 32',      file: 'best_32_int8.onnx',        size: 44.1, input: 640, kind: 'yolo', color: '#65a30d', note: 'non-server detector' },
+  { name: 'best 32',   file: 'best_32_int8.onnx',   size: 44.1, input: 640, kind: 'yolo', color: '#65a30d', note: 'device detector' },
 ];
-
-// Second pass — these run on each CROP of a detected device.
 const PASS_2 = [
-  { name: 'switch_patch', file: 'switch_patch_int8.onnx',                  size: 11.5, input: 640, kind: 'yolo',         color: '#16a34a', note: 'patch-panel ports (per crop)' },
-  { name: 'port_best',    file: 'port_best_int8.onnx',                     size: 26.3, input: 640, kind: 'yolo',         color: '#9333ea', note: 'class-aware ports (per crop)' },
-  { name: 'efficientnet', file: 'best_model_efficientnet_int8.onnx',       size:  4.4, input: 224, kind: 'efficientnet', color: '#475569', note: 'cable / port-type class (per crop)' },
+  { name: 'port_best', file: 'port_best_int8.onnx', size: 26.3, input: 640, kind: 'yolo', color: '#9333ea', note: 'class-aware ports' },
 ];
 
 const ALL_MODELS = [...PASS_1, ...PASS_2];
@@ -296,7 +293,8 @@ export default function BenchmarkPage() {
   const [overallMs, setOverallMs] = useState(null);
   const [enabledMain, setEnabledMain] = useState({});
   const [crops, setCrops] = useState([]); // [{dataUrl, box, perModel: {switch_patch: [...], port_best: [...]}, classifierResult: {...}}]
-  const [backend, setBackend] = useState('wasm');
+  // Always run native — simpler UI, faster pipeline. WASM toggle removed.
+  const backend = 'native';
   // Post-scan interactive flow: user taps a device crop, then enters a port
   // number. The page highlights that exact port on both the device crop and
   // the main rack image and shows the classifier's port-type label.
@@ -456,7 +454,9 @@ export default function BenchmarkPage() {
             const r = await runOne(sess, cropList[i].dataUrl, m.input);
             totalInfer += r.inferMs;
             if (m.kind === 'yolo') {
-              const boxes = decodeYolo(r, m.input);
+              // Pass 2 (per-crop port detectors) needs a looser conf cutoff —
+              // ports are small and the rack-level threshold drops most of them.
+              const boxes = decodeYolo(r, m.input, PORT_CONF_THRESH);
               cropList[i].perModel[m.name] = boxes;
               totalBoxes += boxes.length;
             } else {
@@ -510,19 +510,33 @@ export default function BenchmarkPage() {
 
   // Picks the Nth port on the selected device's class-aware port detections,
   // sorted left-to-right (the natural port numbering on most switches).
+  // Always sets portResult so the UI shows _something_ — silent no-ops
+  // were leaving the user wondering whether the click registered.
   const findPort = () => {
-    setPortResult(null);
-    if (selectedDeviceIdx == null) return;
     const n = parseInt(portNum, 10);
-    if (!Number.isInteger(n) || n < 1) return;
+    if (selectedDeviceIdx == null) {
+      setPortResult({ error: 'Tap a device crop above first.' });
+      return;
+    }
+    if (!Number.isInteger(n) || n < 1) {
+      setPortResult({ error: 'Enter a port number (1 or higher).' });
+      return;
+    }
     const crop = crops[selectedDeviceIdx];
-    if (!crop) return;
-    // Merge class-aware ports + patch-panel ports for max coverage.
+    if (!crop) {
+      setPortResult({ error: 'Device crop not available yet.' });
+      return;
+    }
     const portBoxes = [
       ...(crop.perModel?.port_best || []),
       ...(crop.perModel?.switch_patch || []),
     ];
-    if (portBoxes.length === 0) return;
+    if (portBoxes.length === 0) {
+      setPortResult({
+        error: `No ports detected on Device ${selectedDeviceIdx + 1}. Pass 2 may not have found any — try a different device.`,
+      });
+      return;
+    }
     const sorted = [...portBoxes].sort((a, b) => a.x - b.x);
     if (n > sorted.length) {
       setPortResult({
@@ -555,46 +569,9 @@ export default function BenchmarkPage() {
     }}>
       <h1 style={{ fontSize: 22, margin: '0 0 6px' }}>On-Device Scan</h1>
       <p style={{ color: '#475569', fontSize: 13, margin: '0 0 14px' }}>
-        Runs the full RackTrack vision pipeline on this phone — no server call,
-        no network traffic, works offline.
-        <strong> Pass 1</strong> finds rack units and devices on the whole image.
-        <strong> Pass 2</strong> identifies ports and port types on each detected device.
-      </p>
-
-      <div style={{
-        display: 'flex',
-        gap: 0,
-        marginBottom: 10,
-        border: '1px solid #e2e8f0',
-        borderRadius: 8,
-        overflow: 'hidden',
-        fontSize: 13,
-      }}>
-        {[
-          { id: 'wasm',   label: 'WASM (browser)' },
-          { id: 'native', label: 'Native CPU' },
-        ].map((b) => (
-          <button
-            key={b.id}
-            onClick={() => setBackend(b.id)}
-            disabled={running}
-            style={{
-              flex: 1,
-              padding: '10px 12px',
-              border: 'none',
-              background: backend === b.id ? '#2563eb' : '#fff',
-              color: backend === b.id ? '#fff' : '#475569',
-              fontWeight: 600,
-              cursor: running ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {b.label}
-          </button>
-        ))}
-      </div>
-      <p style={{ color: '#94a3b8', fontSize: 11, margin: '0 0 14px' }}>
-        Models are now static-INT8 quantized (QOperator format).
-        {backend === 'native' ? ' Native CPU: APK only.' : ' WASM: any WebView.'}
+        Snap a photo (or upload one), pick the device you want, type the port
+        number, and the page highlights that exact port. All on this phone —
+        no server, no network.
       </p>
 
       <button
@@ -667,26 +644,25 @@ export default function BenchmarkPage() {
 
       {imageDataUrl && (
         <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: '14px 0 6px' }}>
-            Pass 1 — whole rack
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '14px 0 6px' }}>
+            Detected devices
           </div>
           <div style={{
             border: '1px solid #e2e8f0',
             borderRadius: 8,
             overflow: 'hidden',
-            marginBottom: 8,
+            marginBottom: 12,
             background: '#000',
           }}>
             <canvas ref={mainCanvasRef} style={{ width: '100%', display: 'block' }} />
           </div>
-          <Legend models={PASS_1} results={results} enabled={enabledMain} setEnabled={setEnabledMain} />
         </>
       )}
 
       {crops.length > 0 && (
         <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', margin: '20px 0 6px' }}>
-            Pass 2 — {crops.length} device crop(s)
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '20px 0 6px' }}>
+            Tap a device — {crops.length} found
           </div>
           <div style={{
             display: 'grid',
@@ -782,7 +758,9 @@ export default function BenchmarkPage() {
               </div>
               {portResult && (
                 <div style={{ fontSize: 12, color: '#0f172a' }}>
-                  {portResult.box ? (
+                  {portResult.error ? (
+                    <span style={{ color: '#dc2626' }}>{portResult.error}</span>
+                  ) : portResult.box ? (
                     <>
                       <strong style={{ color: '#16a34a' }}>✓</strong>{' '}
                       Port {portResult.portIndex} located on Device {portResult.deviceIdx + 1}.
@@ -809,69 +787,17 @@ export default function BenchmarkPage() {
         </>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16, marginBottom: 14 }}>
-        {allRows.map(({ m, r, i }) => (
-          <div key={m.name} style={{
-            borderLeft: `4px solid ${m.color}`,
-            border: '1px solid #e2e8f0',
-            borderLeftWidth: 4,
-            borderRadius: 8,
-            padding: '10px 12px',
-            fontSize: 12,
-            background: r.status === 'done' ? '#f0fdf4'
-                       : r.status === 'inferring' || r.status === 'loading' ? '#eff6ff'
-                       : r.status === 'skipped' ? '#fffbeb'
-                       : '#f8fafc',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <strong style={{ color: '#0f172a' }}>{i + 1}. {m.name}
-                <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500, marginLeft: 6 }}>
-                  {i < PASS_1.length ? '(Pass 1)' : '(Pass 2)'}
-                </span>
-              </strong>
-              <span style={{ color: '#64748b' }}>{m.size} MB</span>
-            </div>
-            <div style={{ color: '#64748b', marginTop: 2 }}>{m.note}</div>
-            {r.status === 'pending' && <div style={{ color: '#94a3b8', marginTop: 4 }}>waiting...</div>}
-            {r.status === 'loading' && <div style={{ color: '#2563eb', marginTop: 4 }}>loading...</div>}
-            {r.status === 'inferring' && i < PASS_1.length && (
-              <div style={{ color: '#2563eb', marginTop: 4 }}>running inference...</div>
-            )}
-            {r.status === 'inferring' && i >= PASS_1.length && (
-              <div style={{ color: '#2563eb', marginTop: 4 }}>
-                running on crop {r.cropsRun}/{crops.length}... ({r.totalBoxes || 0} boxes so far)
-              </div>
-            )}
-            {r.status === 'skipped' && (
-              <div style={{ color: '#d97706', marginTop: 4 }}>⊘ skipped — {r.summary}</div>
-            )}
-            {r.status === 'done' && (
-              <div style={{ marginTop: 4 }}>
-                <span style={{ color: '#16a34a' }}>✓</span>{' '}
-                load {r.loadMs?.toFixed(0)} ms, infer {r.inferMs?.toFixed(0)} ms — {r.summary}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
       {overallMs !== null && (
         <div style={{
           background: '#f0fdf4',
           border: '1px solid #bbf7d0',
           borderRadius: 8,
-          padding: 14,
-          fontSize: 13,
-          lineHeight: 1.7,
+          padding: 12,
+          fontSize: 12,
+          color: '#0f172a',
+          marginTop: 8,
         }}>
-          <strong style={{ color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 11 }}>SUMMARY</strong>
-          <div>Total wall-clock: <strong>{(overallMs / 1000).toFixed(1)} s</strong></div>
-          <div>Total load time: <strong>{(totalLoad / 1000).toFixed(1)} s</strong></div>
-          <div>Total inference: <strong>{(totalInfer / 1000).toFixed(1)} s</strong></div>
-          <div>Device crops processed: <strong>{crops.length}</strong></div>
-          <div style={{ color: '#475569', marginTop: 6, fontSize: 12 }}>
-            Conf threshold {CONF_THRESH}, Pass 2 ran on every detected device.
-          </div>
+          ✓ Scan complete · {crops.length} device(s) · {(overallMs / 1000).toFixed(1)} s
         </div>
       )}
     </div>
