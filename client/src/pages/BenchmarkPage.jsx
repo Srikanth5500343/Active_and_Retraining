@@ -192,7 +192,7 @@ function topClass(output) {
   return { idx: maxIdx, score: maxVal };
 }
 
-function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled) {
+function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled, highlight) {
   const img = new Image();
   img.src = imgUrl;
   img.onload = () => {
@@ -217,10 +217,32 @@ function drawBoxesOnCanvas(canvas, imgUrl, results, models, enabled) {
         );
       });
     });
+    if (highlight) {
+      // Port-on-crop coordinates are RATIO-OF-THE-CROP. The crop itself
+      // occupies a rack-image rectangle defined by highlight.deviceBox
+      // (also ratio-of-the-rack-image, with optional pad applied at crop
+      // time — assume 0 here, matches cropDataUrl default).
+      const d = highlight.deviceBox;
+      const portX = (d.x + highlight.box.x * d.w) * canvas.width;
+      const portY = (d.y + highlight.box.y * d.h) * canvas.height;
+      const portW = highlight.box.w * d.w * canvas.width;
+      const portH = highlight.box.h * d.h * canvas.height;
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#facc15';
+      ctx.strokeRect(portX, portY, portW, portH);
+      ctx.fillStyle = '#facc15';
+      const tag = `Port ${highlight.portIndex}`;
+      ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+      const tw = ctx.measureText(tag).width + 10;
+      const ty = Math.max(0, portY - 22);
+      ctx.fillRect(portX, ty, tw, 20);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(tag, portX + 5, ty + 15);
+    }
   };
 }
 
-function drawCropCanvas(canvas, imgUrl, perModelBoxes, models) {
+function drawCropCanvas(canvas, imgUrl, perModelBoxes, models, highlight) {
   const img = new Image();
   img.src = imgUrl;
   img.onload = () => {
@@ -243,6 +265,26 @@ function drawCropCanvas(canvas, imgUrl, perModelBoxes, models) {
         );
       });
     });
+    if (highlight) {
+      // Selected port — thicker yellow outline + label.
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#facc15';
+      ctx.strokeRect(
+        highlight.box.x * canvas.width,
+        highlight.box.y * canvas.height,
+        highlight.box.w * canvas.width,
+        highlight.box.h * canvas.height,
+      );
+      ctx.fillStyle = '#facc15';
+      const tag = `Port ${highlight.portIndex}`;
+      ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+      const tw = ctx.measureText(tag).width + 10;
+      const tx = highlight.box.x * canvas.width;
+      const ty = Math.max(0, highlight.box.y * canvas.height - 22);
+      ctx.fillRect(tx, ty, tw, 20);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(tag, tx + 5, ty + 15);
+    }
   };
 }
 
@@ -255,6 +297,13 @@ export default function BenchmarkPage() {
   const [enabledMain, setEnabledMain] = useState({});
   const [crops, setCrops] = useState([]); // [{dataUrl, box, perModel: {switch_patch: [...], port_best: [...]}, classifierResult: {...}}]
   const [backend, setBackend] = useState('wasm');
+  // Post-scan interactive flow: user taps a device crop, then enters a port
+  // number. The page highlights that exact port on both the device crop and
+  // the main rack image and shows the classifier's port-type label.
+  const [selectedDeviceIdx, setSelectedDeviceIdx] = useState(null);
+  const [portNum, setPortNum] = useState('');
+  const [portResult, setPortResult] = useState(null); // { deviceIdx, portIndex, box, totalPorts, label }
+  const fileInputRef = useRef(null);
   const mainCanvasRef = useRef(null);
   const cropRefs = useRef({});
 
@@ -268,18 +317,30 @@ export default function BenchmarkPage() {
 
   useEffect(() => {
     if (imageDataUrl && mainCanvasRef.current) {
-      drawBoxesOnCanvas(mainCanvasRef.current, imageDataUrl, results, PASS_1, enabledMain);
+      // Highlight info for the rack-level canvas: port coords need to be
+      // remapped from crop-local to rack-image via the crop's deviceBox.
+      const mainHighlight = portResult?.box && crops[portResult.deviceIdx]
+        ? {
+            box: portResult.box,
+            portIndex: portResult.portIndex,
+            deviceBox: crops[portResult.deviceIdx].box,
+          }
+        : null;
+      drawBoxesOnCanvas(mainCanvasRef.current, imageDataUrl, results, PASS_1, enabledMain, mainHighlight);
     }
-  }, [imageDataUrl, results, enabledMain]);
+  }, [imageDataUrl, results, enabledMain, portResult, crops]);
 
   useEffect(() => {
     crops.forEach((c, i) => {
       const ref = cropRefs.current[i];
       if (ref && c.dataUrl) {
-        drawCropCanvas(ref, c.dataUrl, c.perModel || {}, PASS_2.filter((m) => m.kind === 'yolo'));
+        const cropHighlight = portResult?.box && portResult.deviceIdx === i
+          ? { box: portResult.box, portIndex: portResult.portIndex }
+          : null;
+        drawCropCanvas(ref, c.dataUrl, c.perModel || {}, PASS_2.filter((m) => m.kind === 'yolo'), cropHighlight);
       }
     });
-  }, [crops]);
+  }, [crops, portResult]);
 
   const updateResult = (name, patch) =>
     setResults((prev) => ({ ...prev, [name]: { ...(prev[name] || {}), ...patch } }));
@@ -299,15 +360,22 @@ export default function BenchmarkPage() {
 
   const runAll = async (opts = {}) => {
     const useTestImage = !!opts.useTestImage;
+    const presetDataUrl = opts.presetDataUrl;
     setRunning(true);
     setResults(Object.fromEntries(ALL_MODELS.map((m) => [m.name, { status: 'pending' }])));
     setOverallMs(null);
     setCrops([]);
     cropRefs.current = {};
+    setSelectedDeviceIdx(null);
+    setPortNum('');
+    setPortResult(null);
 
     try {
       let dataUrl;
-      if (useTestImage) {
+      if (presetDataUrl) {
+        setStatus('Loading uploaded image...');
+        dataUrl = presetDataUrl;
+      } else if (useTestImage) {
         setStatus('Loading bundled test rack image...');
         dataUrl = await fetchTestImageDataUrl();
       } else {
@@ -430,6 +498,49 @@ export default function BenchmarkPage() {
     }
   };
 
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => runAll({ presetDataUrl: reader.result });
+    reader.readAsDataURL(file);
+    // Reset the input so the same file can be picked again.
+    e.target.value = '';
+  };
+
+  // Picks the Nth port on the selected device's class-aware port detections,
+  // sorted left-to-right (the natural port numbering on most switches).
+  const findPort = () => {
+    setPortResult(null);
+    if (selectedDeviceIdx == null) return;
+    const n = parseInt(portNum, 10);
+    if (!Number.isInteger(n) || n < 1) return;
+    const crop = crops[selectedDeviceIdx];
+    if (!crop) return;
+    // Merge class-aware ports + patch-panel ports for max coverage.
+    const portBoxes = [
+      ...(crop.perModel?.port_best || []),
+      ...(crop.perModel?.switch_patch || []),
+    ];
+    if (portBoxes.length === 0) return;
+    const sorted = [...portBoxes].sort((a, b) => a.x - b.x);
+    if (n > sorted.length) {
+      setPortResult({
+        deviceIdx: selectedDeviceIdx, portIndex: n, box: null,
+        totalPorts: sorted.length, label: null,
+      });
+      return;
+    }
+    const box = sorted[n - 1];
+    setPortResult({
+      deviceIdx: selectedDeviceIdx,
+      portIndex: n,
+      box,
+      totalPorts: sorted.length,
+      label: box.cls != null ? `port-class ${box.cls}` : null,
+    });
+  };
+
   const allRows = ALL_MODELS.map((m, i) => ({ m, r: results[m.name] || {}, i }));
   const totalLoad = allRows.reduce((s, x) => s + (x.r.loadMs || 0), 0);
   const totalInfer = allRows.reduce((s, x) => s + (x.r.inferMs || 0), 0);
@@ -516,11 +627,36 @@ export default function BenchmarkPage() {
           fontSize: 13,
           fontWeight: 600,
           width: '100%',
-          marginBottom: 14,
+          marginBottom: 8,
           cursor: running ? 'not-allowed' : 'pointer',
         }}
       >
         Try with sample rack (no camera needed)
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFileSelected}
+      />
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={running}
+        style={{
+          background: 'transparent',
+          color: running ? '#94a3b8' : '#64748b',
+          border: `1px solid ${running ? '#cbd5e1' : '#cbd5e1'}`,
+          borderRadius: 8,
+          padding: '12px 20px',
+          fontSize: 13,
+          fontWeight: 600,
+          width: '100%',
+          marginBottom: 14,
+          cursor: running ? 'not-allowed' : 'pointer',
+        }}
+      >
+        Upload image from gallery
       </button>
 
       {status && (
@@ -558,33 +694,118 @@ export default function BenchmarkPage() {
             gap: 8,
             marginBottom: 12,
           }}>
-            {crops.map((c, i) => (
-              <div key={i} style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: 8,
-                overflow: 'hidden',
-                background: '#000',
-              }}>
-                <canvas
-                  ref={(el) => { cropRefs.current[i] = el; }}
-                  style={{ width: '100%', display: 'block' }}
-                />
-                <div style={{
-                  background: '#fff',
-                  padding: '6px 8px',
-                  fontSize: 10,
-                  color: '#475569',
-                }}>
-                  Crop {i + 1} · conf {c.box?.conf.toFixed(2)}
-                  {c.classifierResult && (
-                    <div style={{ color: '#475569' }}>
-                      class {c.classifierResult.idx} ({c.classifierResult.score.toFixed(2)})
+            {crops.map((c, i) => {
+              const selected = i === selectedDeviceIdx;
+              return (
+                <div
+                  key={i}
+                  onClick={() => {
+                    setSelectedDeviceIdx(i);
+                    setPortNum('');
+                    setPortResult(null);
+                  }}
+                  style={{
+                    border: `2px solid ${selected ? '#2563eb' : '#e2e8f0'}`,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    background: '#000',
+                    cursor: 'pointer',
+                    boxShadow: selected ? '0 0 0 3px rgba(37,99,235,0.18)' : 'none',
+                  }}>
+                  <canvas
+                    ref={(el) => { cropRefs.current[i] = el; }}
+                    style={{ width: '100%', display: 'block' }}
+                  />
+                  <div style={{
+                    background: selected ? '#eff6ff' : '#fff',
+                    padding: '6px 8px',
+                    fontSize: 10,
+                    color: '#475569',
+                  }}>
+                    Device {i + 1} · conf {c.box?.conf.toFixed(2)}
+                    {c.classifierResult && (
+                      <div style={{ color: '#475569' }}>
+                        type {c.classifierResult.idx} ({c.classifierResult.score.toFixed(2)})
+                      </div>
+                    )}
+                    <div style={{ color: selected ? '#2563eb' : '#94a3b8', marginTop: 2 }}>
+                      {(c.perModel?.port_best?.length || 0) + (c.perModel?.switch_patch?.length || 0)} ports detected
                     </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {selectedDeviceIdx != null && (
+            <div style={{
+              border: '1px solid #bfdbfe',
+              background: '#eff6ff',
+              borderRadius: 10,
+              padding: '12px 14px',
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#1e3a8a', marginBottom: 8 }}>
+                Find a port on Device {selectedDeviceIdx + 1}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <input
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  value={portNum}
+                  onChange={(e) => setPortNum(e.target.value)}
+                  placeholder="Port number"
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 8,
+                  }}
+                />
+                <button
+                  onClick={findPort}
+                  disabled={!portNum}
+                  style={{
+                    padding: '10px 18px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background: portNum ? '#2563eb' : '#cbd5e1',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: portNum ? 'pointer' : 'not-allowed',
+                  }}>
+                  Find
+                </button>
+              </div>
+              {portResult && (
+                <div style={{ fontSize: 12, color: '#0f172a' }}>
+                  {portResult.box ? (
+                    <>
+                      <strong style={{ color: '#16a34a' }}>✓</strong>{' '}
+                      Port {portResult.portIndex} located on Device {portResult.deviceIdx + 1}.
+                      {' '}({portResult.totalPorts} ports total)
+                      {portResult.label && (
+                        <div style={{ color: '#475569', marginTop: 2 }}>{portResult.label}</div>
+                      )}
+                      <div style={{ color: '#475569', marginTop: 2 }}>
+                        Highlighted in yellow on the device crop and on the rack image above.
+                      </div>
+                    </>
+                  ) : (
+                    <span style={{ color: '#dc2626' }}>
+                      Only {portResult.totalPorts} ports detected on this device. Port {portResult.portIndex} is out of range.
+                    </span>
                   )}
                 </div>
+              )}
+              <div style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>
+                Ports are numbered left-to-right based on detected position. The numbering matches what's printed on most switches.
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </>
       )}
 

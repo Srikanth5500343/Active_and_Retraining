@@ -39,14 +39,28 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem(USER_KEY);
   }, [token, user]);
 
-  // Validate stored token against the server on mount; clear if rejected.
+  // Validate stored token against the server on mount; clear if the server
+  // explicitly rejects (401/403). A network failure (server unreachable —
+  // common in offline use of the on-device scan) must NOT clear the token,
+  // otherwise the user gets bounced to /login and that page also can't fetch.
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
     fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(r => {
+        if (cancelled) return null;
+        if (r.ok) return r.json();
+        if (r.status === 401 || r.status === 403) {
+          setState({ token: null, user: null });
+        }
+        return null;
+      })
       .then(data => { if (!cancelled && data?.user) setState(prev => ({ ...prev, user: data.user })); })
-      .catch(() => { if (!cancelled) setState({ token: null, user: null }); });
+      .catch(() => {
+        // Network error — keep the cached token. The user can still use
+        // offline features; auth will revalidate next time the server is
+        // reachable.
+      });
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
