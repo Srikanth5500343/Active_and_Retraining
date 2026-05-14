@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rack-scan App — Feature Reference</title>
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --panel: #FFFFFF;
+    --border: #E8E6EF;
+    --t1: #1A1A2E;
+    --t2: #4A4A5A;
+    --t3: #6B7280;
+    --code-bg: #F4F3F8;
+    --accent: #4B45A0;
+    --accent-light: #EFEEF6;
+    --green: #15803D;
+    --green-light: #DCFCE7;
+    --amber: #B45309;
+    --amber-light: #FEF3C7;
+    --red:   #B91C1C;
+    --red-light: #FEE2E2;
+    --violet:#6D28D9;
+    --violet-light: #EDE9FE;
+    --cyan: #0E7490;
+    --cyan-light: #CFFAFE;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--t1); margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    line-height: 1.55;
+  }
+
+  /* Layout — sidebar + content */
+  .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  nav.sidebar {
+    position: sticky; top: 0; align-self: start;
+    height: 100vh; overflow-y: auto;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 24px 18px;
+    font-size: 13.5px;
+  }
+  nav.sidebar h1 {
+    font-size: 16px; font-weight: 800; letter-spacing: -.02em;
+    margin: 0 0 4px;
+    background: linear-gradient(135deg, #4B45A0 0%, #7B75C0 60%, #0E7490 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  nav.sidebar .lede { font-size: 11.5px; color: var(--t3); margin: 0 0 18px; line-height: 1.5; }
+  nav.sidebar .group { margin-bottom: 14px; }
+  nav.sidebar .group-label {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--t3);
+    margin: 12px 0 6px; padding-left: 6px;
+  }
+  nav.sidebar a {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px; border-radius: 6px;
+    color: var(--t2); text-decoration: none;
+    font-weight: 500;
+  }
+  nav.sidebar a:hover { background: var(--accent-light); color: var(--accent); }
+  nav.sidebar a .num { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--t3); }
+  nav.sidebar .author-key { margin-top: 18px; padding: 10px; border-radius: 8px; background: var(--accent-light); border: 1px solid rgba(75,69,160,0.2); font-size: 11px; }
+  nav.sidebar .author-key strong { display: block; margin-bottom: 6px; font-size: 11px; }
+  nav.sidebar .author-key div { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  nav.sidebar .author-key .pill { font-size: 10px; }
+
+  main { padding: 36px 56px 80px; max-width: 1100px; }
+  main h1 {
+    font-size: 32px; font-weight: 800; letter-spacing: -.02em;
+    margin: 0 0 8px;
+    background: linear-gradient(135deg, #4B45A0 0%, #7B75C0 60%, #0E7490 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  main > p.lede {
+    font-size: 15px; color: var(--t2); margin: 0 0 32px; max-width: 800px;
+  }
+
+  section.feature {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 22px;
+    scroll-margin-top: 24px;
+  }
+  section.feature .feature-head {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+    margin-bottom: 16px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  section.feature .feature-num {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px; font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 3px 8px; border-radius: 5px;
+    letter-spacing: .04em;
+  }
+  section.feature h2 {
+    font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+    margin: 0; color: var(--t1);
+    flex: 1 1 auto;
+  }
+
+  /* Author pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .03em;
+    padding: 3px 9px; border-radius: 999px;
+    border: 1px solid;
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.team   { background: var(--green-light);  color: var(--green);  border-color: rgba(21,128,61,.3); }
+  .pill.team .dot { background: var(--green); }
+  .pill.me     { background: var(--cyan-light);   color: var(--cyan);   border-color: rgba(14,116,144,.3); }
+  .pill.me .dot { background: var(--cyan); }
+  .pill.shared { background: var(--violet-light); color: var(--violet); border-color: rgba(109,40,217,.3); }
+  .pill.shared .dot { background: var(--violet); }
+  .pill.todo   { background: var(--amber-light);  color: var(--amber);  border-color: rgba(180,83,9,.35); }
+  .pill.todo .dot { background: var(--amber); }
+
+  /* Body content */
+  section.feature h3 {
+    font-size: 14px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--accent);
+    margin: 24px 0 10px;
+  }
+  section.feature h3:first-of-type { margin-top: 0; }
+  section.feature p { font-size: 14.5px; color: var(--t2); margin: 0 0 12px; }
+  section.feature p strong { color: var(--t1); font-weight: 600; }
+  section.feature ul { margin: 0 0 12px; padding-left: 22px; }
+  section.feature li { font-size: 14.5px; color: var(--t2); margin-bottom: 6px; line-height: 1.55; }
+  section.feature code {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12.5px;
+    background: var(--code-bg);
+    padding: 1px 6px; border-radius: 4px;
+    color: var(--cyan);
+    border: 1px solid var(--border);
+  }
+  section.feature pre {
+    background: #1E293B; color: #E2E8F0;
+    padding: 14px 16px; border-radius: 8px;
+    overflow-x: auto;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12.5px; line-height: 1.55;
+    margin: 12px 0;
+  }
+  section.feature pre code { background: transparent; border: 0; padding: 0; color: #E2E8F0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0;
+    font-size: 13px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  th { text-align: left; padding: 9px 12px;
+    background: #F8F7FB; font-weight: 700; color: var(--t2);
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em;
+  }
+  td { padding: 9px 12px; vertical-align: top;
+    border-bottom: 1px solid var(--border); color: var(--t2);
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .key-files { background: var(--accent-light); border-radius: 8px;
+    padding: 14px 16px; margin-top: 16px;
+    border: 1px solid rgba(75,69,160,.2);
+  }
+  .key-files h4 { margin: 0 0 8px; font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--accent);
+  }
+  .key-files ul { margin: 0; padding-left: 18px; }
+  .key-files li { font-size: 12.5px; color: var(--t2); margin-bottom: 4px; }
+
+  .demo-talk {
+    background: var(--green-light);
+    border: 1px solid rgba(21,128,61,.3);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 16px;
+    font-size: 13.5px;
+    color: #14532d;
+  }
+  .demo-talk strong { display: block; margin-bottom: 6px;
+    font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--green);
+  }
+
+  .warn {
+    background: var(--amber-light); border: 1px solid rgba(180,83,9,.3);
+    border-radius: 8px; padding: 14px 18px;
+    margin-top: 16px; font-size: 13.5px;
+    color: #78350f;
+  }
+  .warn strong {
+    display: block; margin-bottom: 6px;
+    font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--amber);
+  }
+
+  hr { border: 0; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.sidebar { position: static; height: auto; max-height: 60vh; border-right: 0; border-bottom: 1px solid var(--border); }
+    main { padding: 24px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="sidebar">
+  <h1>Rack-scan App</h1>
+  <p class="lede">Personal demo reference. One page, every feature, with who built each part.</p>
+
+  <div class="group">
+    <div class="group-label">Foundations</div>
+    <a href="#overview"><span class="num">00</span> Overview</a>
+    <a href="#architecture"><span class="num">23</span> Architecture</a>
+    <a href="#limits"><span class="num">24</span> Known limits</a>
+  </div>
+
+  <div class="group">
+    <div class="group-label">Scan pipeline</div>
+    <a href="#scan"><span class="num">02</span> Rack scan</a>
+    <a href="#quality"><span class="num">03</span> Quality check</a>
+    <a href="#cv"><span class="num">04</span> CV detection</a>
+    <a href="#ocr"><span class="num">05</span> OCR</a>
+    <a href="#ports"><span class="num">06</span> Port identification</a>
+  </div>
+
+  <div class="group">
+    <div class="group-label">Switch info</div>
+    <a href="#switch-info"><span class="num">07</span> Switch info UI</a>
+    <a href="#firmware"><span class="num">08</span> Firmware + CVE</a>
+    <a href="#specs"><span class="num">09</span> Specifications</a>
+  </div>
+
+  <div class="group">
+    <div class="group-label">Live data</div>
+    <a href="#topology"><span class="num">10</span> Topology 3D</a>
+    <a href="#avail-ports"><span class="num">11</span> Available ports</a>
+    <a href="#sfp"><span class="num">12</span> SFP advisor</a>
+  </div>
+
+  <div class="group">
+    <div class="group-label">Integrations</div>
+    <a href="#cmdb"><span class="num">13</span> CMDB / ServiceNow</a>
+    <a href="#netdisco"><span class="num">14</span> Netdisco</a>
+    <a href="#share"><span class="num">15</span> Slack/Teams/Outlook</a>
+  </div>
+
+  <div class="group">
+    <div class="group-label">Learning loop</div>
+    <a href="#feedback"><span class="num">16</span> Feedback capture</a>
+    <a href="#active-learning"><span class="num">17</span> Active learning</a>
+    <a href="#retraining"><span class="num">18</span> Retraining</a>
+  </div>
+
+  <div class="group">
+    <div class="group-label">Platform</div>
+    <a href="#observability"><span class="num">19</span> Observability</a>
+    <a href="#multi-tenant"><span class="num">20</span> Multi-tenancy</a>
+    <a href="#auth"><span class="num">21</span> Auth + Secrets</a>
+    <a href="#ar"><span class="num">22</span> iOS + AR</a>
+  </div>
+
+  <div class="author-key">
+    <strong>Authorship</strong>
+    <div><span class="pill team"><span class="dot"></span>Team</span> built by your team</div>
+    <div><span class="pill me"><span class="dot"></span>Me</span> built in Claude sessions</div>
+    <div><span class="pill shared"><span class="dot"></span>Shared</span> jointly built / iterated</div>
+    <div><span class="pill todo"><span class="dot"></span>Pending</span> still to build</div>
+  </div>
+</nav>
+
+<main>
+
+<h1>Rack-scan App — Feature Reference</h1>
+<p class="lede">
+  One page. Every feature in plain English with enough technical depth to
+  explain what it does, how it works, and which trade-offs were chosen. Each
+  section has an authorship pill so you know which parts your team built,
+  which parts were built in our sessions together, and which are still
+  pending.
+</p>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="overview">
+  <div class="feature-head">
+    <span class="feature-num">00</span>
+    <h2>What the app actually does</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>A field engineer takes a photo of an open rack. The app figures out what's inside it — which switches, which ports are free, what cables go where, whether the firmware is up to date. The same data syncs to ServiceNow CMDB so the office team has the same picture without anyone manually retyping serial numbers.</p>
+
+  <h3>The user journey</h3>
+  <ol>
+    <li>Open the app, log in.</li>
+    <li>Tap <strong>Scan Rack</strong>, point the camera, take a photo.</li>
+    <li>Server runs CV → OCR → topology generation. The phone also fires an SSH probe of the live switch and a CMDB lookup in parallel.</li>
+    <li>Land on the Results page — every tab (Overview / Ports / Topology / Network / Switches) is already populated. No per-tab spinner because everything fired the moment the scan finished.</li>
+    <li>If something didn't get picked up automatically, the user types the missing make / model / firmware. Manual entries flow into the same vendor lookups as auto-detected values.</li>
+    <li>From Results, sync to CMDB (creates a ServiceNow change ticket) or share by Slack / Teams / Outlook.</li>
+  </ol>
+
+  <h3>The parts (one sentence each)</h3>
+  <table>
+    <tr><th>Part</th><th>One-liner</th></tr>
+    <tr><td>Rack scan</td><td>photo → CV finds chassis → per-bbox OCR reads labels</td></tr>
+    <tr><td>Port detection</td><td>separate CV model counts &amp; classifies ports per switch</td></tr>
+    <tr><td>Switch info</td><td>given vendor + model, scrape vendor page for specs and NIST NVD for CVEs</td></tr>
+    <tr><td>Topology</td><td>3D rack view with cables routed between devices</td></tr>
+    <tr><td>Available ports</td><td>SSH the live switch, parse <code>show interface status</code></td></tr>
+    <tr><td>SFP advisor</td><td>given SFP cages + switch model, recommend transceiver part numbers</td></tr>
+    <tr><td>CMDB sync</td><td>push scan into ServiceNow as a change ticket, poll for approval</td></tr>
+    <tr><td>Netdisco proxy</td><td>read LLDP neighbour data from existing netdisco install</td></tr>
+    <tr><td>Feedback loop</td><td>capture user corrections; queue per model; retrain when threshold crossed</td></tr>
+  </table>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="scan">
+  <div class="feature-head">
+    <span class="feature-num">02</span>
+    <h2>Rack scan — photo to inventory</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>The user uploads a rack photo. The server runs a quality check, then computer vision detects each chassis, then OCR reads each chassis's labels. By the time the user lands on Results, every detected switch has its make / model / firmware filled in (or flagged as needing manual entry).</p>
+
+  <h3>What you'd say in a demo</h3>
+  <div class="demo-talk">
+    <strong>Quick demo line</strong>
+    "We don't ask the user to type anything that we can read off the photo. They take one shot, we find every device, classify it, read the chassis sticker. The whole thing finishes in 20-25 seconds on cache miss, instant on cache hit."
+  </div>
+
+  <h3>How it works internally</h3>
+  <ul>
+    <li><strong>Photo-quality gate</strong> runs first — blur, tilt, lighting, framing. Bad photo? User sees "retake straight-on" with a Proceed-anyway override.</li>
+    <li><strong>CV pipeline</strong> — YOLO on the rack image finds device bboxes, dual-model approach (general + server-class) with low-confidence retry catches unusual chassis. Maps each box to a U-position.</li>
+    <li><strong>OCR pipeline</strong> — for each switch/server/router/firewall, crops its bbox and runs three OCR passes (raw, CLAHE, unsharp), merges results, runs the parser.</li>
+    <li><strong>Per-rack folder</strong> on disk: <code>outputs/&lt;rackId&gt;/</code> holds the original image, the device map JSON, the OCR results, the topology JSON, and any CMDB ticket state.</li>
+    <li><strong>RackId</strong> = SHA-256 prefix of the normalized image. Same photo → same rackId → cache hit on re-upload.</li>
+  </ul>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>server/app.js:1241</code> — <code>/api/analyze</code> route</li>
+      <li><code>pipeline/runner.py</code> — CV pipeline</li>
+      <li><code>pipeline/ocr_devices.py</code> — per-bbox OCR + parser</li>
+      <li><code>client/src/pages/ScanPage.jsx</code> — upload UI</li>
+      <li><code>client/src/utils/scanPrefetch.js</code> — post-analyze parallel prefetch</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="quality">
+  <div class="feature-head">
+    <span class="feature-num">03</span>
+    <h2>Quality check — the photo gate</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>Before the heavy CV pipeline runs, a fast sanity check looks at the image: is it sharp, straight, well-lit, framed? If not, the user gets a specific reason ("photo's tilted — retake straight-on") with a Retake or Proceed-anyway button.</p>
+
+  <p>The whole point: if the photo's bad, fail in 1.5 seconds with a clear explanation, instead of letting the user wait 30 seconds for a worthless result.</p>
+
+  <h3>Heuristics</h3>
+  <table>
+    <tr><th>Check</th><th>Method</th><th>Trigger</th></tr>
+    <tr><td>Blur</td><td>Laplacian variance</td><td>"Photo is too blurry"</td></tr>
+    <tr><td>Tilt</td><td>Hough lines, angle of dominant line</td><td>"Photo's tilted"</td></tr>
+    <tr><td>Brightness</td><td>mean luma</td><td>"Lighting issue"</td></tr>
+    <tr><td>Glare</td><td>local variance map, saturated patches</td><td>"Glare detected"</td></tr>
+    <tr><td>Framing</td><td>edge count + aspect</td><td>"Make sure full rack fits"</td></tr>
+    <tr><td>Resolution</td><td>min(W, H)</td><td>"Photo is too small"</td></tr>
+  </table>
+
+  <p>After CV runs, a second check rejects "0 devices found" or "&lt;3 U-rails detected" as not-a-rack-photo cases. Both bypass-able with the Proceed-anyway override.</p>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/quality_check.py</code> — the actual checks</li>
+      <li><code>server/worker-pool.js</code> — keeps a Python worker warm so this finishes in ~1.5s</li>
+      <li><code>server/app.js:1271, 1320</code> — call sites + post-pipeline gate</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="cv">
+  <div class="feature-head">
+    <span class="feature-num">04</span>
+    <h2>CV detection — finding devices</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>Given a rack photo, the CV pipeline draws boxes around each device (switch, server, patch panel, UPS, blank panel) and labels each box with a class name and a U-position.</p>
+
+  <h3>Models used</h3>
+  <table>
+    <tr><th>Model</th><th>Job</th><th>File</th></tr>
+    <tr><td>Devices (general)</td><td>YOLO; switch/router/patch-panel/PDU/UPS/empty/etc.</td><td><code>Models/best 32.pt</code></td></tr>
+    <tr><td>Devices (server)</td><td>YOLO trained for servers + blade enclosures</td><td><code>Models/best 33.pt</code></td></tr>
+    <tr><td>Units</td><td>YOLO finds U-rail markers</td><td><code>Models/unit.pt</code></td></tr>
+    <tr><td>Port count</td><td>YOLO on chassis crops, counts ports</td><td><code>Models/port_count.pt</code></td></tr>
+    <tr><td>Cable classifier</td><td>EfficientNet; CAT/fiber/DAC</td><td><code>Models/best_model_efficientnet.pth</code></td></tr>
+  </table>
+
+  <h3>Two-stage detection</h3>
+  <ul>
+    <li><strong>Primary pass</strong>: dual-model at conf=0.20-0.25.</li>
+    <li><strong>Low-confidence retry</strong>: same models at conf=0.08, IoU-deduped against primary. Catches unusual chassis (CRS518 wavy fascia, NETGEAR PoE, unusual cable channels) the primary missed.</li>
+  </ul>
+
+  <h3>U-position mapping</h3>
+  <p>Run the unit model to get U-rail tick boxes (U01, U02, …). For each device bbox, find the U-numbers whose Y-range overlaps. A 2U server might be tagged <code>["U10","U11"]</code>; a 1U switch <code>["U10"]</code>.</p>
+
+  <div class="warn">
+    <strong>Honest caveat</strong>
+    On the 12-image test set, CV emits 157 device bboxes but only ~30 are real switches (per manual ground truth). The OCR class filter narrows the focus, but over-detection is a real cost — see <a href="#limits">Known limits</a>.
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/runner.py</code> — pipeline entry</li>
+      <li><code>pipeline/detection.py</code> — YOLO loading + dual-model dedup + Hough rack-bounds</li>
+      <li><code>config.json</code> — confidence thresholds + model paths</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="ocr">
+  <div class="feature-head">
+    <span class="feature-num">05</span>
+    <h2>OCR — reading text from chassis</h2>
+    <span class="pill shared"><span class="dot"></span>Shared</span>
+  </div>
+
+  <p>Per-bbox OCR. For each detected switch/router/server, crop the chassis from the photo, run text recognition on just that crop, parse what came back into vendor / model / firmware fields.</p>
+
+  <h3>Three preprocessing passes</h3>
+  <ol>
+    <li><strong>Raw crop</strong> — works for cleanly-lit, sharp text.</li>
+    <li><strong>CLAHE</strong> contrast-enhanced — works for faded labels in shadow.</li>
+    <li><strong>Unsharp mask</strong> — works for cleanly-lit chassis where CLAHE adds noise.</li>
+  </ol>
+  <p>Each pass produces text + confidence. We merge, dedupe by lowercased text, keep the best confidence per phrase. Different preprocessing catches text any single pass misses.</p>
+
+  <h3>The parser (two-tier)</h3>
+  <ol>
+    <li><strong>Model regex</strong> — ~24 patterns covering Cisco / TP-Link / D-Link / Juniper / Aruba / HP / Arista / Huawei / Dell / MikroTik / Ubiquiti / NETGEAR / SonicWall / Synology / QNAP / APC / Eaton / TRENDnet / HikVision. First match wins.</li>
+    <li><strong>Brand keyword + fuzzy</strong> — if no model regex hit, scan 26 vendor keyword lists with token-level Levenshtein distance. Edit budget scales with keyword length so <code>Csco</code> → Cisco, <code>Mikrorik</code> → MikroTik, <code>Unfi</code> → UniFi.</li>
+  </ol>
+
+  <h3>Output</h3>
+  <pre><code>{
+  "position": "U10",
+  "make":     "Mikrotik",
+  "model":    "CRS326-24G-2S+RM",
+  "version":  "10.5.0.7",
+  "raw_text": "Mikrotik Cloud Router Switch CRS326-24G-2S+RM",
+  "ocr_conf":   0.74,
+  "match_conf": 0.88,
+  "source":   "ocr_full"   // ocr_full | ocr_make_only | ocr_failed
+}</code></pre>
+
+  <h3>Honest accuracy on the 12-image test set</h3>
+  <table>
+    <tr><th>Metric</th><th>Per-device</th></tr>
+    <tr><td>Chassis OCR'd</td><td>108</td></tr>
+    <tr><td>Vendor identified</td><td>22 (20.4%)</td></tr>
+    <tr><td>Model identified</td><td>2 (1.9%)</td></tr>
+  </table>
+  <p>Vendor recall is OK. Model recall is poor — when OCR returns text, it usually reads the brand and buzzwords (<code>Cloud Router Switch, Mikrotik</code>) but mangles the model number (<code>CRS3Zo</code> instead of <code>CRS326</code>). No regex fix recovers text that wasn't captured. The manual-fallback in Switch Info covers this.</p>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/ocr_devices.py</code> — main per-bbox OCR + parser</li>
+      <li><code>pipeline/all_vendor.py</code> — vendor keyword + fuzzy match</li>
+      <li><code>Switch_Vendors_Websites.xlsx</code> — canonical vendor list</li>
+      <li><code>pipeline/benchmark_ocr.py</code> — benchmark harness</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="ports">
+  <div class="feature-head">
+    <span class="feature-num">06</span>
+    <h2>Port identification</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>For each detected switch, count ports and classify them as RJ45 (copper) or SFP (fiber/DAC cage).</p>
+
+  <ul>
+    <li><strong>Counter</strong>: <code>port_count.pt</code> YOLO runs on each chassis crop, outputs bboxes per port. Cluster by Y-coordinate to find rows; sort by X within rows; SFP cages have wider pitch + slightly different aspect ratio than RJ45.</li>
+    <li><strong>Pattern refinement</strong>: <code>pipeline/port_pattern.py</code> applies vendor-specific naming. TP-Link: <code>1/0/1</code>..<code>1/0/24</code>. Cisco: <code>Gi1/0/1</code>, <code>Te1/0/1</code>. Required so the SSH probe interface names match.</li>
+    <li><strong>Highlight-a-port flow</strong>: <code>POST /api/select</code> with <code>device_index</code> + <code>port</code> draws a circle on the original photo at the exact port location — useful for "go look at port 15 on switch X" tickets.</li>
+  </ul>
+
+  <h3>Port type classification</h3>
+  <p>Three signals, in priority:</p>
+  <ol>
+    <li>Switch's own report: TP-Link's <code>show interface status</code> has an Active-Medium column (copper/fiber). Authoritative.</li>
+    <li>Cisco-style interface naming: <code>Te</code>/<code>Fo</code>/<code>Hu</code> = SFP+/QSFP/QSFP28, <code>Gi</code>/<code>Fa</code> = copper.</li>
+    <li>CV port count + SFP count from the chassis bbox: a 24+4 switch has the last 4 entries as SFP.</li>
+  </ol>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/port.py</code> — port-count YOLO + clustering</li>
+      <li><code>pipeline/port_pattern.py</code> — vendor-aware naming</li>
+      <li><code>Models/port_count.pt</code> — YOLO weights</li>
+      <li><code>client/src/pages/PortsPage.jsx:18, 73</code> — JS mirrors of <code>classifyPorts</code> + <code>shortLabel</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="switch-info">
+  <div class="feature-head">
+    <span class="feature-num">07</span>
+    <h2>Switch info — the Switches tab</h2>
+    <span class="pill shared"><span class="dot"></span>Shared</span>
+  </div>
+
+  <p>One card per detected switch. Each card has: vendor, model, U-position, firmware. A Photo NN% / CMDB / Manual entry badge tells the user where each value came from.</p>
+
+  <h3>Tap to expand</h3>
+  <ul>
+    <li><strong>Identification</strong> — appears when something is missing. Status pill (Not detected / Model not detected / Vendor not detected) + button (Enter make / model, Add model, Add vendor, Edit). Inline editor saves values; everything downstream re-runs against them.</li>
+    <li><strong>Firmware</strong> — current version, latest version, status pill (Up to date / Upgrade available / Couldn't read latest), CVE count breakdown <code>12 (2c/7h)</code>.</li>
+    <li><strong>Specifications</strong> — vendor's spec table scraped live, plus a "View full details" link to the vendor page.</li>
+  </ul>
+
+  <h3>Manual entry persistence</h3>
+  <p>User overrides are persisted to <code>localStorage</code> keyed by <code>serial &gt; mac &gt; position &gt; name</code> — stable across re-scans. A future re-scan that finally reads the chassis correctly silently takes precedence (<code>effectiveMake = sw.manufacturer || userMake</code>).</p>
+
+  <div class="warn">
+    <strong>Open issue</strong>
+    Manual entries don't currently flow to ServiceNow CMDB. Synthing the CMDB push from <code>servicenow/synth.py</code> doesn't read the localStorage overrides. Symptom: tech corrects "Mikrotik CRS326", pushes to CMDB, the row in ServiceNow still has the OCR's garbled value.
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>client/src/pages/SwitchInformationPage.jsx</code> — the page</li>
+      <li><code>client/src/utils/scanPrefetch.js</code> — caches specs/firmware</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="firmware">
+  <div class="feature-head">
+    <span class="feature-num">08</span>
+    <h2>Firmware — latest version, CVEs</h2>
+    <span class="pill shared"><span class="dot"></span>Shared</span>
+  </div>
+
+  <p>Three questions answered per switch: <strong>what's the latest published version</strong>, <strong>are you up to date</strong>, <strong>any known CVEs in your current version</strong>.</p>
+
+  <h3>How latest is detected</h3>
+  <ol>
+    <li>Use the vendor domain alias map to identify which domains to search (Aruba's modern docs are on <code>arubanetworking.hpe.com</code>, not <code>arubanetworks.com</code>).</li>
+    <li>DDG search <code>site:domain MODEL release-notes</code> across multiple alias domains in parallel.</li>
+    <li>For each candidate URL: fetch, parse, walk a 5-tier extraction (title → h1/h2/h3/h4 → "latest"-keyword proximity → labelled body text → anywhere). First tier with valid versions wins; highest tuple within tier is "latest".</li>
+    <li>Sanity check: reject the latest if its major version is wildly incompatible with current (catches docs-system version noise).</li>
+  </ol>
+
+  <h3>The IP-vs-version trap</h3>
+  <p>An earlier bug had an Aruba switch claiming "Latest: 10.100.222.115". That's an example IP from a config snippet on the page — not a version. The fix: 4-octet all-≤255 strings are rejected unless found in a labelled position (title, heading, near "version:" keyword).</p>
+
+  <h3>Major-version sanity check</h3>
+  <p>Even after the IP fix, the scraper sometimes picks up an unrelated docs-system version like <code>2.5.8</code> on a Confluence page. Comparing <code>(10,8,1000) &gt;= (2,5,8)</code> would technically be true, so the UI would say "Up to date" incorrectly. Fix: reject latest when its major is wildly mismatched. Threshold: latest major must be at least half of current major, no more than 5x.</p>
+
+  <h3>CVEs from NIST NVD</h3>
+  <p>Free NVD API. Four-tier keyword fallback (vendor+model+version → vendor+model → model alone → vendor+"switch") because over-specifying returns nothing for niche gear and under-specifying is too noisy. Each CVE flagged with <code>matchesCurrentVersion</code> when description contains the version verbatim.</p>
+
+  <div class="demo-talk">
+    <strong>Demo line</strong>
+    "We do best-effort latest-version detection from public release notes — when we can't tell confidently, we say 'couldn't read latest, check vendor' rather than guess. The CVE list is from NIST NVD; we flag CVEs whose descriptions name your exact version."
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/firmware_check.py</code> — scrape + NVD</li>
+      <li><code>pipeline/all_vendor.py</code> — domain aliases, vendor resolve</li>
+      <li><code>server/app.js:3336</code> — <code>/api/firmware</code> route</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="specs">
+  <div class="feature-head">
+    <span class="feature-num">09</span>
+    <h2>Specifications — vendor scraping</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>Given vendor + model, find the vendor's product page and read the spec table off it. No hardcoded specs database — every call is live; staleness is the vendor's problem.</p>
+
+  <h3>URL discovery</h3>
+  <ul>
+    <li>Search across the vendor's known domains (alias map for Aruba, Dell, etc.) plus the Excel-listed URL.</li>
+    <li>Score every result: products page +25, datasheet +25, collateral +30, switches/series +10-15. Penalize forums (-100), EOL pages (-80), shop categories (-30), PDFs (-50).</li>
+    <li>Try each candidate in score order. First page with parseable specs wins.</li>
+  </ul>
+
+  <h3>Spec extraction</h3>
+  <p>Generic — walks every <code>&lt;table&gt;</code> and <code>&lt;dl&gt;</code> on the page. A "spec table" has ≥3 rows of key/value pairs, keys are short, no SKU-shaped strings (those are accessory tables, dropped via <code>_is_sku_list_table</code>).</p>
+
+  <h3>Open-web fallback</h3>
+  <p>When vendor's own pages have no parseable specs (modern Cisco /site/ pages are JS-rendered), search the open web for distributor / aggregator pages (router-switch.com, FS.com) and try those.</p>
+
+  <div class="warn">
+    <strong>What can go wrong</strong>
+    "Product page not found" = search returned no candidates. "No specifications found on any candidate URL" = candidates returned but extractor couldn't parse them. The biggest failure mode is JS-rendered vendor pages; headless-browser fallback (Puppeteer) would fix it but adds latency.
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/all_vendor.py</code> — entire scraper</li>
+      <li><code>Switch_Vendors_Websites.xlsx</code> — vendor list</li>
+      <li><code>server/app.js:3304</code> — <code>/api/specs</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="topology">
+  <div class="feature-head">
+    <span class="feature-num">10</span>
+    <h2>Topology — 3D rack view</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>3D model of the rack with detected devices and the cables between them. Orbit, zoom, switch between 2D (tier graph) and 3D, filter cables by type, capacity heatmap, trace mode (tap two devices, see the cable path).</p>
+
+  <h3>Why 3D matters</h3>
+  <p>"How is this rack actually wired?" is hard to answer from a flat list. A senior tech glancing at the 3D for 5 seconds spots that the patch panel on U37 has 24 cables to the switch on U36 and 6 to a server on U33 — that's a wiring story.</p>
+
+  <h3>Data sources</h3>
+  <ul>
+    <li>CV scan (devices, positions, port counts)</li>
+    <li>SSH probe (which ports are connected on the live switch)</li>
+    <li>Patch-panel registry (manually configured panel-to-panel cabling)</li>
+    <li>LLDP from netdisco (when the switch advertises its peers)</li>
+  </ul>
+
+  <h3>Modes</h3>
+  <ul>
+    <li><strong>3D view</strong> — Three.js + React Three Fiber, lazy-loaded. Devices as 1U slabs by U-number; cables as tubes routed through patch panels.</li>
+    <li><strong>2D view</strong> — SVG tier graph: core / distribution / access / endpoint. Aggregated edges with cable counts.</li>
+    <li><strong>Capacity heatmap</strong> — devices coloured by free-port percentage (green &gt;50%, amber &gt;25%, red &lt;25%).</li>
+    <li><strong>Trace mode</strong> — BFS over the device-pair adjacency graph, highlights the shortest cable path.</li>
+  </ul>
+
+  <div class="warn">
+    <strong>Multi-rack is data-only</strong>
+    Topology JSON has <code>crossRackEdges</code> and <code>neighbors</code> fields, but a "room view" rendering N racks with cross-rack cables doesn't exist yet. <span class="pill todo"><span class="dot"></span>Pending</span>
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>client/src/pages/TopologyPage.jsx</code> — page chrome, 2D view, trace</li>
+      <li><code>client/src/pages/TopologyScene3D.jsx</code> — 3D scene</li>
+      <li><code>servicenow/topology_generate.py</code> — server-side topology JSON assembly</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="avail-ports">
+  <div class="feature-head">
+    <span class="feature-num">11</span>
+    <h2>Available ports — SSH probe</h2>
+    <span class="pill shared"><span class="dot"></span>Shared</span>
+  </div>
+
+  <p>Open an SSH session to the switch, run <code>show interface status</code>, parse the output, classify each port as <strong>connected</strong> / <strong>free</strong> / <strong>reserved</strong>.</p>
+
+  <h3>Verdict logic</h3>
+  <ul>
+    <li><code>linkup</code>/<code>connected</code>/<code>up</code> → <strong>used</strong></li>
+    <li><code>err-disabled</code>/<code>shutdown</code>/<code>admin down</code> → <strong>reserved</strong> (administratively held out of service)</li>
+    <li>Otherwise: a description means "someone planned this port" → <strong>reserved</strong>; no description → <strong>free</strong></li>
+  </ul>
+
+  <h3>The summary card (visually appealing version)</h3>
+  <p>Hero badge with the available count, ETH and SFP chips, gradient utilization bar, expandable list of every available port. The card was iterated from a plain-text "available ports" line into the visual hierarchy that's there now.</p>
+
+  <h3>Probe lifecycle</h3>
+  <ul>
+    <li>Fired the moment the user taps "Analyze Rack" — fire-and-forget, idempotent. By the time they navigate to Ports tab, result is usually ready.</li>
+    <li>Cached to <code>localStorage</code> on success. Re-visiting the tab renders from cache; the previous behaviour of re-probing on every nav was removed.</li>
+    <li>Force-refresh via the Retry button on error.</li>
+  </ul>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>client/src/utils/portsProbe.js</code> — state machine</li>
+      <li><code>client/src/pages/PortsPage.jsx</code> — UI</li>
+      <li><code>server/app.js</code> — <code>runSwitchCommand</code>, <code>/api/switch/console/run</code></li>
+      <li><code>server/lib/ssh-creds.js</code> — encrypted credential store</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="sfp">
+  <div class="feature-head">
+    <span class="feature-num">12</span>
+    <h2>SFP advisor</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>For switches with SFP cages, recommend transceiver part numbers. Slot type (SFP / SFP+ / SFP28 / QSFP+ / QSFP28 / QSFP-DD), primary recommendation, budget option, alternatives, cable types, buy/view links.</p>
+
+  <h3>Slot-type detection (3 stages, in priority)</h3>
+  <ol>
+    <li>Scrape the vendor datasheet for "SFP" / "QSFP" / "Form factor" / "Cage type" rows.</li>
+    <li>Infer from model name: <code>400G/QSFP-DD</code>, <code>100G/QSFP28</code>, <code>40G/QSFP+</code>, <code>25G/SFP28</code>, <code>10G/SFP+</code>, default <code>SFP</code>.</li>
+    <li>Infer from interface name: <code>Hu</code> → QSFP28, <code>Fo</code> → QSFP+, <code>Te</code> → SFP+, <code>Gi</code> → SFP.</li>
+  </ol>
+
+  <h3>No hardcoded part-number database</h3>
+  <p>Every recommendation is live: open-web search for compatible transceivers, scrape part numbers + prices, score by brand authority + price availability + spec completeness. Fallback when offline: cable-type guidance only (engineering fact, not scraped data) — no specific SKUs.</p>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/sfp_recommend.py</code> — server scrape + rank</li>
+      <li><code>client/src/utils/sfpDatabase.js</code> — client cache + offline fallback</li>
+      <li><code>client/src/pages/PortsPage.jsx:SfpAdvisor</code> — UI</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="cmdb">
+  <div class="feature-head">
+    <span class="feature-num">13</span>
+    <h2>CMDB / ServiceNow sync</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>Push scan results into ServiceNow CMDB through the normal change-ticket workflow. User taps Sync to CMDB → app diffs new scan against existing CMDB → creates a change ticket → ticket goes through approval → on approval, diff is applied (insert/update/delete CIs).</p>
+
+  <h3>Routes</h3>
+  <table>
+    <tr><th>Route</th><th>Action</th></tr>
+    <tr><td><code>GET /api/cmdb/ticket/:rackId</code></td><td>read local ticket state</td></tr>
+    <tr><td><code>POST .../refresh</code></td><td>re-poll ServiceNow</td></tr>
+    <tr><td><code>POST .../create</code></td><td>compute diff + create ticket</td></tr>
+    <tr><td><code>POST .../cancel</code></td><td>drop the local state file</td></tr>
+    <tr><td><code>POST /api/cmdb/ticket/poll</code></td><td>sweep every open ticket</td></tr>
+    <tr><td><code>POST .../dev-approve</code></td><td><strong>skip approval, apply directly</strong> (demo only)</td></tr>
+  </table>
+
+  <h3>Synth → diff → apply</h3>
+  <ul>
+    <li><strong>synth.py</strong> builds a "what we want CMDB to look like" JSON from <code>ocr_devices.json</code> + <code>device_unit_map.json</code> + per-rack overrides.</li>
+    <li><strong>diff_cmdb.py</strong> queries SNOW for current CIs, produces add / remove / update lists.</li>
+    <li><strong>cmdb_apply.py</strong> applies the diff: PATCH for update, POST for insert, DELETE for remove. HTTP Basic auth.</li>
+  </ul>
+
+  <div class="warn">
+    <strong>Two production-blockers</strong>
+    <strong>1.</strong> The dev-approve route bypasses the SNOW approval workflow. Authenticated, but auditors flag it. Fix: gate behind <code>NODE_ENV !== 'production'</code> or wire to a real auto-approve flow.<br>
+    <strong>2.</strong> ServiceNow auth is HTTP Basic, password in env. 8+ scripts hard-code <code>auth=(SN_USER, SN_PASSWORD)</code>. Move to OAuth client-credentials grant.
+    <span class="pill todo"><span class="dot"></span>Pending</span>
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>server/cmdb_ticket_proxy.js</code> — 6 routes</li>
+      <li><code>servicenow/cmdb_ticket.py</code> — ticket lifecycle</li>
+      <li><code>servicenow/cmdb_apply.py</code> — applies diff to SNOW</li>
+      <li><code>servicenow/synth.py</code>, <code>servicenow/diff_cmdb.py</code> — synth + diff</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="netdisco">
+  <div class="feature-head">
+    <span class="feature-num">14</span>
+    <h2>Netdisco proxy</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>Netdisco is an open-source SNMP / LLDP discovery tool — point it at a network range, give it SNMP read-only credentials, it walks every switch and router and learns who's connected to whom.</p>
+
+  <p>We run a netdisco container in <code>netdisco-docker/</code>, and the app proxies a small set of read-only queries through to it. The data shows up in the Network tab on the Results page.</p>
+
+  <h3>Routes</h3>
+  <table>
+    <tr><td><code>GET /api/netdisco/health</code></td><td>container health</td></tr>
+    <tr><td><code>GET /api/netdisco/devices</code></td><td>all known devices</td></tr>
+    <tr><td><code>GET /api/netdisco/device/:ip</code></td><td>one device's record</td></tr>
+    <tr><td><code>GET /api/netdisco/device/:ip/ports</code></td><td>per-port info</td></tr>
+    <tr><td><code>GET /api/netdisco/device/:ip/neighbours</code></td><td>LLDP/CDP peers</td></tr>
+    <tr><td><code>GET /api/netdisco/rack/:rackId/neighbours</code></td><td>union per rack</td></tr>
+    <tr><td><code>POST /api/netdisco/sync/:rackId</code></td><td>trigger a re-walk</td></tr>
+  </table>
+
+  <h3>Source-merge with scan / CMDB</h3>
+  <p>When all three sources (scan, netdisco, CMDB) claim "switch X is at U10", the reconciler matches by serial → MAC → IP+position → position alone. Priority on conflict: CMDB → scan/OCR → netdisco. Netdisco's vendor strings (parsed from SNMP <code>sysDescr</code>) are the least-trusted because they vary across firmware revisions.</p>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>server/netdisco_proxy.js</code> — proxy routes</li>
+      <li><code>client/src/pages/NetdiscoPage.jsx</code> — UI</li>
+      <li><code>netdisco-docker/</code> — container stack</li>
+      <li><code>servicenow/reconciler.py</code> — source-merge</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="share">
+  <div class="feature-head">
+    <span class="feature-num">15</span>
+    <h2>Share — Slack / Teams / Outlook</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>From the Results page, share the rack report as a PDF to Slack channel, Teams chat, or Outlook email.</p>
+
+  <h3>PDF generation</h3>
+  <p>Headless Chromium via Puppeteer. Navigate to <code>/results/:rackId/print</code> (a print-mode variant of the Results page that strips nav, expands collapsibles, forces light-mode). Wait for <code>window.__printReady = true</code>. Call <code>page.pdf({ format: 'A4', printBackground: true })</code>.</p>
+
+  <h3>Senders</h3>
+  <ul>
+    <li><strong>Slack</strong> — incoming webhook + the multi-step <code>files.upload</code> flow for the PDF attachment.</li>
+    <li><strong>Teams</strong> — webhook (Adaptive Card with summary + link), or Microsoft Graph for direct chat post when configured.</li>
+    <li><strong>Outlook</strong> — Microsoft Graph <code>/me/sendMail</code> with PDF attached. Token cached in JSON file (currently per-developer; needs renaming for production).</li>
+  </ul>
+
+  <h3>Recipient caching</h3>
+  <p>After a successful send, recipient is added to a recents list for autocomplete next time.</p>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>pipeline/slack_email.py</code>, <code>pipeline/teams_send.py</code>, <code>pipeline/outlook_send.py</code></li>
+      <li><code>server/app.js</code> — <code>/api/scan/:rackId/{slack,teams,outlook}</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="feedback">
+  <div class="feature-head">
+    <span class="feature-num">16</span>
+    <h2>Feedback capture</h2>
+    <span class="pill shared"><span class="dot"></span>Shared</span>
+  </div>
+
+  <p>When the app gets something wrong (wrong cable colour, wrong port count, wrong device class), the user corrects it in the UI and the correction is logged. <strong>Every correction is free training data.</strong></p>
+
+  <h3>What gets stored</h3>
+  <ul>
+    <li>Original prediction (what the model said) + confidence</li>
+    <li>Corrected value (what the user said)</li>
+    <li>Image crop of the thing being corrected (so the trainer has visual context)</li>
+    <li>Metadata: rackId, deviceId, portId, user_id, tenant_id, timestamp</li>
+  </ul>
+
+  <h3>Where it lives</h3>
+  <ul>
+    <li><code>server/feedback.jsonl</code> — append-only event log. Source of truth.</li>
+    <li><code>server/feedback/wrong/&lt;file&gt;.jpg</code> — image crops referenced by the JSONL rows.</li>
+  </ul>
+
+  <h3>Schema</h3>
+  <pre><code>{
+  "id": "fb-2026-05-07-001234",
+  "ts": "2026-05-07T13:42:11Z",
+  "user_id": 17, "tenant_id": 3, "rack_id": "RK-F74FFCF9",
+  "feedback_type": "cable_color",
+  "is_correct": false,
+  "predicted": { "color": "blue", "confidence": 0.71 },
+  "actual":    { "color": "green" },
+  "device_index": 4, "port_index": 12,
+  "device_crop_image": "wrong/RK-F74FFCF9-d4-...jpg"
+}</code></pre>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>server/feedback.jsonl</code></li>
+      <li><code>server/feedback/wrong/</code></li>
+      <li><code>client/src/pages/ResultsPage.jsx:submitFeedback</code> — client submitter</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="active-learning">
+  <div class="feature-head">
+    <span class="feature-num">17</span>
+    <h2>Active learning — staging queues</h2>
+    <span class="pill me"><span class="dot"></span>Me</span>
+  </div>
+
+  <p>Middle stage of the learning loop. Take raw feedback, route to per-model stores, hold them until the retrain runner is ready.</p>
+
+  <h3>Folder layout</h3>
+  <pre><code>active_learning_Cache/
+├── config.py             ← thresholds + paths
+├── store.py              ← Store class: add/list/count/export
+├── feedback_ingest.py    ← server/feedback.jsonl → per-model stores
+├── cli.py                ← `python -m active_learning_Cache.cli ...`
+├── device_active_learning.py     ← Flask UI for device corrections
+├── cable_active_learning.py      ← Flask UI for cable corrections
+└── data/
+    ├── devices/      ← one model's queue (samples/, corrections.jsonl, manifest.json)
+    ├── cable/
+    └── port_count/</code></pre>
+
+  <h3>Store</h3>
+  <p>Per-model directory holds:</p>
+  <ul>
+    <li><code>corrections.jsonl</code> — append-only event log. Source of truth.</li>
+    <li><code>manifest.json</code> — derived counter cache.</li>
+    <li><code>samples/&lt;id&gt;.&lt;ext&gt;</code> — image artifacts.</li>
+  </ul>
+  <p>Three event kinds: <code>add</code> (new candidate), <code>export</code> (used in retrain run R), <code>supersede</code> (later add() replacing earlier id).</p>
+
+  <h3>Routing rules</h3>
+  <table>
+    <tr><th>feedback_type</th><th>Routes to model</th></tr>
+    <tr><td><code>port_count</code></td><td><code>port_count</code></td></tr>
+    <tr><td><code>cable_color</code> / <code>cable_type</code></td><td><code>cable</code></td></tr>
+    <tr><td><code>device_class</code> / <code>device_make_model</code></td><td><code>devices</code></td></tr>
+  </table>
+
+  <h3>CLI</h3>
+  <pre><code>python -m active_learning_Cache.cli ingest          # process new feedback rows
+python -m active_learning_Cache.cli stats           # counts per model
+python -m active_learning_Cache.cli list --model cable
+python -m active_learning_Cache.cli clear --model cable</code></pre>
+
+  <h3>Thresholds for retrain</h3>
+  <table>
+    <tr><th>Model</th><th>Threshold</th></tr>
+    <tr><td><code>devices</code></td><td>200 corrections</td></tr>
+    <tr><td><code>cable</code></td><td>200</td></tr>
+    <tr><td><code>port_count</code></td><td>100</td></tr>
+  </table>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>active_learning_Cache/store.py</code></li>
+      <li><code>active_learning_Cache/feedback_ingest.py</code></li>
+      <li><code>active_learning_Cache/config.py</code></li>
+      <li><code>active_learning_Cache/cli.py</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="retraining">
+  <div class="feature-head">
+    <span class="feature-num">18</span>
+    <h2>Retraining — closing the loop</h2>
+    <span class="pill me"><span class="dot"></span>Me</span>
+  </div>
+
+  <p>Final stage of active learning. Poll per-model queues, kick off training when threshold crossed, validate on holdout, promote only if better.</p>
+
+  <h3>Lifecycle of one retrain</h3>
+  <ol>
+    <li><strong>Check thresholds.</strong> For each model, is the queue size over its retrain threshold?</li>
+    <li><strong>Export the queue.</strong> Dump every queued sample (image + label) into <code>runs/&lt;model&gt;-&lt;timestamp&gt;/</code>.</li>
+    <li><strong>Train.</strong> Spawn the matching trainer subprocess (YOLO for devices, EfficientNet for cables). Reads <code>dataset.jsonl</code>, produces <code>best.pt</code> + <code>val_metrics.json</code>.</li>
+    <li><strong>Validate.</strong> Run new model against the frozen <code>holdout/&lt;model&gt;/</code> set. Get back the primary metric (mAP@0.5 for devices, macro-F1 for cable, RMSE for port_count).</li>
+    <li><strong>Promotion gate.</strong> Compare new vs production. Promote only if better by at least the configured margin.</li>
+    <li><strong>Promote or shelve.</strong> Promoted: copy <code>best.pt</code> to <code>Models/</code>, update registry, mark queue exported, touch <code>promoted.flag</code>. Shelved: leave run dir for inspection, queue stays pending.</li>
+  </ol>
+
+  <h3>Non-destructive</h3>
+  <p>Production model isn't touched until the new one passes the gate. A bad batch of corrections produces a bad candidate that fails validation and never reaches users.</p>
+
+  <h3>Registry</h3>
+  <pre><code>{
+  "devices": {
+    "version": "20260507-134220",
+    "path":    "Models/best 32.pt",
+    "metric":  "mAP_0.5", "score": 0.842,
+    "promoted_at": "2026-05-07T13:42:20Z",
+    "n_samples": 1834,
+    "history": [...]
+  },
+  "cable":      {...},
+  "port_count": {...}
+}</code></pre>
+
+  <div class="warn">
+    <strong>Operating cycle is manual today</strong>
+    Cron-driven nightly runs aren't wired. Operators run <code>python -m retraining_learning.runner</code> by hand. Adding cron + alerting on promotion is small ops work. <span class="pill todo"><span class="dot"></span>Pending</span>
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>retraining_learning/runner.py</code> — orchestration</li>
+      <li><code>retraining_learning/promotion.py</code> — validation gate</li>
+      <li><code>retraining_learning/registry.py</code> + <code>registry.json</code></li>
+      <li><code>retraining_learning/holdout/</code> — frozen validation sets</li>
+      <li><code>retraining_learning/Devices_Retraining/</code>, <code>Cable_retraining/</code> — trainers</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="observability">
+  <div class="feature-head">
+    <span class="feature-num">19</span>
+    <h2>Observability — logs, metrics, tracing</h2>
+    <span class="pill me"><span class="dot"></span>Me</span>
+  </div>
+
+  <p>Three pillars: structured logs, Prometheus metrics, in-process tracing via <code>withSpan</code>.</p>
+
+  <h3>What you get out of the box</h3>
+  <ul>
+    <li><strong>Structured JSON logs (pino)</strong> with secret redaction. Every log line in a request's lifecycle carries the same <code>requestId</code>, <code>userId</code>, <code>tenantId</code>.</li>
+    <li><strong>Prometheus metrics</strong>: HTTP duration histogram + in-flight gauge, error counters, per-operation duration histogram, business-event counters.</li>
+    <li><strong>withSpan</strong> wrapper that times any async function, logs start/end with the requestId, increments error counter on throw.</li>
+    <li><strong>Process-level handlers</strong> (uncaughtException, unhandledRejection) so the server never dies silently.</li>
+    <li><strong>Audit-log mirror</strong> so security-relevant events land in two places: the structured log stream AND a separate immutable audit file.</li>
+  </ul>
+
+  <h3>Wire-up</h3>
+  <pre><code>const o11y = require('./lib/observability');
+app.use(o11y.requestId);     // first
+app.use(o11y.httpLogger);    // logs every request/response
+app.use(o11y.httpMetrics);   // counts every request/response
+// ...routes...
+app.get('/metrics', o11y.metricsHandler);
+app.get('/healthz',  o11y.healthHandler);
+app.get('/readyz',   o11y.readinessHandler);</code></pre>
+
+  <h3>Redaction paths</h3>
+  <pre><code>redact: {
+  paths: [
+    'req.headers.authorization',
+    'req.headers.cookie',
+    'req.body.password',
+    '*.SN_PASSWORD',
+    '*.SSH_CREDS_KEY',
+    'env.SSH_CREDS_KEY',
+  ],
+  censor: '[REDACTED]',
+}</code></pre>
+
+  <h3>Metrics emitted</h3>
+  <table>
+    <tr><th>Metric</th><th>Type</th><th>Labels</th></tr>
+    <tr><td><code>http_requests_total</code></td><td>counter</td><td>method, route, status_class</td></tr>
+    <tr><td><code>http_request_duration_seconds</code></td><td>histogram</td><td>same</td></tr>
+    <tr><td><code>http_in_flight</code></td><td>gauge</td><td>—</td></tr>
+    <tr><td><code>op_duration_seconds</code></td><td>histogram</td><td>name, status</td></tr>
+    <tr><td><code>op_errors_total</code></td><td>counter</td><td>name</td></tr>
+    <tr><td><code>business_events_total</code></td><td>counter</td><td>event</td></tr>
+  </table>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>server/lib/observability.js</code> — the whole module</li>
+      <li><code>server/audit.js</code> — audit log writer (mirrored)</li>
+      <li><code>server/package.json</code> — pino, pino-http, pino-pretty, prom-client deps</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="multi-tenant">
+  <div class="feature-head">
+    <span class="feature-num">20</span>
+    <h2>Multi-tenancy</h2>
+    <span class="pill me"><span class="dot"></span>Me</span>
+  </div>
+
+  <p>Single deployment serves multiple customers safely. Customer A's racks invisible to Customer B and vice versa. Mechanism: every user belongs to one tenant; every <code>:rackId</code> route checks ownership.</p>
+
+  <h3>Schema</h3>
+  <pre><code>CREATE TABLE rack_owners (
+  tenant_id  INTEGER NOT NULL,
+  rack_id    TEXT    NOT NULL,
+  created_by INTEGER,
+  created_at TEXT,
+  PRIMARY KEY (tenant_id, rack_id)
+);</code></pre>
+
+  <h3>Public API</h3>
+  <pre><code>const tenant = require('./lib/tenant');
+tenant.claimRack(tenantId, rackId, userId);     // INSERT OR IGNORE
+tenant.tenantOwnsRack(tenantId, rackId);        // → bool
+tenant.tenantRackIds(tenantId);                 // → Set&lt;string&gt;
+tenant.listRacksForTenant(tenantId, limit);     // → list
+tenant.requireRackOwnership(req, res, next);    // Express middleware</code></pre>
+
+  <h3>The shared-image case</h3>
+  <p>Two tenants who scan the same physical rack get the same rackId (SHA-256 of image). The <code>outputs/RK-XXX/</code> folder is shared on disk (efficient, we don't re-run the pipeline). But the API surface treats each tenant as if they have their own rack — neither tenant can see the other has also scanned it.</p>
+
+  <h3>404 instead of 403 on ownership miss</h3>
+  <p>403 leaks information ("this rack exists, you can't see it"). 404 is indistinguishable from "never scanned by anyone" — privacy by API design.</p>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>server/lib/tenant.js</code></li>
+      <li><code>server/auth.js</code> — migration creates the tables</li>
+      <li><code>server/data/auth.db</code> — actual rows</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="auth">
+  <div class="feature-head">
+    <span class="feature-num">21</span>
+    <h2>Auth + Secrets</h2>
+    <span class="pill shared"><span class="dot"></span>Shared</span>
+  </div>
+
+  <p>JWT user authentication plus AES-256-GCM encrypted SSH credentials.</p>
+
+  <h3>User auth (JWT)</h3>
+  <pre><code>const token = jwt.sign(
+  { sub: user.id, tenant_id: user.tenant_id, role: user.role },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d', issuer: 'racktrack' }
+);</code></pre>
+  <p>Three roles: <code>viewer</code> &lt; <code>engineer</code> &lt; <code>admin</code>. <code>requireRole(name)</code> middleware enforces. Composes with <code>tenant.requireRackOwnership</code>.</p>
+
+  <h3>SSH credential encryption</h3>
+  <p>Two halves in two different places:</p>
+  <ul>
+    <li><strong>Encrypted blob</strong> in <code>server/.env</code> as <code>SSH_CREDS_ENC=&lt;base64&gt;</code>. Safe to check into a private repo — useless without the key.</li>
+    <li><strong>Key</strong> in either <code>SSH_CREDS_KEY</code> env var (preferred) or <code>server/.env.key</code> (32-byte hex).</li>
+  </ul>
+  <p>Layout of the encrypted blob: <code>[12-byte IV][16-byte auth tag][N-byte ciphertext]</code>. Plaintext is JSON with <code>defaultUser</code>, <code>defaultPassword</code>, per-host overrides, last successful host.</p>
+
+  <div class="warn">
+    <strong>ServiceNow auth is HTTP Basic</strong>
+    <code>self.auth = (os.environ["SN_USER"], os.environ["SN_PASSWORD"])</code> — affects 8+ scripts in <code>servicenow/</code>. Move to OAuth client-credentials grant.
+    <span class="pill todo"><span class="dot"></span>Pending</span>
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>server/auth.js</code> — JWT + bcrypt + role middleware</li>
+      <li><code>server/lib/ssh-creds.js</code> — AES-256-GCM cred store</li>
+      <li><code>server/encrypt-creds.js</code> — one-shot encryption CLI</li>
+      <li><code>server/audit.js</code> — audit log</li>
+      <li><code>server/data/auth.db</code> — users, tenants, sessions</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="ar">
+  <div class="feature-head">
+    <span class="feature-num">22</span>
+    <h2>iOS + AR — RackAR Capacitor plugin</h2>
+    <span class="pill me"><span class="dot"></span>Me</span>
+    <span class="pill todo"><span class="dot"></span>Native pending</span>
+  </div>
+
+  <p>The standard scan flow asks the user to take a photo, upload it, wait for results. AR mode makes that interactive: point the camera at the rack, see device labels float in real-time over the camera feed, anchored to each chassis.</p>
+
+  <h3>JS API</h3>
+  <pre><code>import { RackAR } from '@/plugins/RackAR';
+
+const supported = await RackAR.isSupported();
+if (!supported.ar) return navigate('/scan');   // fall back to photo
+
+await RackAR.start();                          // open fullscreen AR view
+await RackAR.addListener('frame', (f) =&gt; {...});  // raw frames
+await RackAR.addListener('tap',   (t) =&gt; {...});  // user tapped a label
+await RackAR.setOverlay({                      // push detection result
+  devices: [{ id, label, bbox: [x,y,w,h], color }],
+});
+await RackAR.stop();</code></pre>
+
+  <h3>Status</h3>
+  <table>
+    <tr><th>Component</th><th>Status</th></tr>
+    <tr><td>TS plugin bridge</td><td>done</td></tr>
+    <tr><td>Web fallback</td><td>done</td></tr>
+    <tr><td>Capacitor registration</td><td>done</td></tr>
+    <tr><td>Native iOS scaffold</td><td><span class="pill todo"><span class="dot"></span>Pending</span> — half-day starter via <code>npx cap add ios</code></td></tr>
+    <tr><td>Native Android scaffold</td><td>started; ARCore wiring partial</td></tr>
+    <tr><td>On-device inference</td><td><span class="pill todo"><span class="dot"></span>Pending</span> — next milestone</td></tr>
+    <tr><td>Plane-anchored overlay</td><td><span class="pill todo"><span class="dot"></span>Pending</span> — hardest part of the native impl</td></tr>
+  </table>
+
+  <div class="demo-talk">
+    <strong>Demo line</strong>
+    "Standard scan is upload-and-wait. AR is point-and-see — labels appear over the chassis as you pan the camera. The plugin is platform-neutral on the JS side; native iOS/Android render through ARKit/ARCore. We're pushing on-device inference next so latency drops to ~50ms."
+  </div>
+
+  <div class="key-files">
+    <h4>Key files</h4>
+    <ul>
+      <li><code>client/src/plugins/RackAR.ts</code> — TS bridge</li>
+      <li><code>client/src/plugins/RackAR.web.ts</code> — web fallback</li>
+      <li><code>client/capacitor.config.json</code> — registration</li>
+      <li><code>client/android/.../RackAR*.java</code> — Android native</li>
+      <li><code>client/ios/.../RackAR.swift</code> (TBD) — iOS native</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="architecture">
+  <div class="feature-head">
+    <span class="feature-num">23</span>
+    <h2>Architecture — how everything fits</h2>
+    <span class="pill team"><span class="dot"></span>Team</span>
+  </div>
+
+  <p>Three independent processes. Each has a clear job.</p>
+
+  <ul>
+    <li><strong>Client</strong> — React 19 + Vite 6 SPA, Capacitor 7 wrapper. Android APK today; iOS soon. Three.js for 3D. Calls the server over HTTPS with a JWT.</li>
+    <li><strong>Server</strong> — Express 4 on Node 20. ~3,900 LOC of <code>server/app.js</code> + 6 routes from <code>cmdb_ticket_proxy.js</code> + 7 from <code>netdisco_proxy.js</code> = 58 total HTTP routes. SQLite for users/tenants. Filesystem state under <code>outputs/</code>.</li>
+    <li><strong>Pipeline</strong> — Python modules under <code>pipeline/</code>, <code>servicenow/</code>, <code>active_learning_Cache/</code>, <code>retraining_learning/</code>. Each invocation is a subprocess that reads inputs and prints one JSON line of output.</li>
+  </ul>
+
+  <h3>Why the split</h3>
+  <p>The heavy work (CV, OCR, scraping) is Python-shaped because the libraries are Python. HTTP/auth/session work is Node-shaped because Express is good at that. The two talk through subprocess stdout/stderr.</p>
+
+  <h3>Per-rack disk state</h3>
+  <pre><code>outputs/&lt;rackId&gt;/
+├── original_image.jpg
+├── scan_meta.json
+├── device_unit_map.json    (CV result)
+├── ocr_devices.json        (OCR result)
+├── topology.json
+├── scan_result.json        (canonical bundle)
+├── labels-front.json, labels-rear.json
+├── side_labels.json
+└── ticket_state.json       (CMDB ticket state)</code></pre>
+
+  <h3>The 3-process diagram</h3>
+  <pre><code>        ┌──────────────────────────────┐
+        │           CLIENT             │
+        │   React 19 + Vite 6 SPA      │
+        │   Capacitor 7 wrapper        │
+        └──────────────┬───────────────┘
+                       │ HTTPS (JWT)
+                       ▼
+        ┌──────────────────────────────┐
+        │           SERVER             │
+        │   Express 4 on Node 20+      │
+        │   pino logs + prom metrics   │
+        │   SQLite (better-sqlite3)    │
+        │   outputs/&lt;rackId&gt;/ on FS    │
+        └─┬───────────┬────────────────┘
+          │           │
+          │ spawn     │ HTTPS
+          ▼           ▼
+   ┌────────────┐  ┌──────────────────────┐
+   │  PIPELINE  │  │ EXTERNAL              │
+   │ subprocess │  │ ServiceNow            │
+   │ Python 3.x │  │ netdisco container    │
+   │ EasyOCR    │  │ vendor product pages  │
+   │ YOLOv8     │  │ NIST NVD              │
+   └────────────┘  │ Slack / Teams webhooks│
+                   │ Microsoft Graph       │
+                   └──────────────────────┘</code></pre>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="feature" id="limits">
+  <div class="feature-head">
+    <span class="feature-num">24</span>
+    <h2>Known limits — what doesn't work</h2>
+    <span class="pill shared"><span class="dot"></span>Shared (the honest scorecard)</span>
+  </div>
+
+  <h3>Hard accuracy numbers</h3>
+  <table>
+    <tr><th>Metric</th><th>v1 baseline</th><th>Current</th></tr>
+    <tr><td>Devices CV-classified Switch/Router/Server/Firewall</td><td>40</td><td>108</td></tr>
+    <tr><td>Of those, vendor identified</td><td>17 (42.5%)</td><td>22 (20.4%)</td></tr>
+    <tr><td>Of those, model identified</td><td>1 (2.5%)</td><td>2 (1.9%)</td></tr>
+  </table>
+
+  <p>Per-photo, 8 of 12 produce a vendor; 0 produce a fully-correct model.</p>
+
+  <p><strong>What you can honestly say in a demo:</strong></p>
+  <ul>
+    <li>"We auto-detect about half the vendors on a clean photo, and we have a manual fallback for the rest."</li>
+    <li>"Model number recall is poor today — most fascia text isn't legible enough at typical phone-camera resolution. We're closing that gap with active learning."</li>
+  </ul>
+
+  <p><strong>What you should not say:</strong></p>
+  <ul>
+    <li>"It identifies switches with 95% accuracy."</li>
+  </ul>
+
+  <h3>Bugs we know about and have not fixed</h3>
+  <ul>
+    <li><strong><code>feedback.jsonl</code> grows without bound</strong> — no rotation. Eventually gigabytes.</li>
+    <li><strong><code>outputs/&lt;rackId&gt;/</code> grows without bound</strong> — same. Add a GC job that prunes folders with zero <code>rack_owners</code> rows.</li>
+    <li><strong>Cisco / modern Aruba pages are JS-rendered</strong> — static-HTML scraper finds nothing. Headless-browser fallback would fix it.</li>
+    <li><strong>CVE counts aren't version-applicable</strong> — NVD's free API takes free text. <code>matchesCurrentVersion</code> is a hint, not a precise filter.</li>
+    <li><strong>Recall-gap banner removed</strong> — <code>side_labels.py</code> still works server-side, the UI banner had broken matching logic and was removed.</li>
+    <li><strong>Manual entries don't flow to ServiceNow</strong> — synth.py doesn't read localStorage overrides. Tracked.</li>
+    <li><strong>Multi-rack topology is data-only</strong> — JSON has fields, no room view rendering yet.</li>
+    <li><strong>Dev-approve bypass</strong> — authenticated, but auditors flag it. Production fix: gate behind NODE_ENV.</li>
+    <li><strong>ServiceNow auth is HTTP Basic</strong> — 8+ scripts. Move to OAuth.</li>
+    <li><strong>Worker pool doesn't reload models on promotion</strong> — restart Node after a promotion.</li>
+  </ul>
+
+  <h3>Roadmap by category</h3>
+
+  <p><strong>Detection accuracy:</strong> PaddleOCR fallback (recover the 4-of-12 zero-OCR cases), tighter photo-quality gate, active-learning operating cycle automation.</p>
+
+  <p><strong>Multi-rack:</strong> Room view rendering, floor-plan import.</p>
+
+  <p><strong>Mobile / native:</strong> iOS build, AR overlay native impl, on-device inference.</p>
+
+  <p><strong>Platform:</strong> Per-tenant rate limiting, GDPR delete-my-data flow, Postgres migration.</p>
+
+  <p><strong>Operations:</strong> Hot-reload model weights, cron-driven retrain, OTel exporter.</p>
+
+  <h3>What we explicitly chose NOT to build</h3>
+  <ul>
+    <li>Real-time CMDB sync (writes flowing back from ServiceNow). Cost &gt; benefit at current customer count; explicit re-scan is acceptable.</li>
+    <li>In-house CVE database. NVD is free and we don't add value mirroring it.</li>
+    <li>Vendor-specific spec extractors. Generic table extraction handles most; the long tail (modern JS-rendered) gets headless-browser fallback, not bespoke per-vendor code.</li>
+    <li>iOS-first before Android stability. Most rugged datacenter phones are Android.</li>
+  </ul>
+</section>
+
+<hr>
+<p style="color: var(--t3); font-size: 12px; text-align: center; margin-top: 32px;">
+  Generated from the markdown docs in <code>docs/</code>. For deeper detail (file paths,
+  line numbers, schemas, edge cases) read the per-feature markdown files.
+</p>
+
+</main>
+</div>
+</body>
+</html>

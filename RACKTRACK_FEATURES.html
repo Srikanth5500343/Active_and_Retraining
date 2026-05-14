@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RackTrack — Showcase Website Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #fff; color: #1F2937; line-height: 1.7; }
+
+  .hero {
+    background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+    color: white; padding: 60px 40px 50px; text-align: center;
+  }
+  .hero h1 { font-size: 2.6rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+  .hero p { font-size: 1rem; opacity: 0.85; }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 0 28px; }
+
+  .section { padding: 36px 0; }
+  .section + .section { border-top: 1px solid #F3F4F6; }
+  .section h2 { font-size: 1.4rem; font-weight: 700; color: #111827; margin-bottom: 16px; }
+
+  /* Intro */
+  .intro {
+    background: #EFF6FF; border-left: 4px solid #3B82F6;
+    border-radius: 8px; padding: 24px 28px; margin: 32px 0;
+  }
+  .intro h2 { color: #1E40AF; margin-bottom: 10px; }
+  .intro p { font-size: 0.95rem; color: #374151; }
+
+  /* What to showcase */
+  .selling-points { list-style: none; padding: 0; }
+  .selling-points li {
+    padding: 10px 0; font-size: 0.95rem; color: #4B5563;
+    border-bottom: 1px solid #F3F4F6;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .selling-points li:last-child { border-bottom: none; }
+  .selling-points .sp-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+  .selling-points strong { color: #111827; }
+
+  /* Screens table */
+  .screen-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    border: 1px solid #E5E7EB; border-radius: 10px;
+    overflow: hidden; font-size: 0.88rem;
+  }
+  .screen-table th {
+    background: #F9FAFB; padding: 10px 16px; text-align: left;
+    font-weight: 600; color: #374151; border-bottom: 1px solid #E5E7EB;
+  }
+  .screen-table td {
+    padding: 9px 16px; border-bottom: 1px solid #F3F4F6; color: #4B5563;
+  }
+  .screen-table tr:last-child td { border-bottom: none; }
+  .screen-table .name { font-weight: 600; color: #1F2937; white-space: nowrap; }
+
+  .footer {
+    text-align: center; padding: 28px; color: #9CA3AF;
+    font-size: 0.75rem; border-top: 1px solid #F3F4F6; margin-top: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .hero { padding: 40px 20px 30px; }
+    .hero h1 { font-size: 2rem; }
+    .container { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>RackTrack</h1>
+  <p>Showcase Website — Design Reference</p>
+</div>
+
+<div class="container">
+
+<!-- WHAT IS IT -->
+<div class="intro">
+  <h2>What is RackTrack?</h2>
+  <p>A mobile app for data center technicians. You <strong>take a photo of a server rack</strong>, and the app uses AI to instantly <strong>identify every device, port, and cable</strong> inside it. It gives you a complete inventory, shows which ports are free, visualizes the rack in 2D and 3D, and syncs everything with your company's asset database.</p>
+  <p style="margin-top:10px;"><strong>One line:</strong> Point your phone at a rack → instantly know everything about it.</p>
+</div>
+
+<!-- WHAT THE SHOWCASE WEBSITE SHOULD HIGHLIGHT -->
+<div class="section">
+  <h2>What the Showcase Website Should Highlight</h2>
+  <p style="font-size:0.9rem; color:#6B7280; margin-bottom:18px;">These are the key selling points of RackTrack. The showcase website should communicate these to visitors.</p>
+
+  <ul class="selling-points">
+    <li><span class="sp-icon">📸</span><div><strong>Scan a rack with your phone</strong> — Take a photo or use the live camera. The app tells you in real-time if the photo is good enough (sharp, well-lit, centered).</div></li>
+    <li><span class="sp-icon">🤖</span><div><strong>AI identifies everything automatically</strong> — Devices (switches, servers, routers, firewalls, UPS, etc.), ports, cables, and their colors. No manual data entry.</div></li>
+    <li><span class="sp-icon">🔍</span><div><strong>Reads device labels from the photo</strong> — OCR reads make, model, and serial number directly from the image. Then auto-fetches the full spec sheet from the vendor's website.</div></li>
+    <li><span class="sp-icon">📊</span><div><strong>Full rack inventory in seconds</strong> — Every device, every port, every cable. Expandable cards with connection status and cable colors.</div></li>
+    <li><span class="sp-icon">🔌</span><div><strong>Shows which ports are available vs. in use</strong> — Combines what the camera sees with live network data from the switch.</div></li>
+    <li><span class="sp-icon">🧊</span><div><strong>2D diagram and interactive 3D rack</strong> — Flat diagram for quick reference, plus a 3D model you can rotate, zoom, and click on.</div></li>
+    <li><span class="sp-icon">🌐</span><div><strong>Network neighbor discovery</strong> — See which device is plugged into which port. Highlights mismatches between physical and network data.</div></li>
+    <li><span class="sp-icon">🔄</span><div><strong>Syncs with ServiceNow CMDB</strong> — Compares scan vs. asset database, raises a change ticket, and pushes updates after approval.</div></li>
+    <li><span class="sp-icon">🛡️</span><div><strong>Firmware &amp; vulnerability check</strong> — Compares current firmware vs. latest, scans for known security issues.</div></li>
+    <li><span class="sp-icon">🎯</span><div><strong>Link scans to open incidents</strong> — Pick an active ServiceNow incident before scanning, and the app focuses on the affected device.</div></li>
+    <li><span class="sp-icon">📄</span><div><strong>Reports &amp; sharing</strong> — Export as HTML, CSV, or JSON. Share via Slack, Teams, or email.</div></li>
+    <li><span class="sp-icon">🌓</span><div><strong>Dark and light theme</strong> — Full dark mode support across the entire app.</div></li>
+  </ul>
+</div>
+
+<!-- APP SCREENS -->
+<div class="section">
+  <h2>App Screens</h2>
+  <p style="font-size:0.9rem; color:#6B7280; margin-bottom:18px;">These are the screens inside the RackTrack app. Use this to plan what to show on the showcase website (screenshots, mockups, or feature highlights).</p>
+
+  <table class="screen-table">
+    <thead><tr><th>#</th><th>Screen</th><th>What It Shows</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="name">Signup</td><td>Email, username, password fields</td></tr>
+      <tr><td>2</td><td class="name">Login</td><td>Username + password, OTP verification</td></tr>
+      <tr><td>3</td><td class="name">Home</td><td>Logo, animated radar, "Start Scanning" button, theme toggle</td></tr>
+      <tr><td>4</td><td class="name">Scan (Upload)</td><td>Drag-and-drop / file picker, incident dropdown</td></tr>
+      <tr><td>5</td><td class="name">Scan (Camera)</td><td>Live camera feed, sharpness/lighting/framing indicators, shutter button</td></tr>
+      <tr><td>6</td><td class="name">Loading</td><td>Animated 3D rack being built while AI analyzes</td></tr>
+      <tr><td>7</td><td class="name">Results</td><td>Device cards with ports, annotated rack image, tab bar</td></tr>
+      <tr><td>8</td><td class="name">Available Ports</td><td>Port list with availability badges and summary counts</td></tr>
+      <tr><td>9</td><td class="name">Topology (2D)</td><td>Flat rack diagram with unit numbers and device blocks</td></tr>
+      <tr><td>10</td><td class="name">Topology (3D)</td><td>Interactive 3D rack — rotate, zoom, click devices</td></tr>
+      <tr><td>11</td><td class="name">Network Neighbors</td><td>Which device is plugged into which port, mismatch highlights</td></tr>
+      <tr><td>12</td><td class="name">CMDB Sync</td><td>Diff popup (new/removed/changed), ticket status banner</td></tr>
+      <tr><td>13</td><td class="name">Switch Info</td><td>Switch details from asset database — model, serial, IP</td></tr>
+      <tr><td>14</td><td class="name">Specifications</td><td>Device spec sheet — auto-filled from OCR or manual entry</td></tr>
+      <tr><td>15</td><td class="name">Firmware</td><td>Version check + vulnerability list sorted by severity</td></tr>
+      <tr><td>16</td><td class="name">Profile</td><td>User info, stats, scan history tiles</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<div class="footer">
+  <p>RackTrack — Showcase Website Reference &bull; May 2026</p>
+</div>
+
+</body>
+</html>
