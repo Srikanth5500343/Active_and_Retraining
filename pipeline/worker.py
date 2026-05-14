@@ -268,7 +268,10 @@ def handle_relabel_port_count(req):
                 p["index"] = i
             classified["main_ports"] = mp
     else:
-        classified = classify_ports_with_target_count(crop, port_model, target_count, conf=ports_conf)
+        classified = classify_ports_with_target_count(
+            crop, port_model, target_count, conf=ports_conf,
+            status_model=pp_port_model,
+        )
 
     main_ports = classified.get("main_ports", [])
     device["port_count"]      = len(main_ports)

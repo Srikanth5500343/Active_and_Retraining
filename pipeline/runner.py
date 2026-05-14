@@ -299,7 +299,10 @@ def main():
             if dev["class_name"] in MAIN_PORTS_ONLY:
                 classified = detect_patch_panel_ports(dev_crop, pp_port_model_inst, conf=ports_conf)
             else:
-                classified = classify_ports_by_pattern(dev_crop, port_model_inst, conf=ports_conf)
+                classified = classify_ports_by_pattern(
+                    dev_crop, port_model_inst, conf=ports_conf,
+                    status_model=pp_port_model_inst,
+                )
             for p, clr in ((classified.get('console_ports', []), CLR_CONSOLE),
                            (classified.get('main_ports', []), CLR_MAIN),
                            (classified.get('sfp_ports', []), CLR_SFP)):
@@ -328,7 +331,10 @@ def main():
                 if dev["class_name"] in MAIN_PORTS_ONLY:
                     classified = detect_patch_panel_ports(dev_crop, pp_port_model_inst, conf=ports_conf)
                 else:
-                    classified = classify_ports_by_pattern(dev_crop, port_model_inst, conf=ports_conf)
+                    classified = classify_ports_by_pattern(
+                        dev_crop, port_model_inst, conf=ports_conf,
+                        status_model=pp_port_model_inst,
+                    )
 
                 # Phase B grounding — if OCR can read the model name from
                 # the faceplate, annotate the device with the canonical
@@ -417,7 +423,10 @@ def main():
     if selected["class_name"] in MAIN_PORTS_ONLY:
         classified = detect_patch_panel_ports(device_crop, pp_port_model_inst, conf=ports_conf)
     else:
-        classified = classify_ports_by_pattern(device_crop, port_model_inst, conf=ports_conf)
+        classified = classify_ports_by_pattern(
+            device_crop, port_model_inst, conf=ports_conf,
+            status_model=pp_port_model_inst,
+        )
 
     n_console = len(classified.get('console_ports', []))
     n_main = len(classified['main_ports'])
@@ -471,6 +480,26 @@ def main():
         ox, oy = crop_origin
         selected_port_box = [box[0] + ox, box[1] + oy, box[2] + ox, box[3] + oy]
         selected_port_info["location"] = selected_port_box
+
+        # Cable-model fallback: when the status sweep couldn't tag the
+        # selected port (e.g. patch-panel-trained port_count.pt didn't
+        # match this switch's port box), use the cable classifier's
+        # confidence as a binary tiebreaker so the UI never shows
+        # "Unknown" — a real port is always either connected or empty.
+        CABLE_CONNECTED_MIN = 0.55
+        if (selected_port_info["status"] not in ("connected", "empty")
+                and cable_model is not None):
+            bx1, by1, bx2, by2 = selected_port_box
+            box_w = max(1, bx2 - bx1)
+            box_h = max(1, by2 - by1)
+            port_crop = crop_box(
+                img, selected_port_box,
+                pad_x=(box_w * 3) // 2, pad_y=(box_h * 3) // 2,
+            )
+            _, fallback_conf = classify_cable(port_crop, cable_model)
+            selected_port_info["status"] = (
+                "connected" if fallback_conf >= CABLE_CONNECTED_MIN else "empty"
+            )
 
         if selected_port_info["status"] == "connected" and cable_model is not None:
             # Quadruple the port box size before handing it to the cable
