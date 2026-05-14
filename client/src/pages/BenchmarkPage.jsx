@@ -1,10 +1,52 @@
 import { useState, useRef, useEffect } from 'react';
 import * as ort from 'onnxruntime-web/wasm';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { OrtNative } from '../plugins/OrtNative';
 
 ort.env.wasm.wasmPaths = '/ort-wasm/';
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.proxy = false;
+
+// Backend toggle helpers.
+async function openSession(backend, modelFile) {
+  const t0 = performance.now();
+  if (backend === 'native') {
+    const handle = await OrtNative.loadSession({
+      modelPath: `/models/${modelFile}`,
+      useNnapi: false,   // CPU first; NNAPI can come later once load works.
+    });
+    return { backend, handle, loadMs: handle.loadMs };
+  }
+  const s = await ort.InferenceSession.create(`/models/${modelFile}`, {
+    executionProviders: ['wasm'],
+  });
+  return { backend, session: s, loadMs: performance.now() - t0 };
+}
+
+async function runOne(sess, dataUrl, inputSize) {
+  if (sess.backend === 'native') {
+    const r = await OrtNative.runFromDataUrl({
+      sessionId: sess.handle.sessionId,
+      dataUrl,
+      inputSize,
+    });
+    return { dims: r.dims, data: new Float32Array(r.output), inferMs: r.inferMs };
+  }
+  const tensor = await preprocess(dataUrl, inputSize);
+  const t0 = performance.now();
+  const out = await sess.session.run({ [sess.session.inputNames[0]]: tensor });
+  const inferMs = performance.now() - t0;
+  const firstOut = out[sess.session.outputNames[0]];
+  return { dims: firstOut.dims, data: firstOut.data, inferMs };
+}
+
+async function closeSession(sess) {
+  if (sess.backend === 'native') {
+    await OrtNative.releaseSession({ sessionId: sess.handle.sessionId });
+  } else {
+    await sess.session.release();
+  }
+}
 
 // Lower confidence than before — matches what the server pipeline uses.
 const CONF_THRESH = 0.12;
@@ -174,6 +216,7 @@ export default function BenchmarkPage() {
   const [overallMs, setOverallMs] = useState(null);
   const [enabledMain, setEnabledMain] = useState({});
   const [crops, setCrops] = useState([]); // [{dataUrl, box, perModel: {switch_patch: [...], port_best: [...]}, classifierResult: {...}}]
+  const [backend, setBackend] = useState('wasm');
   const mainCanvasRef = useRef(null);
   const cropRefs = useRef({});
 
@@ -221,30 +264,21 @@ export default function BenchmarkPage() {
 
       // ── PASS 1: 6 whole-image models ───────────────────────────────
       for (const m of PASS_1) {
-        setStatus(`Pass 1 — ${m.name}`);
+        setStatus(`Pass 1 — ${m.name} (${backend})`);
         updateResult(m.name, { status: 'loading' });
-        const loadT0 = performance.now();
-        const session = await ort.InferenceSession.create(`/models/${m.file}`, {
-          executionProviders: ['wasm'],
-        });
-        const loadMs = performance.now() - loadT0;
-        updateResult(m.name, { status: 'inferring', loadMs });
+        const sess = await openSession(backend, m.file);
+        updateResult(m.name, { status: 'inferring', loadMs: sess.loadMs });
 
-        const tensor = await preprocess(photo.dataUrl, m.input);
-        const inferT0 = performance.now();
-        const out = await session.run({ [session.inputNames[0]]: tensor });
-        const inferMs = performance.now() - inferT0;
-        const firstOut = out[session.outputNames[0]];
-        const boxes = decodeYolo(firstOut, m.input);
+        const r = await runOne(sess, photo.dataUrl, m.input);
+        const boxes = decodeYolo(r, m.input);
         updateResult(m.name, {
-          status: 'done', loadMs, inferMs, boxes,
+          status: 'done', loadMs: sess.loadMs, inferMs: r.inferMs, boxes,
           summary: `${boxes.length} detection(s)`,
         });
-        // Collect device boxes from the 3 device detectors.
         if (m.name === 'best 32' || m.name === 'best 33' || m.name === 'Device_final') {
           boxes.forEach((b) => deviceBoxes.push(b));
         }
-        await session.release();
+        await closeSession(sess);
       }
 
       // ── Combine + NMS the device boxes across detectors, take top N ─
@@ -276,13 +310,10 @@ export default function BenchmarkPage() {
 
         // ── PASS 2: load each model ONCE, run it on every crop ──────
         for (const m of PASS_2) {
-          setStatus(`Pass 2 — loading ${m.name}`);
+          setStatus(`Pass 2 — loading ${m.name} (${backend})`);
           updateResult(m.name, { status: 'loading' });
-          const loadT0 = performance.now();
-          const session = await ort.InferenceSession.create(`/models/${m.file}`, {
-            executionProviders: ['wasm'],
-          });
-          const loadMs = performance.now() - loadT0;
+          const sess = await openSession(backend, m.file);
+          const loadMs = sess.loadMs;
           updateResult(m.name, { status: 'inferring', totalLoadMs: loadMs });
 
           let totalInfer = 0;
@@ -290,22 +321,17 @@ export default function BenchmarkPage() {
           let lastClass = null;
           for (let i = 0; i < cropList.length; i++) {
             setStatus(`Pass 2 — ${m.name} on crop ${i + 1}/${cropList.length}`);
-            const tensor = await preprocess(cropList[i].dataUrl, m.input);
-            const t0 = performance.now();
-            const out = await session.run({ [session.inputNames[0]]: tensor });
-            const dt = performance.now() - t0;
-            totalInfer += dt;
-            const firstOut = out[session.outputNames[0]];
+            const r = await runOne(sess, cropList[i].dataUrl, m.input);
+            totalInfer += r.inferMs;
             if (m.kind === 'yolo') {
-              const boxes = decodeYolo(firstOut, m.input);
+              const boxes = decodeYolo(r, m.input);
               cropList[i].perModel[m.name] = boxes;
               totalBoxes += boxes.length;
             } else {
-              const c = topClass(firstOut);
+              const c = topClass(r);
               cropList[i].classifierResult = c;
               lastClass = c;
             }
-            // refresh state every crop so user sees boxes appear
             setCrops([...cropList]);
             updateResult(m.name, {
               status: 'inferring',
@@ -327,7 +353,7 @@ export default function BenchmarkPage() {
             inferMs: totalInfer,
             summary,
           });
-          await session.release();
+          await closeSession(sess);
         }
       }
 
@@ -360,6 +386,42 @@ export default function BenchmarkPage() {
         Conf threshold: {CONF_THRESH}.
       </p>
 
+      <div style={{
+        display: 'flex',
+        gap: 0,
+        marginBottom: 10,
+        border: '1px solid #e2e8f0',
+        borderRadius: 8,
+        overflow: 'hidden',
+        fontSize: 13,
+      }}>
+        {[
+          { id: 'wasm',   label: 'WASM (browser)' },
+          { id: 'native', label: 'Native CPU' },
+        ].map((b) => (
+          <button
+            key={b.id}
+            onClick={() => setBackend(b.id)}
+            disabled={running}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              border: 'none',
+              background: backend === b.id ? '#2563eb' : '#fff',
+              color: backend === b.id ? '#fff' : '#475569',
+              fontWeight: 600,
+              cursor: running ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+      <p style={{ color: '#94a3b8', fontSize: 11, margin: '0 0 14px' }}>
+        Models are now static-INT8 quantized (QOperator format).
+        {backend === 'native' ? ' Native CPU: APK only.' : ' WASM: any WebView.'}
+      </p>
+
       <button
         onClick={runAll}
         disabled={running}
@@ -375,7 +437,7 @@ export default function BenchmarkPage() {
           marginBottom: 14,
         }}
       >
-        {running ? 'Running...' : 'Take Photo & Run All 9 Models'}
+        {running ? 'Running...' : `Take Photo & Run All 9 Models (${backend})`}
       </button>
 
       {status && (
