@@ -173,8 +173,12 @@ def get_dx(ports):
     return float(np.median(dx)) if len(dx) else BOX_W
 
 
-def draw_classified(img, classified, highlight_idx=None):
-    """Draw classified ports. If highlight_idx is set, only draw that port."""
+def draw_classified(img, classified, highlight_idx=None, highlight_category='main'):
+    """Draw classified ports. If highlight_idx is set, only draw that port.
+
+    highlight_category selects which list (main_ports / sfp_ports / console_ports)
+    the highlight_idx (1-based position within that list) refers to.
+    """
     out = img.copy()
     CLR_C = (255, 255, 0)    # cyan   - console
     CLR_M = (0, 0, 255)      # red    - main
@@ -183,12 +187,17 @@ def draw_classified(img, classified, highlight_idx=None):
     CLR_OT = (0, 165, 255)   # orange - other
 
     if highlight_idx is not None:
-        for p in classified.get('main_ports', []):
-            if p.get('index') == highlight_idx:
-                x1, y1, x2, y2 = p['box']
-                cv2.rectangle(out, (x1, y1), (x2, y2), CLR_H, 2)
-                cv2.circle(out, (p['center'][0], p['center'][1]), 12, CLR_H, 3)
-                break
+        cat_key = {
+            'main': 'main_ports',
+            'sfp': 'sfp_ports',
+            'console': 'console_ports',
+        }.get(highlight_category, 'main_ports')
+        target_list = classified.get(cat_key, [])
+        if 1 <= highlight_idx <= len(target_list):
+            p = target_list[highlight_idx - 1]
+            x1, y1, x2, y2 = p['box']
+            cv2.rectangle(out, (x1, y1), (x2, y2), CLR_H, 2)
+            cv2.circle(out, (p['center'][0], p['center'][1]), 12, CLR_H, 3)
         return out
 
     for p in classified.get('console_ports', []):

@@ -337,9 +337,36 @@ def _drop_phantom_edge_ports(img, ports,
     return [p for col in keep for p in col]
 
 
+# Column-major sort so that a 2-row switch numbers as:
+#   top row:    1, 3, 5, 7, 9, ...
+#   bottom row: 2, 4, 6, 8, 10, ...
+# Pure (x, y) sorting breaks this whenever two ports in the same column have
+# slightly different detection-center x values, which swaps them across
+# columns. We cluster by x using the median port-pitch as tolerance, then
+# within each column sort top-to-bottom.
+def _column_major_sort(ports):
+    if len(ports) < 2:
+        return list(ports)
+    sx = sorted(ports, key=lambda p: p['center'][0])
+    xs = [p['center'][0] for p in sx]
+    diffs = [xs[i + 1] - xs[i] for i in range(len(xs) - 1) if xs[i + 1] - xs[i] > 0]
+    pitch = float(np.median(diffs)) if diffs else 0.0
+    col_tol = max(pitch * 0.5, 8.0)
+    cols = [[sx[0]]]
+    for p in sx[1:]:
+        if p['center'][0] - cols[-1][-1]['center'][0] > col_tol:
+            cols.append([])
+        cols[-1].append(p)
+    out = []
+    for col in cols:
+        out.extend(sorted(col, key=lambda p: p['center'][1]))
+    return out
+
+
 # ── Main entry point — class-aware classifier ──────────────────────────────
 
-def classify_ports_by_pattern(img, model, conf=CONF, skip_first_n_ports=0):
+def classify_ports_by_pattern(img, model, conf=CONF, skip_first_n_ports=0,
+                              status_model=None):
     """Detect and classify ports using the model's predicted class.
 
     Pipeline:
@@ -445,11 +472,63 @@ def classify_ports_by_pattern(img, model, conf=CONF, skip_first_n_ports=0):
     sfp_ports     = [p for p in ordered if p['port_category'] == 'sfp']
     console_ports = [p for p in ordered if p['port_category'] == 'console']
 
+    # Drop SFP detections sitting above the RJ45 row when the switch already
+    # has RJ45 ports occupying its bottom half — real layouts don't stack an
+    # SFP cage above a copper row, so a "top-row SFP" in that geometry is a
+    # misclassified RJ45.
+    if main_ports and sfp_ports:
+        img_h = img.shape[0]
+        main_y_max = max(p['center'][1] for p in main_ports)
+        main_y_min = min(p['center'][1] for p in main_ports)
+        if main_y_max > img_h / 2:
+            half_h = BOX_H // 2
+            kept = [sp for sp in sfp_ports if sp['center'][1] >= main_y_min - half_h]
+            dropped = len(sfp_ports) - len(kept)
+            if dropped:
+                print(f"DEBUG: dropped {dropped} top-row SFP (RJ45 occupies bottom row)")
+                sfp_ports = kept
+
+    # Reclassify SFP→RJ45 when an SFP detection sits in the RJ45 row but has
+    # no other SFP neighbors nearby — real SFP cages always cluster in groups
+    # of 2 or 4, so a lone SFP inside the copper row (edge or middle) is the
+    # detector mis-labeling an RJ45. Neighbor distance is derived from the
+    # measured main-port pitch so it scales with the image, not the (small)
+    # detection-box width constant.
+    if main_ports and sfp_ports:
+        half_h = BOX_H // 2
+        median_main_y = float(np.median([p['center'][1] for p in main_ports]))
+        if len(main_ports) >= 2:
+            xs = sorted(p['center'][0] for p in main_ports)
+            diffs = [xs[i + 1] - xs[i] for i in range(len(xs) - 1) if xs[i + 1] - xs[i] > 0]
+            port_pitch = float(np.median(diffs)) if diffs else float(BOX_W)
+        else:
+            port_pitch = float(BOX_W)
+        neighbor_dx = port_pitch * 1.8
+        isolated = []
+        for sp in sfp_ports:
+            sx, sy = sp['center'][0], sp['center'][1]
+            if abs(sy - median_main_y) > half_h:
+                continue
+            has_sfp_neighbor = any(
+                other is not sp
+                and abs(other['center'][0] - sx) <= neighbor_dx
+                and abs(other['center'][1] - sy) <= half_h
+                for other in sfp_ports
+            )
+            if not has_sfp_neighbor:
+                isolated.append(sp)
+        if isolated:
+            for sp in isolated:
+                sp['port_category'] = 'main'
+                sfp_ports.remove(sp)
+                main_ports.append(sp)
+            print(f"DEBUG: reclassified {len(isolated)} isolated SFP→RJ45 (no SFP neighbors in copper row)")
+
     def _sort_xy(ports):
         return sorted(ports, key=lambda p: (p['center'][0], p['center'][1]))
 
-    main_ports    = _sort_xy(main_ports)
-    sfp_ports     = _sort_xy(sfp_ports)
+    main_ports    = _column_major_sort(main_ports)
+    sfp_ports     = _column_major_sort(sfp_ports)
     console_ports = _sort_xy(console_ports)
 
     # Phantom edge-column cleanup (main only; SFP cluster too small to
@@ -483,6 +562,11 @@ def classify_ports_by_pattern(img, model, conf=CONF, skip_first_n_ports=0):
     print(
         f"DEBUG: classified → main={len(main_ports)}, sfp={len(sfp_ports)}, "
         f"console={len(console_ports)}"
+    )
+
+    _apply_status_from_status_model(
+        img, main_ports + sfp_ports + console_ports,
+        status_model, conf=conf,
     )
 
     return {
@@ -702,6 +786,62 @@ def _iou(box_a, box_b):
     return inter / min(a, b)
 
 
+def _apply_status_from_status_model(img, ports, status_model,
+                                    conf=CONF, iou_thresh=0.3):
+    """Overlay connected/empty onto ports using a secondary status model.
+
+    port_best.pt is category-only (main/sfp/console) so every detection
+    comes out with status='unknown'. Callers pass the older port_count.pt
+    (Empty_port/Connected_port) here to get a real status by IoU-matching
+    its detections against the already-built port boxes. Ports without a
+    confident overlap keep their existing status.
+    """
+    if status_model is None or not ports:
+        return ports
+    try:
+        status_dets = get_port_detections(img, status_model, conf=conf)
+    except Exception as exc:
+        print(f"DEBUG: status sweep failed: {exc}")
+        return ports
+    if not status_dets:
+        return ports
+
+    status_dets = sorted(
+        status_dets,
+        key=lambda d: float(d.get('confidence', 0.0)),
+        reverse=True,
+    )
+
+    n_updated = 0
+    for port in ports:
+        box = port.get('box')
+        if not box or len(box) != 4:
+            continue
+        best = None
+        best_iou = 0.0
+        for d in status_dets:
+            bb = d.get('bbox')
+            if bb is None:
+                continue
+            iou = _iou(box, list(bb))
+            if iou > best_iou:
+                best_iou = iou
+                best = d
+        if best is None or best_iou < iou_thresh:
+            continue
+        new_status = infer_port_status(
+            best.get('class_name', ''),
+            float(best.get('confidence', 0.0)),
+        )
+        if new_status == 'unknown':
+            continue
+        port['status'] = new_status
+        n_updated += 1
+    if n_updated:
+        print(f"DEBUG: status sweep updated {n_updated}/{len(ports)} ports")
+    return ports
+
+
 def _template_match_peaks(img, template, score_threshold=0.45):
     """Return [(score, cx, cy)] peaks where ``template`` matches ``img``."""
     if template is None or template.size == 0:
@@ -721,7 +861,8 @@ def _template_match_peaks(img, template, score_threshold=0.45):
     return out
 
 
-def classify_ports_with_target_count(img, model, target_count, conf=CONF):
+def classify_ports_with_target_count(img, model, target_count, conf=CONF,
+                                     status_model=None):
     """Produce exactly ``target_count`` main_ports for the user.
 
     1. Run the normal classifier and keep its detections as anchors.
@@ -738,23 +879,37 @@ def classify_ports_with_target_count(img, model, target_count, conf=CONF):
     if target_count < 0:
         target_count = 0
 
-    base = classify_ports_by_pattern(img, model, conf=min(conf, 0.10))
+    # Defer the status sweep to the end so it covers template-padded
+    # ports too — pass status_model=None into the inner call.
+    base = classify_ports_by_pattern(img, model, conf=min(conf, 0.10),
+                                     status_model=None)
+
+    def _finalize(b):
+        _apply_status_from_status_model(
+            img,
+            (b.get('main_ports') or [])
+            + (b.get('sfp_ports') or [])
+            + (b.get('console_ports') or []),
+            status_model, conf=conf,
+        )
+        return b
+
     main = list(base.get('main_ports', []))
 
     if len(main) > target_count:
         main.sort(key=lambda p: p.get('confidence', 0) or 0, reverse=True)
         main = main[:target_count]
-        main.sort(key=lambda p: p['center'][0])
+        main = _column_major_sort(main)
         for i, p in enumerate(main, 1):
             p['index'] = i
         base['main_ports'] = main
-        return base
+        return _finalize(base)
 
     if len(main) == target_count:
-        return base
+        return _finalize(base)
 
     if not main:
-        return base
+        return _finalize(base)
 
     img_h, img_w = img.shape[:2]
     by_conf = sorted(main, key=lambda p: p.get('confidence', 0) or 0,
@@ -781,7 +936,7 @@ def classify_ports_with_target_count(img, model, target_count, conf=CONF):
         if t is not None and t.size > 0:
             templates.append(t)
     if not templates:
-        return base
+        return _finalize(base)
 
     rows_y = sorted({int(p['center'][1]) for p in main})
     box_h_anchor = main[0]['box'][3] - main[0]['box'][1]
@@ -830,8 +985,8 @@ def classify_ports_with_target_count(img, model, target_count, conf=CONF):
             break
 
     final = list(main) + chosen
-    final.sort(key=lambda p: p['center'][0])
+    final = _column_major_sort(final)
     for i, p in enumerate(final, 1):
         p['index'] = i
     base['main_ports'] = final
-    return base
+    return _finalize(base)

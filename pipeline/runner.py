@@ -109,6 +109,8 @@ def parse_args():
     parser.add_argument("--config", default="config.json", help="Path to pipeline config file.")
     parser.add_argument("--device_index", type=int, help="Select device index without prompt.")
     parser.add_argument("--port", type=int, help="Port number to highlight in the selected device image.")
+    parser.add_argument("--port_category", choices=["main", "sfp", "console"], default="main",
+                        help="Which port category the --port number refers to (default: main = RJ45).")
     parser.add_argument("--list_device_classes", action="store_true",
                         help="Print device model classes and exit.")
     parser.add_argument("--output_dir", help="Override output directory from config.")
@@ -299,7 +301,10 @@ def main():
             if dev["class_name"] in MAIN_PORTS_ONLY:
                 classified = detect_patch_panel_ports(dev_crop, pp_port_model_inst, conf=ports_conf)
             else:
-                classified = classify_ports_by_pattern(dev_crop, port_model_inst, conf=ports_conf)
+                classified = classify_ports_by_pattern(
+                    dev_crop, port_model_inst, conf=ports_conf,
+                    status_model=pp_port_model_inst,
+                )
             for p, clr in ((classified.get('console_ports', []), CLR_CONSOLE),
                            (classified.get('main_ports', []), CLR_MAIN),
                            (classified.get('sfp_ports', []), CLR_SFP)):
@@ -328,7 +333,10 @@ def main():
                 if dev["class_name"] in MAIN_PORTS_ONLY:
                     classified = detect_patch_panel_ports(dev_crop, pp_port_model_inst, conf=ports_conf)
                 else:
-                    classified = classify_ports_by_pattern(dev_crop, port_model_inst, conf=ports_conf)
+                    classified = classify_ports_by_pattern(
+                        dev_crop, port_model_inst, conf=ports_conf,
+                        status_model=pp_port_model_inst,
+                    )
 
                 # Phase B grounding — if OCR can read the model name from
                 # the faceplate, annotate the device with the canonical
@@ -417,7 +425,10 @@ def main():
     if selected["class_name"] in MAIN_PORTS_ONLY:
         classified = detect_patch_panel_ports(device_crop, pp_port_model_inst, conf=ports_conf)
     else:
-        classified = classify_ports_by_pattern(device_crop, port_model_inst, conf=ports_conf)
+        classified = classify_ports_by_pattern(
+            device_crop, port_model_inst, conf=ports_conf,
+            status_model=pp_port_model_inst,
+        )
 
     n_console = len(classified.get('console_ports', []))
     n_main = len(classified['main_ports'])
@@ -438,16 +449,31 @@ def main():
     if n_sfp:
         print(f"  SFP:     {n_sfp} port(s)")
 
+    port_category = getattr(args, 'port_category', 'main') or 'main'
+    cat_key = {
+        'main': 'main_ports',
+        'sfp': 'sfp_ports',
+        'console': 'console_ports',
+    }.get(port_category, 'main_ports')
+    cat_list = classified.get(cat_key, [])
+    cat_count = len(cat_list)
+
     port_number = args.port
     if port_number is None:
-        port_number = int(input(f"Enter main port number to select (1-{n_main}): "))
+        prompt_max = cat_count if cat_count else n_main
+        port_number = int(input(
+            f"Enter {port_category} port number to select (1-{prompt_max}): "
+        ))
 
-    annotated_device = draw_classified(device_crop, classified, highlight_idx=port_number)
+    annotated_device = draw_classified(
+        device_crop, classified,
+        highlight_idx=port_number, highlight_category=port_category,
+    )
     cv2.imwrite(selected_device_port_path, annotated_device)
 
     selected_port_info = {
         "port_number": port_number,
-        "port_category": "main",
+        "port_category": port_category,
         "status": "unknown",
         "class_name": None,
         "confidence": None,
@@ -461,8 +487,8 @@ def main():
     }
 
     selected_port_box = None
-    if 1 <= port_number <= n_main:
-        selected_port = classified['main_ports'][port_number - 1]
+    if 1 <= port_number <= cat_count:
+        selected_port = cat_list[port_number - 1]
         selected_port_info["status"] = selected_port.get("status", "unknown")
         selected_port_info["class_name"] = selected_port.get("class_name")
         selected_port_info["confidence"] = selected_port.get("confidence")
@@ -471,6 +497,26 @@ def main():
         ox, oy = crop_origin
         selected_port_box = [box[0] + ox, box[1] + oy, box[2] + ox, box[3] + oy]
         selected_port_info["location"] = selected_port_box
+
+        # Cable-model fallback: when the status sweep couldn't tag the
+        # selected port (e.g. patch-panel-trained port_count.pt didn't
+        # match this switch's port box), use the cable classifier's
+        # confidence as a binary tiebreaker so the UI never shows
+        # "Unknown" — a real port is always either connected or empty.
+        CABLE_CONNECTED_MIN = 0.55
+        if (selected_port_info["status"] not in ("connected", "empty")
+                and cable_model is not None):
+            bx1, by1, bx2, by2 = selected_port_box
+            box_w = max(1, bx2 - bx1)
+            box_h = max(1, by2 - by1)
+            port_crop = crop_box(
+                img, selected_port_box,
+                pad_x=(box_w * 3) // 2, pad_y=(box_h * 3) // 2,
+            )
+            _, fallback_conf = classify_cable(port_crop, cable_model)
+            selected_port_info["status"] = (
+                "connected" if fallback_conf >= CABLE_CONNECTED_MIN else "empty"
+            )
 
         if selected_port_info["status"] == "connected" and cable_model is not None:
             # Quadruple the port box size before handing it to the cable
@@ -524,7 +570,7 @@ def main():
     print(f"Device '{selected['class_name']}' assigned to units {selected.get('units', [])}.")
 
     status = selected_port_info["status"]
-    print(f"\nPort {port_number} (main): {status}")
+    print(f"\nPort {port_number} ({port_category}): {status}")
     if selected_port_info["location"]:
         bx1, by1, bx2, by2 = selected_port_info["location"]
         print(f"  Location: x={bx1}, y={by1}, w={bx2 - bx1}, h={by2 - by1}")
