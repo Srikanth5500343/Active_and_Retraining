@@ -1,5 +1,9 @@
 ﻿.scan {
-  background: rgba(1, 8, 24, 0.42);
+  /* Match HomeDark's lifted navy field (dark = base theme) so it
+     doesn't read as flat near-black like the rest. */
+  background:
+    radial-gradient(90% 55% at 50% 8%, #0A2950 0%, rgba(10,41,80,0) 58%),
+    linear-gradient(180deg, #021026 0%, #02091a 55%, #010b1f 100%);
   overflow: hidden;
   position: relative;
 }
@@ -12,6 +16,9 @@
     radial-gradient(ellipse 60% 50% at 0% 80%, rgba(80,30,160,0.22) 0%, transparent 50%),
     radial-gradient(ellipse 50% 40% at 100% 90%, rgba(20,60,180,0.12) 0%, transparent 50%);
 }
+
+/* Sphere artwork — hidden by default, sharp in light theme only */
+.art { display: none; }
 
 /* ── Header ── */
 .header {
@@ -608,19 +615,61 @@
    LIGHT THEME OVERRIDES
    ══════════════════════════════════════════════════════════════════════ */
 
+/* Clean, light field — soft and crisp (no blur), so the glass reads sharp */
 :global([data-theme='light']) .scan {
-  background: transparent;
+  background: linear-gradient(180deg, #EFEFF4 0%, #EAEAF1 60%, #E7E7EF 100%);
 }
+/* The sphere artwork is the background — keep the ambient layer clear so
+   nothing competes with it. */
 :global([data-theme='light']) .amb {
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(129, 140, 248, 0.22) 0%, rgba(99, 102, 241, 0.08) 40%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 0% 80%, rgba(99, 102, 241, 0.14) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 40% at 100% 90%, rgba(129, 140, 248, 0.10) 0%, transparent 50%);
+  background: transparent;
+  opacity: 1;
+}
+/* Sharp sphere composition behind the glass (no blur — stays crisp).
+   The panels' own backdrop-filter softens only what sits directly behind
+   them, giving the liquid-glass refraction over a clean, sharp scene. */
+:global([data-theme='light']) .art {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: .82;
 }
 
-/* Header intentionally stays dark in light mode — matches the Profile hero
-   brand band. To restore a light header here, re-add the .header / .headerTitle
-   light-theme blocks. */
+/* Light header — clear bar with a violet pill title (matches the reference) */
+:global([data-theme='light']) .header {
+  background: transparent;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  border-bottom: 0;
+}
+:global([data-theme='light']) .headerTitle {
+  flex: 0 0 auto;
+  /* Same dark-navy family as the bottom nav bar */
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(99,102,241,0.30) 0%, transparent 65%),
+    linear-gradient(160deg, #0a1230 0%, #131641 45%, #0c1535 100%);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: .96rem; font-weight: 800;
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: translateY(6px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.14),
+    0 12px 28px -8px rgba(99,102,241,.30),
+    0 4px 12px -4px rgba(99,102,241,.16);
+}
+:global([data-theme='light']) .cta:disabled {
+  background: rgba(124,108,246,.16) !important;
+  color: #8A7BEA !important;
+  box-shadow: none !important;
+}
 
 :global([data-theme='light']) .scanLabel { color: #6366F1; }
 :global([data-theme='light']) .scanHeadline {
@@ -639,11 +688,14 @@
 
 /* Tabs — light pills */
 :global([data-theme='light']) .tabs {
-  background: #FFFFFF;
-  border: 1px solid #FFFFFF;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
+  background: linear-gradient(135deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.44) 50%, rgba(255,255,255,.58) 100%);
+  border: 1px solid rgba(255,255,255,.9);
+  backdrop-filter: blur(8px) saturate(185%);
+  -webkit-backdrop-filter: blur(8px) saturate(185%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,1),
+    inset 0 -2px 4px rgba(255,255,255,.45),
+    0 18px 38px -12px rgba(70,50,150,.46);
 }
 :global([data-theme='light']) .tab {
   color: #6B7280;
@@ -653,45 +705,38 @@
   background: rgba(99, 102, 241, 0.06);
 }
 :global([data-theme='light']) .tabOn {
-  background: rgba(99, 102, 241, 0.12) !important;
-  color: #4F46E5 !important;
-  border-color: rgba(99, 102, 241, 0.32) !important;
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.18) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.78) 100%) !important;
+  color: #5B45D9 !important;
+  border-color: rgba(255,255,255,.95) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,1),
+    0 9px 18px -6px rgba(91,69,217,.42) !important;
 }
 
 /* Media + drop zone — white card, indigo dashed border */
 :global([data-theme='light']) .mediaBox {
-  background: #FFFFFF;
-  border: 1px solid #FFFFFF;
+  background: linear-gradient(160deg, rgba(255,255,255,.74) 0%, rgba(255,255,255,.46) 48%, rgba(255,255,255,.60) 100%);
+  border: 1px solid rgba(255,255,255,.9);
+  backdrop-filter: blur(9px) saturate(190%);
+  -webkit-backdrop-filter: blur(9px) saturate(190%);
+  max-height: min(460px, 66vh);
   box-shadow:
-    0 1px 2px rgba(99, 102, 241, 0.04),
-    0 12px 32px rgba(99, 102, 241, 0.10);
+    inset 0 1px 1px rgba(255,255,255,1),
+    inset 0 -14px 32px -22px rgba(120,100,220,.20),
+    0 10px 22px -10px rgba(70,52,140,.30),
+    0 44px 78px -22px rgba(70,52,140,.54);
 }
 :global([data-theme='light']) .dropZone {
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      rgba(99, 102, 241, 0.025) 0px,
-      rgba(99, 102, 241, 0.025) 1px,
-      transparent 1px,
-      transparent 18px
-    );
-  border: 1.5px dashed #E5E7EB;
+  background: transparent;
+  border: 0;
 }
 :global([data-theme='light']) .dropZone:hover,
 :global([data-theme='light']) .dragOver {
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      rgba(99, 102, 241, 0.05) 0px,
-      rgba(99, 102, 241, 0.05) 1px,
-      transparent 1px,
-      transparent 18px
-    );
-  border-color: #818CF8;
+  background: rgba(124,108,246,.05);
+  border: 0;
 }
 
-:global([data-theme='light']) .zc { border-color: #818CF8; }
+:global([data-theme='light']) .zc { border-color: #7C6CF6; }
 :global([data-theme='light']) .dragOver .zc,
 :global([data-theme='light']) .dropZone:hover .zc {
   border-color: #4F46E5;
@@ -705,12 +750,15 @@
   background: radial-gradient(ellipse, rgba(99, 102, 241, 0.10) 0%, transparent 60%);
 }
 :global([data-theme='light']) .iconWrap {
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid #E5E7EB;
-  color: #4F46E5;
+  background: linear-gradient(150deg, rgba(255,255,255,.88) 0%, rgba(255,255,255,.56) 55%, rgba(255,255,255,.70) 100%);
+  border: 1px solid rgba(255,255,255,1);
+  color: #4A2FB0;
+  backdrop-filter: blur(8px) saturate(185%);
+  -webkit-backdrop-filter: blur(8px) saturate(185%);
   box-shadow:
-    0 0 24px rgba(99, 102, 241, 0.16),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+    inset 0 1px 1px rgba(255,255,255,1),
+    inset 0 -2px 6px rgba(255,255,255,.55),
+    0 20px 36px -10px rgba(70,50,150,.56);
 }
 :global([data-theme='light']) .dragOver .iconWrap,
 :global([data-theme='light']) .dropZone:hover .iconWrap {
@@ -760,7 +808,16 @@
 
 /* CTA — keep pill consistent */
 :global([data-theme='light']) .cta {
-  border-radius: 999px !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.40) 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(135deg, #6B54E8 0%, #4B38C0 55%, #3A2A9E 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.45) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.6),
+    inset 0 -2px 6px rgba(40,28,110,.5),
+    0 30px 50px -16px rgba(58,42,158,.72) !important;
 }
 
 /* HUD on camera (overlays still on dark video, so left mostly dark — but the modeToggle, hudBadge can lighten subtly) */
@@ -837,4 +894,40 @@
 }
 :global([data-theme='light']) .clearBtn:hover {
   background: rgba(99, 102, 241, 0.12);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DARK THEME — ELEVATED SURFACES
+   The page is near-black; lift the card / tabs / icon tile to a lighter
+   slate with defined borders + a soft drop so layers read with depth
+   (page → raised panel → navy brand bands). Same recipe as Profile.
+   ══════════════════════════════════════════════════════════════════════ */
+:root:not([data-theme='light']) .mediaBox {
+  background: linear-gradient(160deg, #16203E 0%, #111A33 100%);
+  border: 1px solid rgba(120, 140, 225, 0.20);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 34px -16px rgba(0, 0, 0, 0.72);
+}
+:root:not([data-theme='light']) .tabs {
+  background: linear-gradient(160deg, #16203E 0%, #111A33 100%);
+  border: 1px solid rgba(120, 140, 225, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 26px -16px rgba(0, 0, 0, 0.66);
+}
+:root:not([data-theme='light']) .tabOn {
+  background: linear-gradient(135deg, rgba(99,102,241,0.42), rgba(59,130,246,0.30)) !important;
+  color: #fff !important;
+  border-color: rgba(129,140,248,0.55) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    0 0 18px rgba(99,102,241,0.28) !important;
+}
+:root:not([data-theme='light']) .iconWrap {
+  background: linear-gradient(150deg, #1C2750 0%, #141D38 100%);
+  border: 1px solid rgba(130, 150, 235, 0.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 26px -14px rgba(0, 0, 0, 0.6);
 }

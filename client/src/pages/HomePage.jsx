@@ -4,6 +4,8 @@ import styles from './HomePage.module.css';
 import ThemeToggle from '../components/ThemeToggle.jsx';
 import { useTheme } from '../ThemeContext.jsx';
 import { useAuth } from '../AuthContext.jsx';
+import HomeLight from './HomeLight.jsx';
+import HomeDark from './HomeDark.jsx';
 
 /* ──────────────────────────────────────────────────────────────────────
    HomePage — RackTrack, modelled on the EV app reference
@@ -256,6 +258,13 @@ export default function HomePage() {
   /* When view changes, reset rotation */
   useEffect(() => { setRotY(0); }, [view]);
 
+  /* Light theme gets a completely separate, light-native home screen.
+     (All hooks above still run — order is preserved — so this early
+     return is React-safe and leaves the dark experience untouched.) */
+  if (theme === 'light') return <HomeLight />;
+  return <HomeDark />;
+
+  /* eslint-disable no-unreachable */
   return (
     <div className={`page ${styles.home} ${styles[`v_${view}`]}`}>
 
@@ -338,27 +347,6 @@ export default function HomePage() {
             <span className={styles.primaryCtaSub}>Identify every device in seconds</span>
           </span>
           <span className={styles.primaryCtaGo}><ArrowR /></span>
-        </button>
-
-        {/* On-Device Scan — runs the pipeline locally, works offline */}
-        <button
-          type="button"
-          onClick={() => navigate('/benchmark')}
-          style={{
-            marginTop: 10,
-            padding: '10px 16px',
-            border: '1px solid rgba(34,197,94,0.45)',
-            background: 'rgba(34,197,94,0.08)',
-            color: '#16a34a',
-            borderRadius: 999,
-            fontSize: 13,
-            fontWeight: 600,
-            letterSpacing: '0.02em',
-            cursor: 'pointer',
-            alignSelf: 'center',
-          }}
-        >
-          On-Device Scan · works offline
         </button>
 
       </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './AuthPages.module.css';
 import { useAuth } from '../AuthContext.jsx';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 
 export const PW_RULES = [
   { id: 'len',   label: '8 characters',   test: pw => pw.length >= 8 },
@@ -11,6 +12,17 @@ export const PW_RULES = [
   { id: 'spec',  label: 'a special char', test: pw => /[^A-Za-z0-9]/.test(pw) },
 ];
 export const STRENGTH_COLORS = ['#fca5a5', '#fbbf24', '#fcd34d', '#86efac', '#34d399', '#6366F1'];
+
+const Arrow = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+  </svg>
+);
+const Check = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
 
 export function CodeGrid({ value, onChange, disabled }) {
   const refs = useRef([]);
@@ -143,8 +155,8 @@ export default function SignupPage() {
 
   return (
     <div className={styles.authPage}>
-      <div className={styles.orb} />
-      <div className={styles.grain} />
+      <span className={styles.orb} aria-hidden="true" />
+      <span className={styles.grain} aria-hidden="true" />
 
       <header className={styles.authHeader}>
         <button className={styles.authBack}
@@ -154,46 +166,56 @@ export default function SignupPage() {
             <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
           </svg>
         </button>
-        <div className={styles.stepDots}>
-          <span className={`${styles.stepDot} ${step === 'details' ? styles.stepDotActive : styles.stepDotDone}`}/>
-          <span className={`${styles.stepDot} ${step === 'code' ? styles.stepDotActive : ''}`}/>
+        <div className={styles.headerActions}>
+          <div className={styles.stepDots}>
+            <span className={`${styles.stepDot} ${step === 'details' ? styles.stepDotActive : styles.stepDotDone}`}/>
+            <span className={`${styles.stepDot} ${step === 'code' ? styles.stepDotActive : ''}`}/>
+          </div>
+          <div className={styles.themeBtn}><ThemeToggle /></div>
         </div>
       </header>
 
       <main className={styles.authShell}>
+        <div className={`${styles.orbHero} ${styles.orbHeroSm}`} aria-hidden="true">
+          <span className={styles.orbRing} />
+          <span className={styles.orbBall} />
+          <span className={`${styles.orbSat} ${styles.sat1}`} />
+          <span className={`${styles.orbSat} ${styles.sat2}`} />
+          <span className={`${styles.orbSat} ${styles.sat3}`} />
+        </div>
+
         {step === 'details' ? (
           <>
-            <h1 className={styles.heading}>Welcome</h1>
-            <p className={styles.subheading}>Just two steps to get you scanning.</p>
+            <h1 className={styles.heading}>Create your account</h1>
 
             <form className={styles.form} onSubmit={submitDetails} autoComplete="on">
               <div className={styles.field}>
-                <input id="su-email" className={styles.input} type="email" placeholder=" "
+                <label className={styles.label} htmlFor="su-email">Email</label>
+                <input id="su-email" className={styles.input} type="email"
                   autoComplete="email" value={email}
                   onChange={e => { setEmail(e.target.value); setError(null); }} autoFocus />
-                <label className={styles.label} htmlFor="su-email">Email</label>
               </div>
 
               <div className={styles.field}>
-                <input id="su-user" className={styles.input} type="text" placeholder=" "
+                <label className={styles.label} htmlFor="su-user">Username</label>
+                <input id="su-user" className={styles.input} type="text"
                   autoComplete="username" value={username}
                   onChange={e => { setUsername(e.target.value); setError(null); }} />
-                <label className={styles.label} htmlFor="su-user">Username</label>
               </div>
 
               <div className={styles.field}>
-                <input id="su-company" className={styles.input} type="text" placeholder=" "
+                <label className={styles.label} htmlFor="su-company">Company</label>
+                <input id="su-company" className={styles.input} type="text"
                   autoComplete="organization" value={company}
                   onChange={e => { setCompany(e.target.value); setError(null); }}
                   required />
-                <label className={styles.label} htmlFor="su-company">Company</label>
               </div>
 
               <div className={styles.field}>
-                <input id="su-pw" className={styles.input} type={showPw ? 'text' : 'password'} placeholder=" "
+                <label className={styles.label} htmlFor="su-pw">Password</label>
+                <input id="su-pw" className={styles.input} type={showPw ? 'text' : 'password'}
                   autoComplete="new-password" value={password}
                   onChange={e => { setPassword(e.target.value); setError(null); }} />
-                <label className={styles.label} htmlFor="su-pw">Password</label>
                 <button type="button" className={styles.eyeBtn} onClick={() => setShowPw(v => !v)}
                   aria-label={showPw ? 'Hide password' : 'Show password'}>
                   {showPw
@@ -221,10 +243,10 @@ export default function SignupPage() {
               </div>
 
               <div className={styles.field}>
-                <input id="su-confirm" className={styles.input} type={showPw ? 'text' : 'password'} placeholder=" "
+                <label className={styles.label} htmlFor="su-confirm">Confirm password</label>
+                <input id="su-confirm" className={styles.input} type={showPw ? 'text' : 'password'}
                   autoComplete="new-password" value={confirm}
                   onChange={e => { setConfirm(e.target.value); setError(null); }} />
-                <label className={styles.label} htmlFor="su-confirm">Confirm password</label>
                 {confirm.length > 0 && (
                   <span className={`${styles.matchHint} ${matchOk ? styles.matchOk : styles.matchBad}`}>
                     {matchOk ? '✓ matches' : '✗ no match'}
@@ -241,9 +263,10 @@ export default function SignupPage() {
 
               <button type="submit" className={styles.primaryBtn}
                 disabled={loading || !pwInfo.allOk || !matchOk || !email || !username}>
-                {loading ? <span className={styles.spinner}/> : <>Continue
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </>}
+                <span>Continue</span>
+                <span className={styles.btnArrow}>
+                  {loading ? <span className={styles.spinner}/> : <Arrow />}
+                </span>
               </button>
             </form>
 
@@ -276,9 +299,10 @@ export default function SignupPage() {
               )}
 
               <button type="submit" className={styles.primaryBtn} disabled={loading || code.length !== 6}>
-                {loading ? <span className={styles.spinner}/> : <>Verify
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </>}
+                <span>Verify</span>
+                <span className={styles.btnArrow}>
+                  {loading ? <span className={styles.spinner}/> : <Check />}
+                </span>
               </button>
             </form>
 

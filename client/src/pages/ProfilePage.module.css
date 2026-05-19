@@ -11,7 +11,16 @@
   gap: 14px;
   min-height: 100dvh;
   padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
-  background: var(--bg);
+  /* Match HomeDark's field (dark is the base theme) */
+  background:
+    radial-gradient(90% 55% at 50% 8%, #0A2950 0%, rgba(10,41,80,0) 58%),
+    linear-gradient(180deg, #021026 0%, #02091a 55%, #010b1f 100%);
+}
+/* Match HomeLight's lavender field */
+:global([data-theme='light']) .profile {
+  background:
+    radial-gradient(120% 70% at 50% 0%, #EFEAFE 0%, rgba(239,234,254,0) 55%),
+    linear-gradient(180deg, #EDE8FB 0%, #F4F1FB 55%, #F7F5FC 100%);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -422,8 +431,13 @@
    ══════════════════════════════════════════════════════════════ */
 :root:not([data-theme='light']) .statTile,
 :root:not([data-theme='light']) .card {
-  background: rgba(15, 25, 55, 0.55);
-  border-color: rgba(80, 120, 255, 0.22);
+  /* Elevated slate panel — clearly lighter than the near-black page so
+     layers read with depth (page → raised card → navy brand bands). */
+  background: linear-gradient(160deg, #16203E 0%, #111A33 100%);
+  border: 1px solid rgba(120, 140, 225, 0.20);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 30px -14px rgba(0, 0, 0, 0.70);
 }
 :root:not([data-theme='light']) .statIcon,
 :root:not([data-theme='light']) .scanRowIcon {
@@ -449,4 +463,26 @@
 :root:not([data-theme='light']) .startBtn {
   background: linear-gradient(135deg, #6366F1, #6366F1);
   box-shadow: 0 6px 18px rgba(99,102,241,0.30);
+}
+
+/* Dark theme: the hero is only a touch lighter than the near-black page,
+   so the curved bottom edge showed a hard seam. Fade the hero into the
+   page bg so the curve melts in instead of floating as a lighter panel. */
+:root:not([data-theme='light']) .hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 88px;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+  z-index: 1;
+}
+/* Dark theme: var(--bg) ring would be a harsh black donut on the navy
+   hero. Use a soft cool-white rim so it reads as an intentional ring
+   (the indigo glow shadow still separates it from the page). */
+:root:not([data-theme='light']) .avatar {
+  border-color: rgba(226,232,255,0.22);
+}
+:root:not([data-theme='light']) .avatarStatus {
+  border-color: rgba(226,232,255,0.22);
 }

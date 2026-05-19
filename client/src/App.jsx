@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import BottomNav from './components/BottomNav.jsx';
+import PointerGlow from './components/PointerGlow.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ScanPage from './pages/ScanPage.jsx';
 import ResultsPage from './pages/ResultsPage.jsx';
@@ -69,6 +70,7 @@ export default function App() {
         <AuthProvider>
           <ShutterProvider>
             <AndroidBackHandler />
+            <PointerGlow />
             <Routes>
             <Route path="/" element={<><HomePage /><BottomNav /></>} />
             <Route path="/benchmark" element={<BenchmarkPage />} />

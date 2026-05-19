@@ -3,6 +3,18 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './AuthPages.module.css';
 import { useAuth } from '../AuthContext.jsx';
 import { CodeGrid, PW_RULES, STRENGTH_COLORS } from './SignupPage.jsx';
+import ThemeToggle from '../components/ThemeToggle.jsx';
+
+const Arrow = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+  </svg>
+);
+const Check = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
 
 // Four-step password reset:
 //   1. 'email'  — enter address, server emails a 6-digit code (1 min TTL).
@@ -101,8 +113,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className={styles.authPage}>
-      <div className={styles.orb} />
-      <div className={styles.grain} />
+      <span className={styles.orb} aria-hidden="true" />
+      <span className={styles.grain} aria-hidden="true" />
 
       <header className={styles.authHeader}>
         <button className={styles.authBack} onClick={() => navigate('/login')} aria-label="Back to sign in">
@@ -110,28 +122,37 @@ export default function ForgotPasswordPage() {
             <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
           </svg>
         </button>
-        <div style={{ width: 40 }} />
+        <div className={styles.headerActions}>
+          <div className={styles.themeBtn}><ThemeToggle /></div>
+        </div>
       </header>
 
       <main className={styles.authShell}>
+        <div className={styles.orbHero} aria-hidden="true">
+          <span className={styles.orbRing} />
+          <span className={styles.orbBall} />
+          <span className={`${styles.orbSat} ${styles.sat1}`} />
+          <span className={`${styles.orbSat} ${styles.sat2}`} />
+          <span className={`${styles.orbSat} ${styles.sat3}`} />
+        </div>
+
         {step === 'email' && (
           <>
             <h1 className={styles.heading}>Forgot password</h1>
-            <p className={styles.subheading}>Enter your email and we'll send a 6-digit reset code.</p>
+            <p className={styles.subheading}>We'll send a 6-digit reset code.</p>
 
             <form className={styles.form} onSubmit={submitEmail} autoComplete="on">
               <div className={styles.field}>
+                <label className={styles.label} htmlFor="fp-email">Email</label>
                 <input
                   id="fp-email"
                   className={styles.input}
                   type="email"
-                  placeholder=" "
                   autoComplete="email"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(null); }}
                   autoFocus
                 />
-                <label className={styles.label} htmlFor="fp-email">Email</label>
               </div>
 
               {error && (
@@ -142,9 +163,10 @@ export default function ForgotPasswordPage() {
               )}
 
               <button type="submit" className={styles.primaryBtn} disabled={loading}>
-                {loading ? <span className={styles.spinner}/> : <>Send reset code
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </>}
+                <span>Send reset code</span>
+                <span className={styles.btnArrow}>
+                  {loading ? <span className={styles.spinner}/> : <Arrow />}
+                </span>
               </button>
             </form>
 
@@ -158,17 +180,15 @@ export default function ForgotPasswordPage() {
         {step === 'code' && (
           <>
             <h1 className={styles.heading}>Enter code</h1>
-            <p className={styles.subheading}>
-              Code sent to <b style={{color:'var(--text, #e5e7eb)'}}>{email}</b>. It expires in 1 minute.
+            <p className={styles.sentTo}>
+              Code sent to <span className={styles.sentToEmail}>{email}</span> · expires in 1 min
             </p>
 
             <form className={styles.form} onSubmit={submitCode} autoComplete="off">
               <CodeGrid value={code} onChange={(v) => { setCode(v); setError(null); }} disabled={loading} />
 
               {info && !error && (
-                <div className={styles.errBox} style={{background:'rgba(34,197,94,0.08)',color:'#86efac',borderColor:'rgba(34,197,94,0.35)'}}>
-                  {info}
-                </div>
+                <div className={styles.infoBox}>{info}</div>
               )}
               {error && (
                 <div className={styles.errBox}>
@@ -178,19 +198,16 @@ export default function ForgotPasswordPage() {
               )}
 
               <button type="submit" className={styles.primaryBtn} disabled={loading}>
-                {loading ? <span className={styles.spinner}/> : <>Verify code
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </>}
+                <span>Verify code</span>
+                <span className={styles.btnArrow}>
+                  {loading ? <span className={styles.spinner}/> : <Check />}
+                </span>
               </button>
             </form>
 
             <div className={styles.altRow}>
               Didn't get a code?
-              <button type="button" className={styles.altLink}
-                onClick={resend}
-                style={{background:'transparent',border:'none',padding:0,cursor:'pointer'}}>
-                Resend
-              </button>
+              <button type="button" className={styles.altLink} onClick={resend}>Resend</button>
             </div>
           </>
         )}
@@ -198,9 +215,7 @@ export default function ForgotPasswordPage() {
         {step === 'choice' && (
           <>
             <h1 className={styles.heading}>Code verified</h1>
-            <p className={styles.subheading}>
-              Do you want to change your password? You're already signed in either way.
-            </p>
+            <p className={styles.subheading}>Change your password? You're signed in either way.</p>
 
             <div className={styles.form}>
               <button
@@ -208,8 +223,10 @@ export default function ForgotPasswordPage() {
                 className={styles.primaryBtn}
                 onClick={() => { setError(null); setInfo(null); setStep('reset'); }}
                 disabled={loading}>
-                Yes, change password
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                <span>Yes, change password</span>
+                <span className={styles.btnArrow}>
+                  {loading ? <span className={styles.spinner}/> : <Arrow />}
+                </span>
               </button>
               <button
                 type="button"
@@ -217,9 +234,9 @@ export default function ForgotPasswordPage() {
                 disabled={loading}
                 style={{
                   display:'inline-flex', alignItems:'center', justifyContent:'center',
-                  gap:8, width:'100%', padding:'13px 16px', borderRadius:14,
-                  background:'transparent', border:'1px solid rgba(148,163,184,0.35)',
-                  color:'var(--text, #e5e7eb)', font:'inherit', fontWeight:600,
+                  gap:8, width:'100%', padding:'14px 16px', borderRadius:100,
+                  background:'transparent', border:'1px solid rgba(140,165,235,0.30)',
+                  color:'inherit', font:'inherit', fontWeight:700,
                   cursor: loading ? 'not-allowed' : 'pointer',
                   WebkitTapHighlightColor:'transparent',
                 }}>
@@ -239,23 +256,20 @@ export default function ForgotPasswordPage() {
         {step === 'reset' && (
           <>
             <h1 className={styles.heading}>New password</h1>
-            <p className={styles.subheading}>
-              Set a new password for <b style={{color:'var(--text, #e5e7eb)'}}>{email}</b>.
-            </p>
+            <p className={styles.subheading}>Set a new password for your account.</p>
 
             <form className={styles.form} onSubmit={submitReset} autoComplete="off">
               <div className={styles.field}>
+                <label className={styles.label} htmlFor="fp-pw">New password</label>
                 <input
                   id="fp-pw"
                   className={styles.input}
                   type={showPw ? 'text' : 'password'}
-                  placeholder=" "
                   autoComplete="new-password"
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError(null); }}
                   autoFocus
                 />
-                <label className={styles.label} htmlFor="fp-pw">New password</label>
                 <button type="button" className={styles.eyeBtn} onClick={() => setShowPw(v => !v)}
                   aria-label={showPw ? 'Hide password' : 'Show password'}>
                   {showPw
@@ -265,20 +279,19 @@ export default function ForgotPasswordPage() {
               </div>
 
               {pwInfo.label && (
-                <div style={{fontSize:11,color:pwInfo.color,marginTop:-6,marginLeft:4}}>{pwInfo.label}</div>
+                <div style={{fontSize:11,color:pwInfo.color,marginTop:-4,marginLeft:4}}>{pwInfo.label}</div>
               )}
 
               <div className={styles.field}>
+                <label className={styles.label} htmlFor="fp-confirm">Confirm new password</label>
                 <input
                   id="fp-confirm"
                   className={styles.input}
                   type={showPw ? 'text' : 'password'}
-                  placeholder=" "
                   autoComplete="new-password"
                   value={confirm}
                   onChange={e => { setConfirm(e.target.value); setError(null); }}
                 />
-                <label className={styles.label} htmlFor="fp-confirm">Confirm new password</label>
               </div>
 
               {error && (
@@ -289,9 +302,10 @@ export default function ForgotPasswordPage() {
               )}
 
               <button type="submit" className={styles.primaryBtn} disabled={loading}>
-                {loading ? <span className={styles.spinner}/> : <>Reset password
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                </>}
+                <span>Reset password</span>
+                <span className={styles.btnArrow}>
+                  {loading ? <span className={styles.spinner}/> : <Check />}
+                </span>
               </button>
             </form>
           </>

@@ -1236,7 +1236,37 @@ export default function ScanPage() {
 
   return (
     <div className={`page ${styles.scan}`}>
-      <div className={styles.amb}/>
+      <div className={styles.amb} aria-hidden="true">
+        <svg className={styles.art} viewBox="0 0 390 780" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <radialGradient id="bigG" cx="0.4" cy="0.3" r="0.85">
+              <stop offset="0%" stopColor="#CABCF6"/>
+              <stop offset="24%" stopColor="#8A74E8"/>
+              <stop offset="56%" stopColor="#5A45D6"/>
+              <stop offset="100%" stopColor="#3C2A9C"/>
+            </radialGradient>
+            <radialGradient id="pinkG" cx="0.5" cy="0.5" r="0.6">
+              <stop offset="0%" stopColor="#F4DAEF"/>
+              <stop offset="50%" stopColor="#E3CDF3"/>
+              <stop offset="100%" stopColor="#D5C5F1"/>
+            </radialGradient>
+            <radialGradient id="pearlG" cx="0.35" cy="0.3" r="0.75">
+              <stop offset="0%" stopColor="#FFFFFF"/>
+              <stop offset="42%" stopColor="#DDE7FB"/>
+              <stop offset="100%" stopColor="#AEC0EE"/>
+            </radialGradient>
+            <clipPath id="bigClip"><circle cx="300" cy="235" r="205"/></clipPath>
+          </defs>
+          <circle cx="18" cy="470" r="156" fill="url(#pinkG)" opacity="0.92"/>
+          <circle cx="300" cy="235" r="205" fill="url(#bigG)"/>
+          <ellipse cx="280" cy="78" rx="158" ry="44" fill="rgba(255,255,255,0.26)" clipPath="url(#bigClip)"/>
+          <path d="M206 360 C 252 420, 252 472, 250 508" fill="none" stroke="rgba(120,100,210,0.45)" strokeWidth="1.5"/>
+          <circle cx="250" cy="540" r="30" fill="url(#pearlG)"/>
+          <line x1="34" y1="70" x2="34" y2="540" stroke="rgba(95,72,178,0.34)" strokeWidth="1"/>
+          <circle cx="34" cy="150" r="9" fill="#1E1A38"/>
+          <circle cx="34" cy="540" r="3" fill="rgba(95,72,178,0.5)"/>
+        </svg>
+      </div>
 
       {/* Header */}
       <header className={styles.header}>

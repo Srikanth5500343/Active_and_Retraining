@@ -73,35 +73,35 @@
    Re-maps existing variables so most components inherit automatically.
    ══════════════════════════════════════════════════════════════════════ */
 [data-theme='light'] {
-  /* Backgrounds — Meter near-white, neutral (no lavender tint) */
-  --bg:  #F5F5F7;
-  --bg2: #FFFFFF;
-  --bg3: #EFEFF2;
+  /* Backgrounds — Home/Scan lavender field (solid; ambient on body) */
+  --bg:  #EFEDF8;
+  --bg2: #FBFAFE;
+  --bg3: #EAE7F5;
 
-  /* Cards — pure white with very soft elevation */
+  /* Cards — soft lavender-white (glass treatment via .glass) */
   --card:  #FFFFFF;
-  --card2: #FAFAFC;
+  --card2: #F7F5FD;
 
-  /* Brand — Meter indigo (#6366f1 family) */
-  --c1: #6366F1;
-  --c2: #818CF8;
-  --c3: #4F46E5;
-  --cg:  rgba(99, 102, 241, 0.32);
-  --cg2: rgba(99, 102, 241, 0.10);
+  /* Brand — Home/Scan violet family (#5B45D9) */
+  --c1: #5B45D9;
+  --c2: #7C6CF6;
+  --c3: #4A2FB0;
+  --cg:  rgba(91, 69, 217, 0.32);
+  --cg2: rgba(91, 69, 217, 0.10);
 
-  /* Secondary accent — same indigo family for cohesion */
-  --cyan:  #6366F1;
-  --cyan2: #818CF8;
-  --cyg:   rgba(99, 102, 241, 0.22);
+  /* Secondary accent — same violet family for cohesion */
+  --cyan:  #5B45D9;
+  --cyan2: #7C6CF6;
+  --cyg:   rgba(91, 69, 217, 0.22);
 
-  /* Purple — same indigo family */
-  --p1: #4F46E5;
-  --p2: #818CF8;
-  --pg: rgba(79, 70, 229, 0.22);
+  /* Purple — deep violet */
+  --p1: #4A2FB0;
+  --p2: #7C6CF6;
+  --pg: rgba(74, 47, 176, 0.22);
 
-  /* Gradients — flatten to single indigo (Meter is mostly flat) */
-  --grad:     linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
-  --grad-btn: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  /* Gradients — Home/Scan violet */
+  --grad:     linear-gradient(135deg, #5B45D9 0%, #7C6CF6 100%);
+  --grad-btn: linear-gradient(135deg, #5B45D9 0%, #3A2A9E 100%);
   --grad-r:   linear-gradient(135deg, #EF4444 0%, #F97316 100%);
 
   /* Status */
@@ -111,13 +111,13 @@
   --rg: rgba(239, 68, 68, 0.22);
   --gg: rgba(34, 197, 94, 0.22);
 
-  /* Borders — neutral gray (Meter uses thin gray dividers) */
+  /* Borders — soft violet hairline (matches the glass family) */
   --glass:  #FFFFFF;
-  --glass2: #FAFAFC;
-  --gb:  #E5E7EB;
-  --gbc: rgba(99, 102, 241, 0.45);
+  --glass2: #F7F5FD;
+  --gb:  rgba(124, 108, 246, 0.18);
+  --gbc: rgba(91, 69, 217, 0.45);
   --gbr: rgba(239, 68, 68, 0.35);
-  --gbw: rgba(99, 102, 241, 0.14);
+  --gbw: rgba(124, 108, 246, 0.14);
 
   /* Text — near-black headings, mid-gray body (Meter palette) */
   --t1: #111827;
@@ -363,7 +363,11 @@ body {
    ══════════════════════════════════════════════════════════════════════ */
 
 [data-theme='light'] body {
-  background: var(--bg);
+  background:
+    radial-gradient(60% 42% at 84% 8%, rgba(124,108,246,.14) 0%, rgba(124,108,246,0) 60%),
+    radial-gradient(54% 40% at 6% 82%, rgba(236,203,239,.16) 0%, rgba(236,203,239,0) 62%),
+    linear-gradient(180deg, #F1EFFA 0%, #ECE9F6 55%, #F4F2FB 100%);
+  background-attachment: fixed;
 }
 
 [data-theme='light'] ::-webkit-scrollbar-thumb {
@@ -379,25 +383,29 @@ body {
   background-clip: text;
 }
 
-/* Cards — pure white with very soft neutral shadow */
+/* Cards — Home/Scan liquid glass (crisp, bright rim, soft float) */
 [data-theme='light'] .glass {
-  background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  background: linear-gradient(160deg, rgba(255,255,255,.74) 0%, rgba(255,255,255,.46) 48%, rgba(255,255,255,.60) 100%);
+  border: 1px solid rgba(255,255,255,.9);
   border-radius: var(--r4);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: blur(9px) saturate(190%);
+  -webkit-backdrop-filter: blur(9px) saturate(190%);
   box-shadow:
-    0 1px 2px rgba(17, 24, 39, 0.04),
-    0 4px 16px rgba(17, 24, 39, 0.04);
+    inset 0 1px 1px rgba(255,255,255,1),
+    0 8px 20px -10px rgba(70,52,140,.22),
+    0 26px 52px -24px rgba(70,52,140,.34);
 }
 
 [data-theme='light'] .glass-blue {
-  background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  background: linear-gradient(160deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.50) 48%, rgba(255,255,255,.64) 100%);
+  border: 1px solid rgba(255,255,255,.92);
   border-radius: var(--r4);
+  backdrop-filter: blur(9px) saturate(190%);
+  -webkit-backdrop-filter: blur(9px) saturate(190%);
   box-shadow:
-    0 1px 2px rgba(17, 24, 39, 0.05),
-    0 8px 24px rgba(17, 24, 39, 0.06);
+    inset 0 1px 1px rgba(255,255,255,1),
+    0 10px 24px -10px rgba(70,52,140,.26),
+    0 30px 58px -24px rgba(70,52,140,.38);
 }
 
 /* Buttons — pill-shaped (Meter-style) */
@@ -405,35 +413,39 @@ body {
   border-radius: var(--r-pill);
 }
 
-/* Primary — solid indigo (Meter's "Get a demo" button) */
+/* Primary — Home/Scan glossy violet pill */
 [data-theme='light'] .btn-primary {
-  background: #6366F1;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.36) 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(135deg, #6B54E8 0%, #4B38C0 55%, #3A2A9E 100%);
   color: #FFFFFF;
-  border-color: #6366F1;
+  border: 1px solid rgba(255,255,255,.40);
   box-shadow:
-    0 1px 2px rgba(99, 102, 241, 0.10),
-    0 4px 12px rgba(99, 102, 241, 0.20);
+    inset 0 1px 1px rgba(255,255,255,.55),
+    0 6px 16px -6px rgba(58,42,158,.45);
 }
 [data-theme='light'] .btn-primary:hover {
-  background: #4F46E5;
-  border-color: #4F46E5;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(135deg, #5B45D9 0%, #3A2A9E 100%);
+  border-color: rgba(255,255,255,.5);
   box-shadow:
-    0 2px 4px rgba(99, 102, 241, 0.12),
-    0 6px 16px rgba(99, 102, 241, 0.28);
+    inset 0 1px 1px rgba(255,255,255,.6),
+    0 10px 22px -8px rgba(58,42,158,.55);
   transform: translateY(-1px);
 }
 
-/* Secondary — soft indigo pill (Meter's "Pricing"/"Meter Network" buttons) */
+/* Secondary — soft violet pill */
 [data-theme='light'] .btn-secondary {
-  background: #EEF0FE;
-  color: #4F46E5;
+  background: rgba(124,108,246,.12);
+  color: #4A2FB0;
   border: 1px solid transparent;
   backdrop-filter: none;
   box-shadow: none;
 }
 [data-theme='light'] .btn-secondary:hover {
-  background: #E0E3FC;
-  color: #4338CA;
+  background: rgba(124,108,246,.20);
+  color: #3A2A9E;
   box-shadow: none;
 }
 

@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './AuthPages.module.css';
 import { useAuth } from '../AuthContext.jsx';
+import ThemeToggle from '../components/ThemeToggle.jsx';
+
+const Arrow = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+  </svg>
+);
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -32,8 +39,8 @@ export default function LoginPage() {
 
   return (
     <div className={styles.authPage}>
-      <div className={styles.orb} />
-      <div className={styles.grain} />
+      <span className={styles.orb} aria-hidden="true" />
+      <span className={styles.grain} aria-hidden="true" />
 
       <header className={styles.authHeader}>
         <button className={styles.authBack} onClick={() => navigate('/')} aria-label="Back to home">
@@ -41,52 +48,59 @@ export default function LoginPage() {
             <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
           </svg>
         </button>
-        <div style={{ width: 40 }} />
+        <div className={styles.headerActions}>
+          <div className={styles.themeBtn}><ThemeToggle /></div>
+        </div>
       </header>
 
       <main className={styles.authShell}>
-        <h1 className={styles.heading}>Hey</h1>
-        <p className={styles.subheading}>Sign in to continue your scans.</p>
+        <div className={styles.orbHero} aria-hidden="true">
+          <span className={styles.orbRing} />
+          <span className={styles.orbBall} />
+          <span className={`${styles.orbSat} ${styles.sat1}`} />
+          <span className={`${styles.orbSat} ${styles.sat2}`} />
+          <span className={`${styles.orbSat} ${styles.sat3}`} />
+        </div>
+
+        <h1 className={styles.heading}>Welcome back</h1>
+        <p className={styles.subheading}>Sign in to continue.</p>
 
         <form className={styles.form} onSubmit={submit} autoComplete="on">
           <div className={styles.field}>
+            <label className={styles.label} htmlFor="login-tenant">Organization</label>
             <input
               id="login-tenant"
               className={styles.input}
               type="text"
-              placeholder=" "
               autoComplete="organization"
               value={tenant}
               onChange={e => { setTenant(e.target.value); setError(null); }}
               autoFocus
             />
-            <label className={styles.label} htmlFor="login-tenant">Organization</label>
           </div>
 
           <div className={styles.field}>
+            <label className={styles.label} htmlFor="login-user">Username or email</label>
             <input
               id="login-user"
               className={styles.input}
               type="text"
-              placeholder=" "
               autoComplete="username"
               value={username}
               onChange={e => { setUsername(e.target.value); setError(null); }}
             />
-            <label className={styles.label} htmlFor="login-user">Username or email</label>
           </div>
 
           <div className={styles.field}>
+            <label className={styles.label} htmlFor="login-pw">Password</label>
             <input
               id="login-pw"
               className={styles.input}
               type={showPw ? 'text' : 'password'}
-              placeholder=" "
               autoComplete="current-password"
               value={password}
               onChange={e => { setPassword(e.target.value); setError(null); }}
             />
-            <label className={styles.label} htmlFor="login-pw">Password</label>
             <button type="button" className={styles.eyeBtn} onClick={() => setShowPw(v => !v)}
               aria-label={showPw ? 'Hide password' : 'Show password'}>
               {showPw
@@ -95,16 +109,11 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div style={{display:'flex',justifyContent:'flex-end',marginTop:-6,marginBottom:2}}>
+          <div className={styles.forgotRow}>
             <Link
               to="/forgot-password"
               state={{ email: username.includes('@') ? username.trim() : '' }}
-              style={{
-                fontSize:12,
-                color:'var(--muted, #9ca3af)',
-                textDecoration:'none',
-                fontWeight:500,
-              }}
+              className={styles.forgotLink}
             >
               Forgot password?
             </Link>
@@ -118,38 +127,17 @@ export default function LoginPage() {
           )}
 
           <button type="submit" className={styles.primaryBtn} disabled={loading}>
-            {loading ? <span className={styles.spinner}/> : <>Sign in
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </>}
+            <span>Sign in</span>
+            <span className={styles.btnArrow}>
+              {loading ? <span className={styles.spinner}/> : <Arrow />}
+            </span>
           </button>
         </form>
 
         <div className={styles.altRow}>
           New here?
-          <Link to="/signup" state={{ from }} className={styles.altLink}>Create an account</Link>
+          <Link to="/signup" state={{ from }} className={styles.altLink}>Create account</Link>
         </div>
-
-        {/* Escape hatch — On-Device Scan works without a server, so users
-            stuck on this page (no network, no server) can still get to it. */}
-        <button
-          type="button"
-          onClick={() => navigate('/benchmark')}
-          style={{
-            marginTop: 24,
-            padding: '10px 16px',
-            border: '1px solid rgba(34,197,94,0.45)',
-            background: 'rgba(34,197,94,0.08)',
-            color: '#16a34a',
-            borderRadius: 999,
-            fontSize: 13,
-            fontWeight: 600,
-            letterSpacing: '0.02em',
-            cursor: 'pointer',
-            alignSelf: 'center',
-          }}
-        >
-          Continue offline · On-Device Scan
-        </button>
       </main>
     </div>
   );
