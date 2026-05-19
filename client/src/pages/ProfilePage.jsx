@@ -248,6 +248,27 @@ export default function ProfilePage() {
           <h3 className={styles.cardTitle}>Recent scans</h3>
           {scansLoading && <span className={styles.spinner}/>}
         </header>
+        {/* On-Device Scan — runs the pipeline locally, works offline */}
+        <button
+          type="button"
+          onClick={() => navigate('/benchmark')}
+          style={{
+            marginTop: 4,
+            marginBottom: 12,
+            padding: '10px 16px',
+            border: '1px solid rgba(34,197,94,0.45)',
+            background: 'rgba(34,197,94,0.08)',
+            color: '#16a34a',
+            borderRadius: 999,
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            cursor: 'pointer',
+            alignSelf: 'center',
+          }}
+        >
+          On-Device Scan · works offline
+        </button>
         {scansError && <div className={styles.errBanner}>{scansError}</div>}
         {!scansLoading && recent.length === 0 && !scansError ? (
           <div className={styles.empty}>
