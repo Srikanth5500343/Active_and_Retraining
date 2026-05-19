@@ -47,7 +47,7 @@ function DataCenterDecor() {
 
       {/* connection lines weaving across */}
       <path d="M 20 60 Q 100 30 180 80 T 340 110"
-        fill="none" stroke="rgba(34,211,238,0.18)" strokeWidth="1" strokeDasharray="2 4"/>
+        fill="none" stroke="rgba(99,102,241,0.18)" strokeWidth="1" strokeDasharray="2 4"/>
       <path d="M 40 180 Q 140 200 220 170 T 350 200"
         fill="none" stroke="rgba(167,139,250,0.18)" strokeWidth="1" strokeDasharray="2 4"/>
 
@@ -59,7 +59,7 @@ function DataCenterDecor() {
         <line x1="4" y1="16" x2="18" y2="16"/>
         <line x1="4" y1="21" x2="18" y2="21"/>
         <line x1="4" y1="26" x2="18" y2="26"/>
-        <circle cx="17" cy="6"  r="0.9" fill="rgba(34,211,238,0.8)" stroke="none"/>
+        <circle cx="17" cy="6"  r="0.9" fill="rgba(99,102,241,0.8)" stroke="none"/>
         <circle cx="17" cy="11" r="0.9" fill="rgba(34,197,94,0.85)" stroke="none"/>
         <circle cx="17" cy="16" r="0.9" fill="rgba(99,102,241,0.7)" stroke="none"/>
       </g>
@@ -88,16 +88,16 @@ function DataCenterDecor() {
       <g>
         <circle cx="312" cy="160" r="4"   fill="rgba(99,102,241,0.55)"/>
         <circle cx="312" cy="160" r="8"   fill="none" stroke="rgba(99,102,241,0.30)" strokeWidth="0.8"/>
-        <circle cx="278" cy="200" r="3"   fill="rgba(34,211,238,0.65)"/>
+        <circle cx="278" cy="200" r="3"   fill="rgba(99,102,241,0.65)"/>
         <circle cx="200" cy="50"  r="2.5" fill="rgba(167,139,250,0.7)"/>
         {/* two extra dots scattered on the left half (unconnected) */}
-        <circle cx="105" cy="110" r="3"   fill="rgba(34,211,238,0.55)"/>
+        <circle cx="105" cy="110" r="3"   fill="rgba(99,102,241,0.55)"/>
         <circle cx="142" cy="158" r="2.5" fill="rgba(167,139,250,0.6)"/>
         <line x1="278" y1="200" x2="312" y2="160" stroke="rgba(99,102,241,0.35)" strokeWidth="0.8" strokeDasharray="2 2"/>
       </g>
 
       {/* pulsing LED in the upper-middle area */}
-      <circle cx="184" cy="22" r="1.8" fill="#22d3ee">
+      <circle cx="184" cy="22" r="1.8" fill="#6366F1">
         <animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/>
       </circle>
     </svg>

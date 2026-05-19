@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'racktrack:theme';
-const DEFAULT_THEME = 'dark';
+// Light is the default for first-time users. Anyone who has previously toggled
+// keeps their stored preference (we read localStorage before falling back here).
+const DEFAULT_THEME = 'light';
 
 const ThemeContext = createContext({
   theme: DEFAULT_THEME,

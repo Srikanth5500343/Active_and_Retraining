@@ -64,6 +64,15 @@ export function AuthProvider({ children }) {
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Any /api request that comes back 401 fires this event (set up by the
+  // global fetch interceptor in main.jsx). Treat it as "your token is no
+  // longer valid": clear the session so ProtectedRoute bounces to /login.
+  useEffect(() => {
+    const onExpired = () => setState({ token: null, user: null });
+    window.addEventListener('rt:auth-expired', onExpired);
+    return () => window.removeEventListener('rt:auth-expired', onExpired);
+  }, []);
+
   const login = useCallback(async (username, password, tenant = '') => {
     setLoading(true);
     try {

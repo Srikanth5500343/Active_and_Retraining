@@ -10,7 +10,7 @@ export const PW_RULES = [
   { id: 'digit', label: 'a digit',        test: pw => /[0-9]/.test(pw) },
   { id: 'spec',  label: 'a special char', test: pw => /[^A-Za-z0-9]/.test(pw) },
 ];
-export const STRENGTH_COLORS = ['#fca5a5', '#fbbf24', '#fcd34d', '#86efac', '#34d399', '#22d3ee'];
+export const STRENGTH_COLORS = ['#fca5a5', '#fbbf24', '#fcd34d', '#86efac', '#34d399', '#6366F1'];
 
 export function CodeGrid({ value, onChange, disabled }) {
   const refs = useRef([]);
@@ -91,7 +91,7 @@ export default function SignupPage() {
     const checks = PW_RULES.map(r => ({ ...r, ok: r.test(password) }));
     const satisfied = checks.filter(c => c.ok).length;
     const missing   = checks.filter(c => !c.ok).map(c => c.label);
-    const color = STRENGTH_COLORS[satisfied] || '#22d3ee';
+    const color = STRENGTH_COLORS[satisfied] || '#6366F1';
     let label;
     if (password.length === 0)     label = '';
     else if (satisfied < 5)        label = `Need ${missing[0]}`;

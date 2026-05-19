@@ -19,7 +19,7 @@
   padding:14px 16px 12px;
   background: linear-gradient(180deg, rgba(2,8,28,0.95), rgba(1,8,22,0.85));
   backdrop-filter:blur(32px); -webkit-backdrop-filter:blur(32px);
-  border-bottom:1px solid rgba(34,211,238,0.1);
+  border-bottom:1px solid rgba(99,102,241,0.1);
   flex-shrink:0; z-index:50;
 }
 .headerTitle {
@@ -29,9 +29,9 @@
   min-width: 0;
   text-align:center;
   letter-spacing: -0.01em;
-  background: linear-gradient(135deg, #22d3ee 0%, #60a5fa 40%, #a78bfa 100%);
+  background: linear-gradient(135deg, #6366F1 0%, #60a5fa 40%, #a78bfa 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  filter: drop-shadow(0 0 12px rgba(34,211,238,0.2));
+  filter: drop-shadow(0 0 12px rgba(99,102,241,0.2));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -346,7 +346,7 @@
 }
 .liveBox {
   position:absolute;
-  border:2px solid #22d3ee;
+  border:2px solid #6366F1;
   border-radius:6px;
   box-shadow:0 0 12px rgba(0,0,0,0.55);
   transition:left .18s linear, top .18s linear, width .18s linear, height .18s linear;
@@ -355,7 +355,7 @@
   position:absolute;
   top:-22px; left:-2px;
   padding:3px 8px;
-  background:#22d3ee;
+  background:#6366F1;
   color:#000;
   font-size:11px;
   font-weight:800;
@@ -618,17 +618,9 @@
     radial-gradient(ellipse 50% 40% at 100% 90%, rgba(129, 140, 248, 0.10) 0%, transparent 50%);
 }
 
-:global([data-theme='light']) .header {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 247, 251, 0.85));
-  border-bottom: 1px solid #FFFFFF;
-  box-shadow: 0 1px 0 rgba(99, 102, 241, 0.04);
-}
-:global([data-theme='light']) .headerTitle {
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: none;
-}
+/* Header intentionally stays dark in light mode — matches the Profile hero
+   brand band. To restore a light header here, re-add the .header / .headerTitle
+   light-theme blocks. */
 
 :global([data-theme='light']) .scanLabel { color: #6366F1; }
 :global([data-theme='light']) .scanHeadline {

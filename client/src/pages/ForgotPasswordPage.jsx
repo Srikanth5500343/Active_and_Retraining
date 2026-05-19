@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
     const checks = PW_RULES.map(r => ({ ...r, ok: r.test(password) }));
     const satisfied = checks.filter(c => c.ok).length;
     const missing   = checks.filter(c => !c.ok).map(c => c.label);
-    const color = STRENGTH_COLORS[satisfied] || '#22d3ee';
+    const color = STRENGTH_COLORS[satisfied] || '#6366F1';
     let label;
     if (password.length === 0)     label = '';
     else if (satisfied < 5)        label = `Need ${missing[0]}`;

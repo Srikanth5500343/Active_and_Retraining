@@ -96,11 +96,11 @@
   border-radius: 50%;
   background:
     radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 45%),
-    linear-gradient(135deg, #6366F1 0%, #818CF8 45%, #22D3EE 100%);
+    linear-gradient(135deg, #6366F1 0%, #818CF8 45%, #6366F1 100%);
   border: 4px solid var(--bg);
   box-shadow:
     0 0 0 1px rgba(99,102,241,0.40),
-    0 12px 28px rgba(34,211,238,0.30),
+    0 12px 28px rgba(99,102,241,0.30),
     0 4px 12px rgba(99,102,241,0.28),
     inset 0 1px 0 rgba(255,255,255,0.22);
 }
@@ -427,15 +427,15 @@
 }
 :root:not([data-theme='light']) .statIcon,
 :root:not([data-theme='light']) .scanRowIcon {
-  background: rgba(34,211,238,0.14);
+  background: rgba(99,102,241,0.14);
   color: #67e8f9;
 }
 :root:not([data-theme='light']) .metaBadge {
-  background: rgba(34,211,238,0.18);
+  background: rgba(99,102,241,0.18);
   color: #67e8f9;
 }
 :root:not([data-theme='light']) .scanRow:hover {
-  background: rgba(34,211,238,0.08);
+  background: rgba(99,102,241,0.08);
 }
 :root:not([data-theme='light']) .errBanner {
   background: rgba(244,63,94,0.10);
@@ -447,6 +447,6 @@
   color: #fca5a5;
 }
 :root:not([data-theme='light']) .startBtn {
-  background: linear-gradient(135deg, #6366F1, #22D3EE);
-  box-shadow: 0 6px 18px rgba(34,211,238,0.30);
+  background: linear-gradient(135deg, #6366F1, #6366F1);
+  box-shadow: 0 6px 18px rgba(99,102,241,0.30);
 }
