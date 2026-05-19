@@ -30,7 +30,7 @@
   flex: 1;
 }
 :global([data-theme="dark"]) .header h2 {
-  background: linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%);
+  background: linear-gradient(135deg, #6366F1 0%, #a78bfa 100%);
   -webkit-background-clip: text; background-clip: text;
 }
 .back {
@@ -60,8 +60,8 @@
   font-size: 12px; font-weight: 700;
   padding: 6px 10px;
   border-radius: 6px;
-  background: rgba(34,211,238,0.15);
-  border: 1px solid rgba(34,211,238,0.35);
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.35);
   color: #67e8f9;
   cursor: pointer;
 }
@@ -73,7 +73,7 @@
 }
 .summaryNum {
   font-size: 32px; font-weight: 800; line-height: 1;
-  background: linear-gradient(135deg, #22d3ee, #a78bfa);
+  background: linear-gradient(135deg, #6366F1, #a78bfa);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
 }
@@ -99,9 +99,9 @@
   text-align: left;
 }
 .tile:hover {
-  background: rgba(34,211,238,0.06);
-  border-color: rgba(34,211,238,0.32);
-  box-shadow: 0 4px 24px rgba(34,211,238,0.12);
+  background: rgba(99,102,241,0.06);
+  border-color: rgba(99,102,241,0.32);
+  box-shadow: 0 4px 24px rgba(99,102,241,0.12);
   transform: translateY(-2px);
 }
 
@@ -115,13 +115,13 @@
   font-size: 11px; font-weight: 800;
   padding: 3px 7px;
   border-radius: 4px;
-  background: rgba(34,211,238,0.15);
+  background: rgba(99,102,241,0.15);
   color: #67e8f9;
-  border: 1px solid rgba(34,211,238,0.3);
+  border: 1px solid rgba(99,102,241,0.3);
 }
 .tileLabel {
   font-size: 14px; font-weight: 700; flex: 1;
-  background: linear-gradient(135deg, #22d3ee, #a78bfa);
+  background: linear-gradient(135deg, #6366F1, #a78bfa);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
 }
@@ -206,7 +206,7 @@
   transition: all 0.15s ease;
 }
 .rackChip:hover {
-  background: rgba(34,211,238,0.10);
+  background: rgba(99,102,241,0.10);
   border-color: rgba(8, 145, 178, 0.45);
   color: #0e7490;
 }
@@ -216,8 +216,8 @@
   color: rgba(220,230,250,0.92);
 }
 :global([data-theme="dark"]) .rackChip:hover {
-  background: rgba(34,211,238,0.10);
-  border-color: rgba(34,211,238,0.4);
+  background: rgba(99,102,241,0.10);
+  border-color: rgba(99,102,241,0.4);
   color: #67e8f9;
 }
 .rackChipPos {
@@ -229,7 +229,7 @@
   color: #0e7490;
 }
 :global([data-theme="dark"]) .rackChipPos {
-  background: rgba(34,211,238,0.18);
+  background: rgba(99,102,241,0.18);
   color: #67e8f9;
 }
 .rackChipLabel {
@@ -239,7 +239,7 @@
   background-clip: text;
 }
 :global([data-theme="dark"]) .rackChipLabel {
-  background: linear-gradient(135deg, #22d3ee, #a78bfa);
+  background: linear-gradient(135deg, #6366F1, #a78bfa);
   -webkit-background-clip: text; background-clip: text;
 }
 .rackChipId {

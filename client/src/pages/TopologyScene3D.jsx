@@ -61,7 +61,7 @@ export function useScenePalette() {
 
 const TIER_COLOR = {
   core:         '#f59e0b',
-  distribution: '#22d3ee',
+  distribution: '#6366F1',
   access:       '#60a5fa',
   endpoint:     '#a78bfa',
 };
@@ -156,7 +156,7 @@ function NeighborRacks({ topo, chassisU }) {
             {/* Connecting beam from main rack toward this neighbor */}
             <mesh position={[-dir * 1.1, 0, 1.0]} rotation={[0, dir > 0 ? -0.18 : 0.18, 0]}>
               <boxGeometry args={[Math.max(0.5, offsetX - 2), 0.04, 0.04]} />
-              <meshBasicMaterial color="#22d3ee" transparent opacity={0.55} />
+              <meshBasicMaterial color="#6366F1" transparent opacity={0.55} />
             </mesh>
             <Text
               position={[0, totalH/2 * 0.85 + 0.15, 0.72]}
@@ -451,7 +451,7 @@ function RackChassis({ totalU, chassisU, rackName, hasShelf, leftOpen, rightOpen
         {/* Thin cyan accent stripe along the bottom of the badge */}
         <mesh position={[0, -0.04, 0.022]}>
           <planeGeometry args={[Math.max(1.3, rackName?.length * 0.115 || 1.5), 0.018]} />
-          <meshBasicMaterial color="#22d3ee" transparent opacity={0.7} />
+          <meshBasicMaterial color="#6366F1" transparent opacity={0.7} />
         </mesh>
         <Text
           position={[0, 0.10, 0.022]}
@@ -1116,7 +1116,7 @@ function Lights({ chassisU, ambientBoost = 1 }) {
       <pointLight position={[ 3.5, 1.2, 4]} intensity={0.7} color="#dbe4f7" distance={14} />
       {/* Cyan rim from above-behind — outlines the rack silhouette against
           the backdrop, same role as a stage rim light. */}
-      <pointLight position={[ 0, topY - 0.5, -4.2]} intensity={1.0} color="#22d3ee" distance={11} />
+      <pointLight position={[ 0, topY - 0.5, -4.2]} intensity={1.0} color="#6366F1" distance={11} />
       {/* Warm low backlight — soft amber kick behind the base, gives depth */}
       <pointLight position={[ 0, -topY + 2, -2.8]} intensity={0.45} color="#f59e0b" distance={10} />
     </>

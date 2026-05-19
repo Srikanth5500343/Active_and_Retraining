@@ -16,7 +16,7 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px 12px;
   background: linear-gradient(180deg, rgba(2,8,28,0.95), rgba(1,8,22,0.85));
-  border-bottom: 1px solid rgba(34,211,238,0.1);
+  border-bottom: 1px solid rgba(99,102,241,0.1);
   backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px);
   z-index: 10; position: relative;
 }
@@ -24,9 +24,9 @@
 .title {
   font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em;
   text-align: center; flex: 1; min-width: 0;
-  background: linear-gradient(135deg, #22d3ee 0%, #60a5fa 40%, #a78bfa 100%);
+  background: linear-gradient(135deg, #6366F1 0%, #60a5fa 40%, #a78bfa 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  filter: drop-shadow(0 0 12px rgba(34,211,238,0.2));
+  filter: drop-shadow(0 0 12px rgba(99,102,241,0.2));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -118,16 +118,8 @@
     radial-gradient(ellipse 70% 35% at 10% 15%, rgba(99, 102, 241, 0.18) 0%, transparent 55%),
     radial-gradient(ellipse 50% 40% at 90% 80%, rgba(129, 140, 248, 0.14) 0%, transparent 50%);
 }
-:global([data-theme='light']) .header {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 247, 251, 0.88));
-  border-bottom: 1px solid #FFFFFF;
-}
-:global([data-theme='light']) .title {
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: none;
-}
+/* Header intentionally stays dark in light mode — matches the Profile hero
+   brand band. To restore a light header here, re-add the light-theme blocks. */
 :global([data-theme='light']) .empty { color: #6B7280; }
 
 :global([data-theme='light']) .card {
