@@ -959,6 +959,8 @@ export default function ResultsPage() {
 
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [portNum,     setPortNum]     = useState('');
+  // RJ45 -> 'main' | SFP -> 'sfp' (matches backend VALID_CATEGORIES + pipeline --port_category)
+  const [portCategory, setPortCategory] = useState('main');
   const [phase,       setPhase]       = useState('detect');
   const [tab,         setTab]         = useState('overview');
   const [resultImg,   setResultImg]   = useState(null);
@@ -1421,7 +1423,7 @@ export default function ResultsPage() {
       const res  = await fetch(apiUrl('/api/select'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scanId, device_index: selectedIdx, port: p }),
+        body: JSON.stringify({ scanId, device_index: selectedIdx, port: p, port_category: portCategory }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Port detection failed');
@@ -1446,6 +1448,7 @@ export default function ResultsPage() {
           deviceLabel: labels[selectedIdx - 1] || `Device ${selectedIdx}`,
           deviceClass: selectedDevice?.class_name || '',
           status: data.portInfo?.status || null,
+          portCategory,
         });
         return next;
       });
@@ -1483,7 +1486,7 @@ export default function ResultsPage() {
       const res  = await fetch(apiUrl('/api/select'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scanId, device_index: selectedIdx, port: p }),
+        body: JSON.stringify({ scanId, device_index: selectedIdx, port: p, port_category: portCategory }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Port detection failed');
@@ -1510,6 +1513,7 @@ export default function ResultsPage() {
           deviceLabel: labels[selectedIdx - 1] || `Device ${selectedIdx}`,
           deviceClass: selectedDevice?.class_name || '',
           status: data.portInfo?.status || null,
+          portCategory,
         });
         return next;
       });
@@ -1527,7 +1531,7 @@ export default function ResultsPage() {
       const res = await fetch(apiUrl('/api/select'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scanId, device_index: entry.deviceIdx, port: entry.port }),
+        body: JSON.stringify({ scanId, device_index: entry.deviceIdx, port: entry.port, port_category: entry.portCategory || 'main' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Port detection failed');
@@ -3664,6 +3668,34 @@ export default function ResultsPage() {
                   {portLabel}
                 </span>
               )}
+            </div>
+            {/* Port type — RJ45 (copper/main) vs SFP (fiber). Sent as
+                port_category so the pipeline identifies the right port set. */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              {[{ k: 'main', label: 'RJ45' }, { k: 'sfp', label: 'SFP' }].map(opt => {
+                const on = portCategory === opt.k;
+                return (
+                  <button
+                    key={opt.k}
+                    type="button"
+                    onClick={() => setPortCategory(opt.k)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: on ? `1.5px solid ${selColor}` : '1px solid rgba(148,163,184,0.35)',
+                      background: on ? `${selColor}1f` : 'transparent',
+                      color: on ? selColor : 'inherit',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      letterSpacing: '0.02em',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
             <div className={styles.portInputRow}>
               <input
