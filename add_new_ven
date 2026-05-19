@@ -1,3 +1,0 @@
-cd server
-node encrypt-creds.js set cisco-ios    # prompts for creds
-node encrypt-creds.js show             # masked view
