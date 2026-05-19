@@ -304,18 +304,20 @@ async function runPipelineAnalyze(imagePath, outputDir) {
   }, { imagePath, outputDir });
 }
 
-async function runPipelineSelect(imagePath, outputDir, deviceIndex, port) {
+async function runPipelineSelect(imagePath, outputDir, deviceIndex, port, portCategory) {
   return withSpan('pipeline.select', async () => {
-    const res = await pool.request('select', {
+    const payload = {
       image_path:   imagePath,
       config_path:  CONFIG_PATH,
       output_dir:   outputDir,
       device_index: deviceIndex,
       port,
-    });
+    };
+    if (portCategory) payload.port_category = portCategory;
+    const res = await pool.request('select', payload);
     if (!res.ok) throw new Error(res.error || 'pipeline select failed');
     return res;
-  }, { imagePath, outputDir, deviceIndex, port });
+  }, { imagePath, outputDir, deviceIndex, port, portCategory });
 }
 
 // Re-detect ports for one device using a user-supplied target count.
@@ -2151,12 +2153,17 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
  * Reads imagePath from scan_meta.json — no in-memory state required.
  */
 app.post('/api/select', async (req, res) => {
-  const { scanId, device_index, port } = req.body;
+  const { scanId, device_index, port, port_category } = req.body;
   const rackId = scanId;
 
   if (!rackId || device_index == null || port == null) {
     return res.status(400).json({ error: 'scanId, device_index, and port are required' });
   }
+
+  const VALID_CATEGORIES = new Set(['main', 'sfp', 'console']);
+  const portCategory = port_category && VALID_CATEGORIES.has(port_category)
+    ? port_category
+    : 'main';
 
   const meta = readMeta(rackId);
   if (!meta) {
@@ -2184,7 +2191,7 @@ app.post('/api/select', async (req, res) => {
 
   try {
     const tPipeStart = Date.now();
-    await runPipelineSelect(imagePath, rackDir, device_index, port);
+    await runPipelineSelect(imagePath, rackDir, device_index, port, portCategory);
     timings.pipeline_ms = Date.now() - tPipeStart;
 
     const infoPath = path.join(rackDir, 'selected_port_info.json');
