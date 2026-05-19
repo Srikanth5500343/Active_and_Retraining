@@ -913,7 +913,7 @@ function normalizeBbox(d) {
 
 function colorForClass(cls) {
   const c = String(cls || '').toLowerCase();
-  if (c.includes('switch'))  return '#22d3ee';
+  if (c.includes('switch'))  return '#6366f1';
   if (c.includes('patch'))   return '#a78bfa';
   if (c.includes('server'))  return '#f59e0b';
   if (c.includes('router'))  return '#10b981';

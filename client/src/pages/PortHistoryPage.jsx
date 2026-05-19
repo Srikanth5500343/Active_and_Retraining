@@ -72,7 +72,7 @@ const TIMELINE_BARS = [
 function hashColor(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  const palette = ['#22d3ee', '#a78bfa', '#facc15', '#fb923c', '#34d399', '#f472b6', '#60a5fa', '#fde68a'];
+  const palette = ['#6366f1', '#a78bfa', '#facc15', '#fb923c', '#34d399', '#f472b6', '#60a5fa', '#fde68a'];
   return palette[h % palette.length];
 }
 

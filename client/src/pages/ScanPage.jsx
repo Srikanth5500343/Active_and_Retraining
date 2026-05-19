@@ -905,7 +905,7 @@ function normalizeBbox(d) {
 
 function colorForClass(cls) {
   const c = String(cls || '').toLowerCase();
-  if (c.includes('switch'))  return '#22d3ee';
+  if (c.includes('switch'))  return '#6366f1';
   if (c.includes('patch'))   return '#a78bfa';
   if (c.includes('server'))  return '#f59e0b';
   if (c.includes('router'))  return '#10b981';
@@ -1484,7 +1484,7 @@ export default function ScanPage() {
                       borderRadius:8,
                       border:'none',
                       borderBottom:`1px solid ${pickerDivider}`,
-                      background: !ticket ? 'rgba(34,211,238,0.12)' : 'transparent',
+                      background: !ticket ? 'rgba(99, 102, 241,0.12)' : 'transparent',
                       color:'var(--text, #e5e7eb)',
                       cursor:'pointer',
                       marginBottom:2,
@@ -1492,7 +1492,7 @@ export default function ScanPage() {
                     onMouseEnter={e => { if (ticket) e.currentTarget.style.background = pickerHoverBg; }}
                     onMouseLeave={e => { if (ticket) e.currentTarget.style.background = 'transparent'; }}>
                     <span style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:600}}>
-                      {!ticket && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      {!ticket && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                       <span>Manual scan</span>
                       <span style={{color:'var(--muted, #9ca3af)',fontWeight:400,fontSize:11}}>· no ticket</span>
                     </span>

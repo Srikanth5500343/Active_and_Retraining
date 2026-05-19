@@ -14,7 +14,7 @@
   content: '';
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(ellipse 80% 45% at 50% 0%, rgba(168,85,247,0.16) 0%, rgba(34,211,238,0.08) 40%, transparent 60%),
+    radial-gradient(ellipse 80% 45% at 50% 0%, rgba(168,85,247,0.16) 0%, rgba(99, 102, 241,0.08) 40%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 100% 30%, rgba(167,139,250,0.14) 0%, transparent 50%),
     radial-gradient(ellipse 50% 40% at 0% 90%, rgba(20,60,180,0.14) 0%, transparent 50%);
 }
@@ -31,7 +31,7 @@
 .header h2 {
   margin: 0;
   font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em;
-  background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #22d3ee 100%);
+  background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #6366f1 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   filter: drop-shadow(0 0 12px rgba(168,85,247,0.25));
   white-space: nowrap;
@@ -98,7 +98,7 @@
 }
 .viewBtn:hover { color: #e6edf6; }
 .viewBtnActive {
-  background: linear-gradient(135deg, rgba(168,85,247,0.32), rgba(34,211,238,0.24));
+  background: linear-gradient(135deg, rgba(168,85,247,0.32), rgba(99, 102, 241,0.24));
   color: #ffffff;
   box-shadow: 0 0 12px rgba(168,85,247,0.28), inset 0 1px 0 rgba(255,255,255,0.1);
 }
@@ -127,7 +127,7 @@
   margin: 14px 12px 0;
   padding: 12px 14px 10px;
   background:
-    linear-gradient(135deg, rgba(168,85,247,0.12), rgba(34,211,238,0.10) 60%, rgba(245,158,11,0.06)),
+    linear-gradient(135deg, rgba(168,85,247,0.12), rgba(99, 102, 241,0.10) 60%, rgba(245,158,11,0.06)),
     rgba(255,255,255,0.04);
   border: 1px solid rgba(168,85,247,0.28);
   border-radius: 12px;
@@ -159,7 +159,7 @@
 .rackBannerName {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 16px; font-weight: 800;
-  background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 70%, #22d3ee 100%);
+  background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 70%, #6366f1 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -215,7 +215,7 @@
    stats row reads as a tiny legend at a glance. */
 .bannerStat_size   { --bannerStatGlow: rgba(245,158,11,0.55); }
 .bannerStat_size   .bannerStatValue { color: #fbbf24; }
-.bannerStat_switch { --bannerStatGlow: rgba(34,211,238,0.55); }
+.bannerStat_switch { --bannerStatGlow: rgba(99, 102, 241,0.55); }
 .bannerStat_switch .bannerStatValue { color: #67e8f9; }
 .bannerStat_panel  { --bannerStatGlow: rgba(96,165,250,0.55); }
 .bannerStat_panel  .bannerStatValue { color: #93c5fd; }
@@ -260,7 +260,7 @@
   border-color: rgba(255,255,255,0.22);
 }
 .filterPillActive {
-  background: linear-gradient(135deg, rgba(168,85,247,0.28), rgba(34,211,238,0.20));
+  background: linear-gradient(135deg, rgba(168,85,247,0.28), rgba(99, 102, 241,0.20));
   color: #ffffff;
   border-color: rgba(168,85,247,0.45);
   box-shadow: 0 0 10px rgba(168,85,247,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
@@ -350,7 +350,7 @@
   overflow: hidden;
   background:
     radial-gradient(ellipse 60% 50% at 50% 0%, rgba(168,85,247,0.10), transparent 60%),
-    radial-gradient(ellipse 60% 60% at 0% 100%, rgba(34,211,238,0.08), transparent 60%),
+    radial-gradient(ellipse 60% 60% at 0% 100%, rgba(99, 102, 241,0.08), transparent 60%),
     rgba(2,8,20,0.6);
   border: 1px solid rgba(168,85,247,0.18);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.35);
@@ -469,8 +469,8 @@
 .peerChip {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 10px;
-  background: rgba(34,211,238,0.08);
-  border: 1px solid rgba(34,211,238,0.25);
+  background: rgba(99, 102, 241,0.08);
+  border: 1px solid rgba(99, 102, 241,0.25);
   border-radius: 999px;
   font-size: 11px;
   color: #cffafe;
@@ -484,7 +484,7 @@
 .peerCount {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 10px;
-  color: rgba(34,211,238,0.85);
+  color: rgba(99, 102, 241,0.85);
   font-weight: 700;
 }
 
@@ -586,8 +586,8 @@
   white-space: nowrap;
 }
 .portsTable tbody tr:last-child td { border-bottom: none; }
-.rowConnected { background: rgba(34, 211, 238, 0.04); }
-.rowConnected:hover { background: rgba(34, 211, 238, 0.10); }
+.rowConnected { background: rgba(99, 102, 241, 0.04); }
+.rowConnected:hover { background: rgba(99, 102, 241, 0.10); }
 .rowFree { color: rgba(255,255,255,0.55); }
 .rowFree:hover { background: rgba(255,255,255,0.03); }
 
@@ -647,8 +647,8 @@
 .statusDotConnected {
   display: inline-block;
   margin-right: 6px;
-  color: #22d3ee;
-  text-shadow: 0 0 6px #22d3ee;
+  color: #6366f1;
+  text-shadow: 0 0 6px #6366f1;
 }
 .statusDotFree {
   display: inline-block;

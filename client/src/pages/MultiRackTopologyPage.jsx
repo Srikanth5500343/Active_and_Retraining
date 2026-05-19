@@ -372,7 +372,7 @@ function SceneLights({ chassisU, sceneWidth, ambientBoost = 1 }) {
         color="#f4f7ff"
       />
       {fills}
-      <pointLight position={[ 0, topY - 0.5, -4.2]} intensity={1.0} color="#22d3ee" distance={Math.max(20, sceneWidth)} />
+      <pointLight position={[ 0, topY - 0.5, -4.2]} intensity={1.0} color="#6366f1" distance={Math.max(20, sceneWidth)} />
       <pointLight position={[ 0, -topY + 2, -2.8]} intensity={0.5} color="#f59e0b" distance={Math.max(20, sceneWidth)} />
     </>
   );

@@ -9,7 +9,7 @@ const TopologyScene3D = lazy(() => import('./TopologyScene3D.jsx'));
 
 const TIER_COLOR = {
   core: '#f59e0b',          // amber — uplink/core
-  distribution: '#22d3ee',  // cyan — switches
+  distribution: '#6366f1',  // cyan — switches
   access: '#60a5fa',        // blue — patch panels
   endpoint: '#a78bfa',      // violet — servers / hosts
 };
@@ -462,7 +462,7 @@ function Toolbar({ cableFilter, setCableFilter, cableCounts, heatmap, setHeatmap
         <FilterPill active={cableFilter==='all'}   onClick={() => setCableFilter('all')}
                     label="All"   count={cableCounts.all} />
         <FilterPill active={cableFilter==='cat'}   onClick={() => setCableFilter('cat')}
-                    label="Cat"   count={cableCounts.cat}   color="#22d3ee" />
+                    label="Cat"   count={cableCounts.cat}   color="#6366f1" />
         <FilterPill active={cableFilter==='fiber'} onClick={() => setCableFilter('fiber')}
                     label="Fiber" count={cableCounts.fiber} color="#fbbf24" />
         <FilterPill active={cableFilter==='dac'}   onClick={() => setCableFilter('dac')}
@@ -668,7 +668,7 @@ function Graph2D({ topo, selected, setSelected, aggEdges, heatmap, freePctByDevi
           </feMerge>
         </filter>
         <linearGradient id="rackBg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="rgba(34,211,238,0.04)" />
+          <stop offset="0%"   stopColor="rgba(99, 102, 241,0.04)" />
           <stop offset="100%" stopColor="rgba(168,85,247,0.04)" />
         </linearGradient>
       </defs>

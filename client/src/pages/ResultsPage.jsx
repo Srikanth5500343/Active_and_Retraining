@@ -19,14 +19,14 @@ const CLASS_CODE = {
   'PDU': 'PDU', 'PSU': 'PSU', 'UPS': 'UPS', 'Empty': 'EMP', 'Closed Unit': 'CL',
 };
 const TYPE_COLOR = {
-  'Switch': '#22d3ee', 'Patch Panel': '#60a5fa', 'Server': '#a78bfa',
+  'Switch': '#6366f1', 'Patch Panel': '#60a5fa', 'Server': '#a78bfa',
   'Gateway': '#fb923c', 'Firewall': '#f87171', 'PDU': '#fbbf24',
   'PSU': '#f472b6', 'UPS': '#34d399', 'Router': '#818cf8',
   'Load Balancer': '#c084fc', 'Modem': '#94a3b8',
   'Controller': '#67e8f9', 'Recorder': '#86efac', 'Amplifier': '#fda4af',
-  'Closed Unit': '#f43f5e', 'Empty': 'rgba(6,182,212,0.3)',
+  'Closed Unit': '#f43f5e', 'Empty': 'rgba(79, 70, 229,0.3)',
 };
-const DEFAULT_COLOR = '#22d3ee';
+const DEFAULT_COLOR = '#6366f1';
 
 function getColor(name) { return TYPE_COLOR[name] || DEFAULT_COLOR; }
 
@@ -107,7 +107,7 @@ const CABLE_COLOR_MAP = {
   black: '#1a1a2e', blue: '#3b82f6', brown: '#92400e', green: '#22c55e',
   grey: '#9ca3af', gray: '#9ca3af', orange: '#f97316', pink: '#ec4899',
   red: '#ef4444', white: '#e8e8e8', yellow: '#eab308', violet: '#8b5cf6',
-  aqua: '#06b6d4',
+  aqua: '#4f46e5',
 };
 function cableColorCSS(name) {
   if (!name) return '#60a5fa';
@@ -2417,8 +2417,8 @@ export default function ResultsPage() {
           {/* Ticket context + LLDP result (only in ticket-mode) */}
           {ticketMode && ticket && (
             <div style={{
-              background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(34,211,238,0.05))',
-              border: '1px solid rgba(34,211,238,0.35)',
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(99, 102, 241,0.05))',
+              border: '1px solid rgba(99, 102, 241,0.35)',
               borderRadius: 12,
               padding: '12px 14px',
               margin: '8px 12px 4px',
@@ -2427,7 +2427,7 @@ export default function ResultsPage() {
               gap: 6,
               fontSize: 13,
             }}>
-              <div style={{display:'flex',alignItems:'center',gap:8,fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:'#22d3ee',textTransform:'uppercase'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:'#6366f1',textTransform:'uppercase'}}>
                 Auto-targeted from {ticket.incident_number}
               </div>
               <div style={{color:'var(--text, #e5e7eb)',lineHeight:1.4}}>
@@ -3222,7 +3222,7 @@ export default function ResultsPage() {
               }}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
                 <div>
-                  <div style={{fontSize:10,fontWeight:600,letterSpacing:'0.08em',color:'#22d3ee',textTransform:'uppercase'}}>Incident Report</div>
+                  <div style={{fontSize:10,fontWeight:600,letterSpacing:'0.08em',color:'#6366f1',textTransform:'uppercase'}}>Incident Report</div>
                   <div style={{fontSize:18,fontWeight:600,marginTop:2}}>{ticket.incident_number}</div>
                 </div>
                 <button onClick={() => setTicketReportOpen(false)} style={{background:'none',border:'none',color:'var(--muted, #9ca3af)',cursor:'pointer',fontSize:20,lineHeight:1}}>×</button>

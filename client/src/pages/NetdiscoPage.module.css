@@ -15,7 +15,7 @@
   background:
     radial-gradient(ellipse 80% 50% at 50% -5%,  rgba(30,80,230,0.16) 0%, rgba(59,130,246,0.08) 40%, transparent 60%),
     radial-gradient(ellipse 55% 45% at 95% 95%,  rgba(124,58,237,0.12) 0%, transparent 55%),
-    radial-gradient(ellipse 45% 35% at 5%  65%,  rgba(34,211,238,0.06) 0%, transparent 50%);
+    radial-gradient(ellipse 45% 35% at 5%  65%,  rgba(99, 102, 241,0.06) 0%, transparent 50%);
 }
 
 /* ── Header (matches ResultsPage exactly) ─────────────────────────────── */
@@ -24,7 +24,7 @@
   padding: 14px 16px 12px;
   background: linear-gradient(180deg, rgba(2,8,28,0.95), rgba(1,11,31,0.88));
   backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px);
-  border-bottom: 1px solid rgba(34,211,238,0.10);
+  border-bottom: 1px solid rgba(99, 102, 241,0.10);
   position: sticky; top: 0; z-index: 60;
   flex-shrink: 0;
 }
@@ -39,9 +39,9 @@
 .headerTitle {
   margin: 0;
   font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em;
-  background: linear-gradient(135deg, #22d3ee 0%, #60a5fa 40%, #a78bfa 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #60a5fa 40%, #a78bfa 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  filter: drop-shadow(0 0 12px rgba(34,211,238,0.20));
+  filter: drop-shadow(0 0 12px rgba(99, 102, 241,0.20));
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -161,15 +161,15 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px;
   padding: 0;
-  background: rgba(34, 211, 238, 0.08);
-  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.28);
   color: #67e8f9;
   border-radius: 8px;
   cursor: pointer;
 }
 .syncBtn:hover:not(:disabled) {
-  background: rgba(34, 211, 238, 0.16);
-  border-color: rgba(34, 211, 238, 0.55);
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.55);
 }
 .syncBtn:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -204,8 +204,8 @@
 }
 
 .deviceCardOpen {
-  border-left-color: #22d3ee;
-  background: rgba(34, 211, 238, 0.04);
+  border-left-color: #6366f1;
+  background: rgba(99, 102, 241, 0.04);
 }
 
 .deviceCardDim {
@@ -273,7 +273,7 @@
 }
 
 .chev {
-  color: rgba(34, 211, 238, 0.7);
+  color: rgba(99, 102, 241, 0.7);
   font-size: 0.85rem;
   user-select: none;
   align-self: center;
@@ -308,7 +308,7 @@
 .cntUp   b { color: #34d399; }
 .cntDown b { color: rgba(203, 213, 245, 0.55); }
 .cntDown i { color: rgba(180, 210, 240, 0.30); }
-.cntLive b { color: #22d3ee; }
+.cntLive b { color: #6366f1; }
 
 .deviceBody {
   padding: 4px 14px 14px;
@@ -351,9 +351,9 @@
 }
 
 .matchRowSel {
-  background: rgba(34, 211, 238, 0.05);
-  border-color: rgba(34, 211, 238, 0.40);
-  border-left-color: #22d3ee;
+  background: rgba(99, 102, 241, 0.05);
+  border-color: rgba(99, 102, 241, 0.40);
+  border-left-color: #6366f1;
 }
 
 .matchScan, .matchNd, .matchStrategy {
@@ -391,9 +391,9 @@
 
 .connCount {
   font-family: var(--mono); font-size: 0.64rem; font-weight: 700;
-  color: #22d3ee;
-  background: rgba(34, 211, 238, 0.08);
-  border: 1px solid rgba(34, 211, 238, 0.20);
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.20);
   border-radius: 100px;
   padding: 2px 8px;
 }
@@ -430,8 +430,8 @@
   margin-bottom: 14px;
   padding: 12px 14px;
   border-radius: 10px;
-  background: rgba(34, 211, 238, 0.03);
-  border: 1px solid rgba(34, 211, 238, 0.12);
+  background: rgba(99, 102, 241, 0.03);
+  border: 1px solid rgba(99, 102, 241, 0.12);
 }
 
 .field {
@@ -472,12 +472,12 @@
 
 .filterBtn:hover {
   color: #f1f5f9;
-  border-color: rgba(34, 211, 238, 0.40);
+  border-color: rgba(99, 102, 241, 0.40);
 }
 
 .filterBtnActive {
-  background: rgba(34, 211, 238, 0.10);
-  border-color: rgba(34, 211, 238, 0.50);
+  background: rgba(99, 102, 241, 0.10);
+  border-color: rgba(99, 102, 241, 0.50);
   color: #67e8f9;
 }
 
@@ -491,7 +491,7 @@
 
 .portTable::-webkit-scrollbar { width: 4px; }
 .portTable::-webkit-scrollbar-thumb {
-  background: rgba(34,211,238,0.2);
+  background: rgba(99, 102, 241,0.2);
   border-radius: 2px;
 }
 
@@ -567,8 +567,8 @@
 }
 
 .macChip {
-  background: rgba(34, 211, 238, 0.08);
-  border: 1px solid rgba(34, 211, 238, 0.25);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
   color: #67e8f9;
   font-family: var(--mono);
   font-size: 0.62rem;
@@ -579,7 +579,7 @@
   letter-spacing: 0.04em;
 }
 
-.macChip:hover { background: rgba(34, 211, 238, 0.18); }
+.macChip:hover { background: rgba(99, 102, 241, 0.18); }
 
 /* ── MAC lookup ───────────────────────────────────────────────────────── */
 .macSection {
@@ -616,15 +616,15 @@
   letter-spacing: 0.04em;
 }
 
-.macInput:focus { border-color: rgba(34, 211, 238, 0.45); }
+.macInput:focus { border-color: rgba(99, 102, 241, 0.45); }
 
 .macBtn {
   padding: 7px 14px;
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  background: rgba(34, 211, 238, 0.10);
-  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: rgba(99, 102, 241, 0.10);
+  border: 1px solid rgba(99, 102, 241, 0.35);
   color: #67e8f9;
   border-radius: 6px;
   cursor: pointer;
@@ -632,8 +632,8 @@
 }
 
 .macBtn:hover:not(:disabled) {
-  background: rgba(34, 211, 238, 0.20);
-  border-color: rgba(34, 211, 238, 0.55);
+  background: rgba(99, 102, 241, 0.20);
+  border-color: rgba(99, 102, 241, 0.55);
 }
 
 .macBtn:disabled {

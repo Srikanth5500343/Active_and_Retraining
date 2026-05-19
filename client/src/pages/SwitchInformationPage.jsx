@@ -159,8 +159,8 @@ function SourceBadge({ sw }) {
     color = '#fbbf24';
   } else if (source.startsWith('ocr')) {
     label = conf != null ? `Photo ${conf}%` : 'From photo';
-    bg = 'rgba(34,211,238,0.12)';
-    color = '#22d3ee';
+    bg = 'rgba(99, 102, 241,0.12)';
+    color = '#6366f1';
   } else if (source === 'override') {
     label = 'Manual';
     bg = 'rgba(168,85,247,0.12)';
@@ -448,11 +448,11 @@ function SwitchCard({ sw, rackId }) {
     : fwTone === 'warn' ? '#d97706' : lt ? '#6B7280' : 'rgba(230,235,245,0.7)';
 
   // Accent: indigo (light) / cyan (dark) for CMDB; amber for OCR
-  const accent      = sw._fromOcr ? '#d97706' : lt ? '#4F46E5' : '#22d3ee';
+  const accent      = sw._fromOcr ? '#d97706' : lt ? '#4F46E5' : '#6366f1';
   const accentDim   = sw._fromOcr ? (lt ? 'rgba(217,119,6,0.10)'  : 'rgba(245,158,11,0.15)')
-                                  : (lt ? 'rgba(99,102,241,0.10)' : 'rgba(34,211,238,0.12)');
+                                  : (lt ? 'rgba(99,102,241,0.10)' : 'rgba(99, 102, 241,0.12)');
   const accentBorder= sw._fromOcr ? (lt ? 'rgba(217,119,6,0.35)'  : 'rgba(245,158,11,0.35)')
-                                  : (lt ? 'rgba(99,102,241,0.35)' : 'rgba(34,211,238,0.25)');
+                                  : (lt ? 'rgba(99,102,241,0.35)' : 'rgba(99, 102, 241,0.25)');
 
   // Theme tokens
   const cardBg      = lt ? '#ffffff'                         : 'rgba(10,18,40,0.95)';
@@ -465,7 +465,7 @@ function SwitchCard({ sw, rackId }) {
   const valueColor  = lt ? '#111827'                         : '#e2e8f0';
   const chevronColor= lt ? '#6B7280'                         : 'rgba(148,163,184,0.6)';
   const statusColor = lt ? '#6B7280'                         : 'rgba(148,163,184,0.7)';
-  const linkColor   = lt ? '#4F46E5'                         : '#22d3ee';
+  const linkColor   = lt ? '#4F46E5'                         : '#6366f1';
 
   const displayVersion = sw.os_version || userVersion;
   const hasDetails = effectiveMake || effectiveModel || displayVersion || sw.serial_number || sw.ip_address || sw.mac_address;
