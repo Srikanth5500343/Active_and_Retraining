@@ -101,7 +101,7 @@ function safeAsync(handler) {
     try { await handler(req, res); }
     catch (err) {
       logger.error(`[cmdb-ticket] ${req.method} ${req.originalUrl} — ${err.message}`);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: 'ticket request failed' });
     }
   };
 }

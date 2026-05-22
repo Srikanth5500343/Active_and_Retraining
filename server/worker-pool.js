@@ -121,6 +121,7 @@ class Worker extends EventEmitter {
   }
 
   kill() {
+    this.ready = false;        // prevent _drain from picking us mid-shutdown
     try { this.proc.kill('SIGTERM'); } catch { /* already dead */ }
   }
 }
@@ -136,11 +137,13 @@ class WorkerPool extends EventEmitter {
     this.env = env;
     this.workers = [];
     this.queue = []; // [{command, params, resolve, reject}]
+    this._shuttingDown = false;
 
     for (let i = 0; i < size; i++) this._spawn(i);
   }
 
   _spawn(index) {
+    if (this._shuttingDown) return;  // don't respawn after shutdown
     const w = new Worker(this.pythonCmd, this.pythonArgs, this.cwd, index, this.env);
     w.on('ready', () => {
       wcount('ready');
@@ -151,6 +154,7 @@ class WorkerPool extends EventEmitter {
     w.on('free', () => this._drain());
     w.on('exit', () => {
       this.workers = this.workers.filter(x => x !== w);
+      if (this._shuttingDown) return;
       // respawn with a short delay so we don't crash-loop on permanent errors
       setTimeout(() => this._spawn(index), 2000);
     });
@@ -168,12 +172,19 @@ class WorkerPool extends EventEmitter {
 
   request(command, params) {
     return new Promise((resolve, reject) => {
+      if (this._shuttingDown) return reject(new Error('worker pool shutting down'));
       this.queue.push({ command, params, resolve, reject });
       this._drain();
     });
   }
 
   async shutdown() {
+    this._shuttingDown = true;
+    // Reject anything still queued so callers stop hanging on shutdown.
+    while (this.queue.length > 0) {
+      const t = this.queue.shift();
+      try { t.reject(new Error('worker pool shutting down')); } catch (_) {}
+    }
     for (const w of this.workers) w.kill();
   }
 }

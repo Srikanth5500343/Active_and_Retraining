@@ -392,4 +392,10 @@ def clear():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5050, debug=False)
+    # Default to loopback so the labelling UI isn't exposed to the network.
+    # Set ACTIVE_LEARNING_HOST=0.0.0.0 (or a specific IP) when running inside
+    # Docker / k8s where the UI must be reachable from outside the container.
+    import os as _os
+    _host = _os.environ.get("ACTIVE_LEARNING_HOST", "127.0.0.1")
+    _port = int(_os.environ.get("DEVICE_LEARNING_PORT", "5050"))
+    app.run(host=_host, port=_port, debug=False)

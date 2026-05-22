@@ -222,6 +222,8 @@ def _port_crop_density(gray, box):
         return None
     crop = gray[y1c:y2c, x1c:x2c]
     edges = cv2.Canny(crop, 50, 150)
+    if edges.size == 0:
+        return None
     return float(np.count_nonzero(edges)) / float(edges.size)
 
 

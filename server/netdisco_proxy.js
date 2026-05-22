@@ -39,6 +39,12 @@ const ND_USER       = process.env.NETDISCO_USER     || 'admin';
 const ND_PASSWORD   = process.env.NETDISCO_PASSWORD || 'admin';
 const TIMEOUT_MS    = 15000;
 
+if ((process.env.NODE_ENV || 'development') === 'production'
+    && ND_USER === 'admin' && ND_PASSWORD === 'admin') {
+  logger.warn({ event: 'netdisco.default_creds' },
+    'Netdisco using default admin/admin credentials — set NETDISCO_USER and NETDISCO_PASSWORD');
+}
+
 // ── API-key cache ────────────────────────────────────────────────────────
 // Netdisco's /login returns an api_key. We cache it in memory and refresh
 // on 401. Same shape as netdisco.py's login() helper.

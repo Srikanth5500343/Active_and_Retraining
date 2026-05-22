@@ -132,7 +132,20 @@ app.use(o11y.requestId);
 app.use(o11y.httpLogger);
 app.use(o11y.httpMetrics);
 
-app.use(cors({ origin: true }));
+// CORS: allow-list from CORS_ALLOWED_ORIGINS (comma-separated). In dev, an
+// empty list falls back to reflecting any origin so localhost:5173 etc. just
+// work. In prod, an empty list means same-origin only (no CORS headers).
+const _corsOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+const _corsIsDev = (process.env.NODE_ENV || 'development') !== 'production';
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);                  // same-origin / curl
+    if (_corsOrigins.includes(origin)) return cb(null, true);
+    if (_corsOrigins.length === 0 && _corsIsDev) return cb(null, true);
+    return cb(null, false);
+  },
+}));
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 app.use('/outputs', express.static(outputsDir));
@@ -199,10 +212,18 @@ if (fs.existsSync(clientDist)) {
 }
 
 // ── File upload ───────────────────────────────────────────────
+// The extension is taken from a whitelist match on the original name, not
+// copied verbatim — otherwise an upload named `evil.jpg.bat` (filter passes
+// on first match) or one with embedded path chars could land on disk with an
+// attacker-controlled suffix.
+function _safeExt(originalName) {
+  const m = String(originalName || '').match(/\.(jpe?g|png|gif|heic|heif|mp4|mov|webm)$/i);
+  return m ? '.' + m[1].toLowerCase() : '';
+}
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename:    (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = _safeExt(file.originalname);
     cb(null, `tmp_${uuidv4()}${ext}`);
   },
 });
@@ -210,7 +231,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 340 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const ok = /\.(jpe?g|png|gif|heic|heif|mp4|mov|webm)$/i.test(file.originalname);
+    const ok = _safeExt(file.originalname) !== '';
     cb(ok ? null : new Error('Invalid file type'), ok);
   },
 });
@@ -270,6 +291,10 @@ const WORKER_COUNT = Math.max(1, parseInt(process.env.RACKTRACK_WORKERS, 10) || 
 // last test and (in CI) noisily fail on missing pipeline deps. Routes
 // that need the pool will throw if hit, which is fine for smoke tests
 // that only exercise /healthz, /metrics, and 404 handling.
+if (process.env.RACKTRACK_SKIP_WORKER_POOL === '1') {
+  logger.warn({ event: 'worker_pool.disabled' },
+    'RACKTRACK_SKIP_WORKER_POOL=1 — Python worker pool disabled; AI/ML routes will 500');
+}
 const pool = process.env.RACKTRACK_SKIP_WORKER_POOL === '1'
   ? { request: () => { throw new Error('worker pool disabled (RACKTRACK_SKIP_WORKER_POOL=1)'); },
       shutdown: () => Promise.resolve() }
@@ -1514,7 +1539,7 @@ app.post('/api/admin/orphan-gc/run', auth.requireAuth, (req, res) => {
     res.json({ ok: true, ...summary });
   } catch (e) {
     logger.error({ event: 'orphan_gc.failed', err: e.message }, 'orphan GC failed');
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(500).json({ ok: false, error: 'orphan GC failed' });
   }
 });
 
@@ -2222,7 +2247,7 @@ app.post('/api/ocr/labels', scanLimit, upload.single('image'), async (req, res) 
   } catch (e) {
     safeUnlink(tmpPath);
     logger.warn(`[ocr] failed: ${e.message}`);
-    res.status(500).json({ error: e.message, labels: [] });
+    res.status(500).json({ error: 'OCR failed', labels: [] });
   }
 });
 
@@ -3543,9 +3568,13 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
 // SN credentials are read once at module load from either server/.env (if
 // they live there) or s_agent/.env (where the agent was originally tested).
 // Never log the password.
+// Cached for SN_CREDS_TTL_MS (default 5 min) so a credential rotation in
+// s_agent/.env or process.env is picked up without a full server restart.
 let _snCredsCache = null;
+let _snCredsExpiry = 0;
+const _SN_CREDS_TTL_MS = parseInt(process.env.SN_CREDS_TTL_MS, 10) || (5 * 60 * 1000);
 function getSnCreds() {
-  if (_snCredsCache !== null) return _snCredsCache;
+  if (_snCredsCache !== null && Date.now() < _snCredsExpiry) return _snCredsCache;
   let instance = process.env.SN_INSTANCE;
   let user     = process.env.SN_USER;
   let password = process.env.SN_PASSWORD;
@@ -3568,6 +3597,7 @@ function getSnCreds() {
     }
   }
   _snCredsCache = (instance && user && password) ? { instance, user, password } : null;
+  _snCredsExpiry = Date.now() + _SN_CREDS_TTL_MS;
   if (_snCredsCache) {
     logger.info({ event: 'agent.sn_creds_loaded', instance }, `agent SN creds loaded for ${instance}`);
   } else {
@@ -6335,7 +6365,8 @@ app.get('/api/feedback/stats', (req, res) => {
       by_device_class: byCls,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    logger.warn({ event: 'feedback.scoreboard_failed', err: err.message });
+    res.status(500).json({ error: 'scoreboard failed' });
   }
 });
 
@@ -6343,11 +6374,6 @@ app.get(/^\/(?!api|uploads|outputs).*/, (req, res, next) => {
   const indexPath = path.join(clientDist, 'index.html');
   if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
   next();
-});
-
-app.use((err, req, res, next) => {
-  logger.error(err.message);
-  res.status(500).json({ error: err.message });
 });
 
 // Global error handler — must be installed AFTER all routes/middleware so
@@ -6411,11 +6437,22 @@ if (require.main === module) {
     logger.info({ event: 'server.shutdown', signal },
       `${signal} received — stopping workers and HTTP server`);
     try { require('./lib/port_poller').stop(); } catch (_) {}
+    if (server) {
+      try { server.close(); } catch (_) {}
+    }
     pool.shutdown().finally(() => {
-      if (server) server.close(() => process.exit(0));
-      else process.exit(0);
+      logger.info({ event: 'server.shutdown_done' }, 'workers stopped, exiting');
+      process.exit(0);
     });
-    setTimeout(() => process.exit(1), 5000).unref();
+    // Hard ceiling so a wedged worker / open socket can't block forever.
+    // Overridable via SHUTDOWN_TIMEOUT_MS; default 30s gives long pipelines
+    // a fair chance to finish before SIGKILL.
+    const _shutdownTimeoutMs = parseInt(process.env.SHUTDOWN_TIMEOUT_MS, 10) || 30000;
+    setTimeout(() => {
+      logger.warn({ event: 'server.shutdown_forced', timeoutMs: _shutdownTimeoutMs },
+        'graceful shutdown timeout — forcing exit');
+      process.exit(1);
+    }, _shutdownTimeoutMs).unref();
   };
   process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

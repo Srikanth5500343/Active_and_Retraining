@@ -56,7 +56,20 @@ def _get_scan_mock(rack_scan_id: str) -> dict:
 
 
 def _get_scan_live(rack_scan_id: str) -> dict:
-    base = os.environ.get("RACKTRACK_URL", "http://localhost:3000")
+    # Localhost is fine for dev/in-container calls; production deployments
+    # should set RACKTRACK_URL explicitly (and use https). We refuse to fall
+    # back to http://localhost when NODE_ENV / RACKTRACK_ENV says production
+    # so a misconfig fails loudly instead of silently leaking traffic.
+    base = os.environ.get("RACKTRACK_URL")
+    if not base:
+        env = (os.environ.get("RACKTRACK_ENV")
+               or os.environ.get("NODE_ENV") or "").lower()
+        if env == "production":
+            raise RuntimeError(
+                "RACKTRACK_URL is not set in production "
+                "(refusing to fall back to http://localhost:3000)"
+            )
+        base = "http://localhost:3000"
     jwt = os.environ.get("RACKTRACK_JWT", "")
     headers = {"Accept": "application/json"}
     if jwt:

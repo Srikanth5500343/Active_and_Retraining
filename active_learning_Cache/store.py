@@ -26,14 +26,65 @@ Public API:
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import threading
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Iterator
 
 from . import config
+
+# Cross-platform exclusive file lock for the JSONL append path. Multiple
+# pipeline workers (separate processes) can race when active-learning
+# candidates arrive concurrently — without the lock, interleaved writes
+# corrupt the line-delimited log.
+try:
+    import fcntl  # POSIX
+    _HAS_FCNTL = True
+except ImportError:
+    _HAS_FCNTL = False
+try:
+    import msvcrt  # Windows
+    _HAS_MSVCRT = True
+except ImportError:
+    _HAS_MSVCRT = False
+
+_APPEND_LOCK = threading.Lock()
+
+
+@contextmanager
+def _locked_append(path: Path):
+    """Open `path` for append with an exclusive cross-process lock."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _APPEND_LOCK:                          # thread-safety inside process
+        f = path.open("a", encoding="utf-8")
+        try:
+            if _HAS_FCNTL:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            elif _HAS_MSVCRT:
+                # Lock a single byte at the current EOF; sufficient for append
+                # serialization since every writer seeks to EOF on open("a").
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+                except OSError:
+                    pass        # already locked elsewhere — best-effort
+            try:
+                yield f
+                f.flush()
+                os.fsync(f.fileno())
+            finally:
+                if _HAS_FCNTL:
+                    try: fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    except OSError: pass
+                elif _HAS_MSVCRT:
+                    try: msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                    except OSError: pass
+        finally:
+            f.close()
 
 
 # ── Sample lifecycle ──────────────────────────────────────────────────
@@ -259,7 +310,7 @@ class Store:
     # ── internals ─────────────────────────────────────────────────────
 
     def _append(self, row: dict) -> None:
-        with self.log_path.open("a", encoding="utf-8") as f:
+        with _locked_append(self.log_path) as f:
             f.write(json.dumps(row) + "\n")
 
     def _read_log(self) -> Iterator[dict]:

@@ -1,13 +1,22 @@
-import time
-import subprocess
+import atexit
 import os
+import subprocess
+import sys
+import time
 
 # ---------------- CONFIG ----------------
-NEW_DATA_PATH = r"C:\Users\GeethikaPallelapati\Downloads\Test_Image\Test_Image"
-THRESHOLD = 100
+# Overridable via DEVICES_RETRAINING_DATA_PATH so the script isn't tied to a
+# specific developer machine.
+NEW_DATA_PATH = os.environ.get(
+    "DEVICES_RETRAINING_DATA_PATH",
+    r"C:\Users\GeethikaPallelapati\Downloads\Test_Image\Test_Image",
+)
+THRESHOLD = int(os.environ.get("DEVICES_RETRAINING_THRESHOLD", "100"))
 
 # ---------------- CHECK DATA ----------------
 def check_dataset_ready():
+    if not os.path.isdir(NEW_DATA_PATH):
+        return 0
     images = [
         f for f in os.listdir(NEW_DATA_PATH)
         if f.lower().endswith((".jpg",".png",".jpeg")) and "_aug" not in f
@@ -17,11 +26,11 @@ def check_dataset_ready():
 # ---------------- RUN SCRIPT ----------------
 def run_script(script_name):
     print(f"\n🚀 Running {script_name} ...\n")
-    result = subprocess.run(["python", script_name])
+    result = subprocess.run([sys.executable, script_name])
 
     if result.returncode != 0:
         print(f"❌ Error running {script_name}")
-        exit()
+        sys.exit(1)
     else:
         print(f"✅ {script_name} completed")
 
@@ -29,32 +38,47 @@ def run_script(script_name):
 def main():
     print("🔥 FULL AUTO PIPELINE STARTED\n")
 
-    # Step 1: Start labeling tool (Flask app)
+    # Step 1: Start labeling tool (Flask app). Track the child so we can
+    # tear it down on exit / Ctrl+C — without this the Flask process keeps
+    # running after the pipeline ends.
     print("🧠 Step 1: Start labeling tool (device.py)")
-    subprocess.Popen(["python", "device.py"])
+    flask_child = subprocess.Popen([sys.executable, "device.py"])
 
-    # Step 2: Wait for dataset to reach threshold
-    print("\n⏳ Waiting for labeled data...")
+    def _kill_flask():
+        if flask_child.poll() is None:
+            try: flask_child.terminate()
+            except Exception: pass
+            try: flask_child.wait(timeout=5)
+            except Exception:
+                try: flask_child.kill()
+                except Exception: pass
+    atexit.register(_kill_flask)
 
-    while True:
-        count = check_dataset_ready()
-        print(f"📊 Current labeled images: {count}")
+    try:
+        # Step 2: Wait for dataset to reach threshold
+        print("\n⏳ Waiting for labeled data...")
 
-        if count >= THRESHOLD:
-            print("✅ Dataset threshold reached!")
-            break
+        while True:
+            count = check_dataset_ready()
+            print(f"📊 Current labeled images: {count}")
 
-        time.sleep(10)  # check every 10 sec
+            if count >= THRESHOLD:
+                print("✅ Dataset threshold reached!")
+                break
 
-    # Step 3: Create final dataset
-    print("\n📦 Step 2: Creating dataset...")
-    run_script("createdataset.py")
+            time.sleep(10)  # check every 10 sec
 
-    # Step 4: Train model
-    print("\n🤖 Step 3: Training model...")
-    run_script("train.py")
+        # Step 3: Create final dataset
+        print("\n📦 Step 2: Creating dataset...")
+        run_script("createdataset.py")
 
-    print("\n🎉 PIPELINE COMPLETED SUCCESSFULLY!")
+        # Step 4: Train model
+        print("\n🤖 Step 3: Training model...")
+        run_script("train.py")
+
+        print("\n🎉 PIPELINE COMPLETED SUCCESSFULLY!")
+    finally:
+        _kill_flask()
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":

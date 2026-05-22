@@ -786,6 +786,7 @@ function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack, 
     let attempt = 0;
     const maxAttempts = 12;     // 12 × 2s = 24s
     const intervalMs = 2000;
+    let pendingTimer = null;
 
     const tick = async () => {
       if (cancelled) return;
@@ -806,14 +807,17 @@ function AllDevicesView({ devices, labels, rackId, scanId, originalExt, onBack, 
         if (t && t.state === 'applied') return;   // already in CMDB
       } catch (_) { /* keep polling */ }
       attempt += 1;
-      if (attempt < maxAttempts) {
-        setTimeout(tick, intervalMs);
+      if (!cancelled && attempt < maxAttempts) {
+        pendingTimer = setTimeout(tick, intervalMs);
       }
     };
     // Wait 1s before the first attempt so the server's debounced
     // auto-create has a chance to fire.
-    const initial = setTimeout(tick, 1000);
-    return () => { cancelled = true; clearTimeout(initial); };
+    pendingTimer = setTimeout(tick, 1000);
+    return () => {
+      cancelled = true;
+      if (pendingTimer) clearTimeout(pendingTimer);
+    };
   }, [cmdbRackId, dismissKey, isFreshDetectScan]);
 
   const closeCmdbModal = () => {
@@ -1211,6 +1215,7 @@ export default function ResultsPage() {
     const iface = ifaceFn(portNumber);
 
     let cancelled = false;
+    const ac = new AbortController();
 
     const tick = async () => {
       if (cancelled || liveInFlightRef.current) return;
@@ -1219,6 +1224,7 @@ export default function ResultsPage() {
         const res = await fetch(apiUrl('/api/switch/port-status'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: ac.signal,
           body: JSON.stringify({
             host,
             interface: iface,
@@ -1245,7 +1251,7 @@ export default function ResultsPage() {
 
     tick(); // fire immediately, then interval
     const id = setInterval(tick, LIVE_POLL_MS);
-    return () => { cancelled = true; clearInterval(id); };
+    return () => { cancelled = true; ac.abort(); clearInterval(id); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketMode, phase, ticket?.incident_number, switchCreds.host, switchCreds.vendor]);
 
@@ -1404,7 +1410,9 @@ export default function ResultsPage() {
 
   useEffect(() => {
     if (!result) return;
-    const existing = JSON.parse(localStorage.getItem('rackTrackHistory') || '[]');
+    let existing = [];
+    try { existing = JSON.parse(localStorage.getItem('rackTrackHistory') || '[]'); }
+    catch { existing = []; }
     const history  = Array.isArray(existing) ? existing : [];
     if (!history.some(h => h.scanId === result.scanId)) {
       history.unshift({

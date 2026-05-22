@@ -228,12 +228,15 @@ def _ddg_image_search(query, max_results=6):
 
 # Dedicated session for image-URL validation. Cloudscraper's SSL context
 # rejects `verify=False` (check_hostname conflict), so we use a plain
-# requests.Session with cert verification disabled — image URLs don't
-# carry credentials, and Python's trust store on Windows commonly fails
-# legit retailer certs that every browser accepts.
+# requests.Session. By default we verify certs; set
+# SFP_IMG_VERIFY_TLS=0 to opt out (some Python trust stores on Windows
+# reject legit retailer certs that every browser accepts via system roots).
 import urllib3 as _urllib3
-_urllib3.disable_warnings(_urllib3.exceptions.InsecureRequestWarning)
+_IMG_VERIFY_TLS = os.environ.get("SFP_IMG_VERIFY_TLS", "1") != "0"
+if not _IMG_VERIFY_TLS:
+    _urllib3.disable_warnings(_urllib3.exceptions.InsecureRequestWarning)
 _IMG_VALIDATION_SESSION = _req.Session()
+_IMG_VALIDATION_SESSION.verify = _IMG_VERIFY_TLS
 _IMG_VALIDATION_SESSION.headers.update({
     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                    "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -263,7 +266,7 @@ def _validate_image_url(url):
     # 1. HEAD — cheapest, most CDNs answer this.
     head = None
     try:
-        head = sess.head(url, timeout=4, allow_redirects=True, verify=False)
+        head = sess.head(url, timeout=4, allow_redirects=True, verify=_IMG_VERIFY_TLS)
     except Exception:
         head = None
     if head is not None:
@@ -278,7 +281,7 @@ def _validate_image_url(url):
     #    content-type. Magic-byte sniff catches images served with
     #    text/html headers (some CDNs misconfigure this).
     try:
-        r = sess.get(url, timeout=5, stream=True, verify=False,
+        r = sess.get(url, timeout=5, stream=True, verify=_IMG_VERIFY_TLS,
                      headers={"Range": "bytes=0-1024"})
     except Exception:
         # Network unreachable from Python — could still work in browser
@@ -365,7 +368,7 @@ def _download_image_to_cache(remote_url):
     os.makedirs(_IMG_CACHE_DIR, exist_ok=True)
     try:
         r = _IMG_VALIDATION_SESSION.get(
-            remote_url, timeout=8, verify=False, stream=True,
+            remote_url, timeout=8, verify=_IMG_VERIFY_TLS, stream=True,
         )
     except Exception:
         return None

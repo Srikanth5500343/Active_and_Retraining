@@ -7,7 +7,9 @@ export default function HistoryPage() {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('rackTrackHistory') || '[]');
+    let stored = [];
+    try { stored = JSON.parse(localStorage.getItem('rackTrackHistory') || '[]'); }
+    catch { stored = []; }
     setHistory(Array.isArray(stored) ? stored : []);
   }, []);
 

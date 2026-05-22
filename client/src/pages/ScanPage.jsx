@@ -414,11 +414,21 @@ function CameraCapture({ onCapture, onCancel }) {
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => { videoRef.current.play(); setReady(true); };
+      // If the user navigated away while the permission dialog was open the
+      // <video> element is gone — stop the tracks immediately or the camera
+      // hardware stays live until tab close.
+      if (!videoRef.current) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
       }
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      videoRef.current.onloadedmetadata = () => {
+        const v = videoRef.current;
+        if (!v) return;
+        v.play().catch(() => {});
+        setReady(true);
+      };
     } catch { setError('Camera access denied. Allow camera permission or use Upload.'); }
   }, []);
 
@@ -696,7 +706,7 @@ function CameraCapture({ onCapture, onCancel }) {
         const rect = video.getBoundingClientRect();
         const dispW = rect.width;
         const dispH = rect.height;
-        if (!dispW || !dispH) { setLiveDevices([]); return; }
+        if (!dispW || !dispH) { if (!cancelled) setLiveDevices([]); return; }
         const scale = Math.max(dispW / sw, dispH / sh);
         const offX = (sw * scale - dispW) / 2;
         const offY = (sh * scale - dispH) / 2;
@@ -964,8 +974,8 @@ function ARMode() {
         teardownListeners();
       });
 
-      tapSubRef.current = await RackAR.addListener('tap', (e) => {
-        console.log('AR label tapped:', e?.id);
+      tapSubRef.current = await RackAR.addListener('tap', () => {
+        // tap handling reserved for future UI affordance
       });
 
       await RackAR.start({ frameRateHz: 1 });
