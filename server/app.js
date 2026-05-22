@@ -5230,26 +5230,6 @@ const SPEC_KEY_LABELS = {
   layer: 'Layer', features: 'Features', rack_units: 'Rack units',
   nos: 'Network OS', status: 'Status', use_case: 'Typical use',
 };
-// Heuristic: many vendor datasheets paste whole paragraphs of marketing
-// copy into single spec rows (e.g. Cisco "Layer 2" / "Layer 3" / "Security"
-// have walls of text). Skip those — they're never useful at a glance and
-// blow past the UI's 20-row cap. Real value-style specs (buffer size,
-// switching capacity, dimensions) stay well under this cap.
-const _EXTRA_SPEC_MAX_LEN = 140;
-// Decorative dividers, part-number tables, and compliance-checklist rows
-// — short but never useful at a glance. Filter so they don't push real
-// specs off the UI's 20-row cap.
-const _EXTRA_SPEC_DROP_KEYS = new Set([
-  'Description', 'Specification', 'Part number', 'Software package',
-  'Standards', 'Regulatory compliance', 'Safety',
-  'EMC: Emissions', 'EMC: Immunity', 'RoHS',
-  'Hardware tables and scalability', 'Environment', 'Cooling',
-  'Layer 2', 'Layer 3', 'Security', 'Cisco Nexus Data Broker',
-]);
-// Match SKU-style keys (vendor part numbers like "N3K-C3432D-S",
-// "NXA-FAN-35CFM-PE", "NXA-PAC-1500W-PE=", "C9300-48P"). Datasheets list
-// 10+ of these in a part-number table that drowns out real specs.
-const _SKU_KEY_RE = /^[A-Z][A-Z0-9]+(?:-[A-Z0-9+]+){1,}=?$/;
 
 function specPayloadFromAgent(agentRes, reqVendor, reqModel) {
   if (!agentRes || !agentRes.ok) {
@@ -5269,29 +5249,18 @@ function specPayloadFromAgent(agentRes, reqVendor, reqModel) {
     if (v == null || v === '') continue;
     specs[label] = Array.isArray(v) ? v.join(', ') : String(v);
   }
-  // Merge in the agent's free-form datasheet extras. The agent stores
-  // anything the vendor datasheet exposed that doesn't map cleanly onto
-  // the structured columns (switching capacity, buffer, dimensions, MAC
-  // table, power supply types, etc.). Without this they were silently
-  // dropped and the UI only showed the 2-3 structured columns that
-  // happened to be populated — making the agent look half-integrated.
+  // Pass through the agent's free-form datasheet extras verbatim. The
+  // structured columns above already give us the labeled fields; this
+  // block surfaces everything else the agent extracted from the vendor
+  // datasheet (switching capacity, buffer, MAC table, dimensions, part
+  // numbers, standards, walls-of-text feature lists — all of it).
   const extras = rec.extra_specs && typeof rec.extra_specs === 'object'
     ? rec.extra_specs : null;
   if (extras) {
     for (const [k, v] of Object.entries(extras)) {
       if (v == null || v === '') continue;
-      if (_EXTRA_SPEC_DROP_KEYS.has(k)) continue;
-      if (_SKU_KEY_RE.test(k)) continue; // part-number tables
-      const value = Array.isArray(v) ? v.join(', ') : String(v);
-      if (value.length > _EXTRA_SPEC_MAX_LEN) continue;
-      // Drop rows where the value is itself another extras key — that
-      // pattern shows up when a section header was parsed as a
-      // key:value pair (e.g. "Environment": "Dimensions (...)").
-      if (extras[value] !== undefined) continue;
-      // Don't shadow a structured label already populated — the
-      // structured one is the canonical normalized version.
-      if (specs[k]) continue;
-      specs[k] = value;
+      if (specs[k]) continue; // don't shadow structured labels
+      specs[k] = Array.isArray(v) ? v.join(', ') : String(v);
     }
   }
   return {

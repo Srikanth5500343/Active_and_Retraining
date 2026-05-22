@@ -778,28 +778,31 @@ function SwitchCard({ sw, rackId }) {
             {specsStatus === 'loading' && <StatusLine color={statusColor}>Looking up specs…</StatusLine>}
             {specsStatus === 'skipped' && <StatusLine color={statusColor}>Add vendor and model to see specs.</StatusLine>}
             {specsStatus === 'error'   && <StatusLine color={statusColor}>{looksLikeBackendNoise(specs?.error) ? 'Couldn’t load specs.' : (specs?.error || 'Couldn’t load specs.')}</StatusLine>}
-            {specsStatus === 'ready' && specs?.specs && (
-              <div style={{ display: 'flex', flexDirection: 'column', borderRadius: 10, border: `1px solid ${fieldBorder}`, overflow: 'hidden' }}>
-                {Object.entries(specs.specs).slice(0, 20).map(([k, v], i) => (
-                  <div key={k} style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(110px, 42%) 1fr',
-                    gap: 10,
-                    padding: '9px 12px',
-                    background: i % 2 === 0 ? fieldBg : 'transparent',
-                    borderBottom: i < Object.entries(specs.specs).slice(0, 20).length - 1 ? `1px solid ${fieldBorder}` : 'none',
-                    alignItems: 'start',
-                  }}>
-                    <span style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: accent, lineHeight: 1.4, paddingTop: 1 }}>
-                      {k}
-                    </span>
-                    <span style={{ fontSize: '.82rem', fontWeight: 500, color: valueColor, lineHeight: 1.45, wordBreak: 'break-word' }}>
-                      {String(v).length > 120 ? String(v).slice(0, 117) + '…' : String(v)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {specsStatus === 'ready' && specs?.specs && (() => {
+              const rows = Object.entries(specs.specs);
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', borderRadius: 10, border: `1px solid ${fieldBorder}`, overflow: 'hidden' }}>
+                  {rows.map(([k, v], i) => (
+                    <div key={k} style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(110px, 42%) 1fr',
+                      gap: 10,
+                      padding: '9px 12px',
+                      background: i % 2 === 0 ? fieldBg : 'transparent',
+                      borderBottom: i < rows.length - 1 ? `1px solid ${fieldBorder}` : 'none',
+                      alignItems: 'start',
+                    }}>
+                      <span style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: accent, lineHeight: 1.4, paddingTop: 1 }}>
+                        {k}
+                      </span>
+                      <span style={{ fontSize: '.82rem', fontWeight: 500, color: valueColor, lineHeight: 1.45, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                        {String(v)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
