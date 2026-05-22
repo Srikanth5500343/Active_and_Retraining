@@ -733,7 +733,9 @@ function SwitchCard({ sw, rackId }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
                   <MiniField label="Current" value={firmware.currentVersion} accent={accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
                   <MiniField label="Latest"  value={firmware.latestVersion || '—'} accent={accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
-                  <MiniField label="CVEs"    value={`${cves.length}${(crit+high)>0?` (${crit}c/${high}h)`:''}`} accent={crit>0?'#dc2626':high>0?'#d97706':accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
+                  {cves.length > 0 && (
+                    <MiniField label="CVEs" value={`${cves.length}${(crit+high)>0?` (${crit}c/${high}h)`:''}`} accent={crit>0?'#dc2626':high>0?'#d97706':accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
+                  )}
                   {firmware.recommendedMinVersion && firmware.recommendedMinVersion !== firmware.latestVersion && (
                     <MiniField label="Min safe" value={firmware.recommendedMinVersion} accent={'#d97706'} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
                   )}
