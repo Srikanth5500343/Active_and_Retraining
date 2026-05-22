@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010014",
+  "sys_id": "59c2f84883e40310319f5cc0deaad3b3",
+  "state": "New",
+  "priority": "4 - Low",
+  "urgency": "2 - Medium",
+  "category": "Network",
+  "opened_at": "2026-04-24 06:25:31",
+  "opened_by": "System Administrator",
+  "short_description": "Port 4 on SW-U04 CRC errors rising - suspect cable damage",
+  "description": "SW-U04 port 4 (Gi0/4) CRC error counter is climbing at ~200/minute. Link is up and passing traffic but with heavy retransmits. Cable is routed along a PDU run and may be picking up EMI, or a connector is cracked. Replace patch cable and clear counters; escalate if errors return within 1 hour.",
+  "target": {
+    "device": "SW-U04",
+    "port": 4,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.4",
+    "mac": "AA:BB:CC:10:10:04",
+    "model": "Catalyst 2960X-48",
+    "serial": "FCW2501A004",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U04:Gi0/4",
+    "interface_alias": "Gi0/4",
+    "port_short_description": "admin=up oper=up speed=1G duplex=full vlan=10 mode=access stp=forwarding",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 4
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=59c2f84883e40310319f5cc0deaad3b3",
+  "polled_at": "2026-04-24T13:34:00Z"
+}

@@ -1,0 +1,422 @@
+{
+  "image": "H:\\dark_mobile\\outputs\\RK-00A187E2\\original_image.jpg",
+  "rack_bounds": [
+    14,
+    0,
+    778,
+    1199
+  ],
+  "unit_source": "device_tiling",
+  "units_detected": [
+    "u18",
+    "u17",
+    "u16",
+    "u15",
+    "u14",
+    "u13",
+    "u12",
+    "u11",
+    "u10",
+    "u09",
+    "u08",
+    "u07",
+    "u06",
+    "u05",
+    "u04",
+    "u03",
+    "u02",
+    "u01"
+  ],
+  "device_mapping": {
+    "Closed Unit": [
+      "u03",
+      "u05",
+      "u09",
+      "u11",
+      "u14",
+      "u16",
+      "u18"
+    ],
+    "Patch Panel": [
+      "u06",
+      "u08",
+      "u12",
+      "u13",
+      "u17",
+      "u18"
+    ],
+    "Switch": [
+      "u02",
+      "u04",
+      "u07",
+      "u10",
+      "u15"
+    ],
+    "Server": [
+      "u01"
+    ]
+  },
+  "devices": [
+    {
+      "class_id": 0,
+      "class_name": "Closed Unit",
+      "confidence": 0.1864624172449112,
+      "box": [
+        108,
+        0,
+        702,
+        16
+      ],
+      "center": [
+        405,
+        8
+      ],
+      "source": "general_model+lowconf",
+      "units": [
+        "u18"
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "Patch Panel",
+      "confidence": 0.8567229509353638,
+      "box": [
+        79,
+        61,
+        753,
+        123
+      ],
+      "center": [
+        416,
+        92
+      ],
+      "source": "general_model",
+      "units": [
+        "u18"
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "Patch Panel",
+      "confidence": 0.76596999168396,
+      "box": [
+        78,
+        121,
+        754,
+        184
+      ],
+      "center": [
+        416,
+        152
+      ],
+      "source": "general_model",
+      "units": [
+        "u17"
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "Closed Unit",
+      "confidence": 0.8553158640861511,
+      "box": [
+        80,
+        184,
+        748,
+        252
+      ],
+      "center": [
+        414,
+        218
+      ],
+      "source": "general_model",
+      "units": [
+        "u16"
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "Switch",
+      "confidence": 0.8589670658111572,
+      "box": [
+        74,
+        250,
+        743,
+        310
+      ],
+      "center": [
+        408,
+        280
+      ],
+      "source": "general_model",
+      "units": [
+        "u15"
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "Closed Unit",
+      "confidence": 0.8437929153442383,
+      "box": [
+        73,
+        311,
+        744,
+        376
+      ],
+      "center": [
+        408,
+        343
+      ],
+      "source": "general_model",
+      "units": [
+        "u14"
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "Patch Panel",
+      "confidence": 0.8062712550163269,
+      "box": [
+        73,
+        374,
+        746,
+        431
+      ],
+      "center": [
+        409,
+        402
+      ],
+      "source": "general_model",
+      "units": [
+        "u13"
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "Patch Panel",
+      "confidence": 0.8630856275558472,
+      "box": [
+        78,
+        429,
+        747,
+        496
+      ],
+      "center": [
+        412,
+        462
+      ],
+      "source": "general_model",
+      "units": [
+        "u12"
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "Closed Unit",
+      "confidence": 0.8939352631568909,
+      "box": [
+        81,
+        492,
+        749,
+        556
+      ],
+      "center": [
+        415,
+        524
+      ],
+      "source": "general_model",
+      "units": [
+        "u11"
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "Switch",
+      "confidence": 0.8064892888069153,
+      "box": [
+        78,
+        552,
+        746,
+        628
+      ],
+      "center": [
+        412,
+        590
+      ],
+      "source": "general_model",
+      "units": [
+        "u10"
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "Closed Unit",
+      "confidence": 0.8699318170547485,
+      "box": [
+        86,
+        628,
+        745,
+        694
+      ],
+      "center": [
+        415,
+        661
+      ],
+      "source": "general_model",
+      "units": [
+        "u09"
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "Patch Panel",
+      "confidence": 0.774762749671936,
+      "box": [
+        138,
+        692,
+        676,
+        731
+      ],
+      "center": [
+        407,
+        711
+      ],
+      "source": "general_model",
+      "units": [
+        "u08"
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "Switch",
+      "confidence": 0.2098577618598938,
+      "box": [
+        84,
+        730,
+        713,
+        807
+      ],
+      "center": [
+        398,
+        768
+      ],
+      "source": "general_model",
+      "units": [
+        "u07"
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "Patch Panel",
+      "confidence": 0.7974451184272766,
+      "box": [
+        78,
+        809,
+        745,
+        871
+      ],
+      "center": [
+        411,
+        840
+      ],
+      "source": "general_model",
+      "units": [
+        "u06"
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "Closed Unit",
+      "confidence": 0.8303371667861938,
+      "box": [
+        78,
+        870,
+        747,
+        936
+      ],
+      "center": [
+        412,
+        903
+      ],
+      "source": "general_model",
+      "units": [
+        "u05"
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "Switch",
+      "confidence": 0.890437126159668,
+      "box": [
+        77,
+        933,
+        744,
+        996
+      ],
+      "center": [
+        410,
+        964
+      ],
+      "source": "general_model",
+      "units": [
+        "u04"
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "Closed Unit",
+      "confidence": 0.8009144067764282,
+      "box": [
+        78,
+        996,
+        747,
+        1057
+      ],
+      "center": [
+        412,
+        1026
+      ],
+      "source": "general_model",
+      "units": [
+        "u03"
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "Switch",
+      "confidence": 0.7802135348320007,
+      "box": [
+        82,
+        1055,
+        750,
+        1114
+      ],
+      "center": [
+        416,
+        1084
+      ],
+      "source": "general_model",
+      "units": [
+        "u02"
+      ]
+    },
+    {
+      "class_id": 14,
+      "class_name": "Server",
+      "confidence": 0.1399950236082077,
+      "box": [
+        76,
+        1114,
+        747,
+        1199
+      ],
+      "center": [
+        411,
+        1156
+      ],
+      "source": "server_model+lowconf",
+      "units": [
+        "u01"
+      ]
+    }
+  ]
+}

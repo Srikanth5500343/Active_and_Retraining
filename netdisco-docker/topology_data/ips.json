@@ -1,0 +1,5114 @@
+[
+  {
+    "mac": "00:1e:13:33:c2:8e",
+    "ip": "10.50.1.84",
+    "dns": "phone-ops-00",
+    "active": true,
+    "time_first": "2025-04-27T14:46:11",
+    "time_last": "2026-04-28T07:10:26"
+  },
+  {
+    "mac": "00:1e:13:53:ec:c2",
+    "ip": "10.90.1.145",
+    "dns": "handset-rnd-01",
+    "active": true,
+    "time_first": "2025-04-09T08:37:20",
+    "time_last": "2026-04-24T14:53:19"
+  },
+  {
+    "mac": "00:40:8c:89:21:6c",
+    "ip": "10.10.1.215",
+    "dns": "nvr-fin-02",
+    "active": true,
+    "time_first": "2025-06-20T00:02:08",
+    "time_last": "2026-04-24T09:53:25"
+  },
+  {
+    "mac": "00:18:82:86:db:cc",
+    "ip": "10.50.2.25",
+    "dns": "ap-ops-03",
+    "active": true,
+    "time_first": "2025-03-25T23:20:10",
+    "time_last": "2026-04-28T11:15:36"
+  },
+  {
+    "mac": "e4:54:e8:c3:ef:80",
+    "ip": "10.100.2.214",
+    "dns": "ws-qa-04",
+    "active": true,
+    "time_first": "2025-04-22T06:45:26",
+    "time_last": "2026-04-29T08:34:16"
+  },
+  {
+    "mac": "9c:8e:99:50:e8:01",
+    "ip": "10.20.3.37",
+    "dns": "db-hr-05",
+    "active": true,
+    "time_first": "2025-04-19T06:24:21",
+    "time_last": "2026-04-27T14:15:02"
+  },
+  {
+    "mac": "ac:de:48:52:00:a5",
+    "ip": "10.30.3.118",
+    "dns": "phone-eng-06",
+    "active": true,
+    "time_first": "2025-09-19T01:32:05",
+    "time_last": "2026-04-26T21:31:09"
+  },
+  {
+    "mac": "00:21:cc:23:40:41",
+    "ip": "10.20.3.221",
+    "dns": "pc-hr-07",
+    "active": true,
+    "time_first": "2025-04-05T01:37:34",
+    "time_last": "2026-04-28T06:45:31"
+  },
+  {
+    "mac": "c8:19:f7:bf:e0:e7",
+    "ip": "10.50.4.52",
+    "dns": "screen-ops-08",
+    "active": false,
+    "time_first": "2025-08-27T11:57:10",
+    "time_last": "2026-01-05T15:05:40"
+  },
+  {
+    "mac": "00:14:22:a9:24:79",
+    "ip": "10.40.4.72",
+    "dns": "ws-mkt-09",
+    "active": true,
+    "time_first": "2025-07-06T08:30:37",
+    "time_last": "2026-04-25T15:54:31"
+  },
+  {
+    "mac": "70:5a:0f:dc:b5:d8",
+    "ip": "10.40.4.196",
+    "dns": "ws-mkt-10",
+    "active": true,
+    "time_first": "2025-04-21T16:05:00",
+    "time_last": "2026-04-29T01:23:57"
+  },
+  {
+    "mac": "c8:5b:76:61:e5:47",
+    "ip": "10.20.5.22",
+    "dns": "ws-hr-11",
+    "active": true,
+    "time_first": "2025-08-16T17:28:59",
+    "time_last": "2026-04-27T16:31:57"
+  },
+  {
+    "mac": "00:1b:0c:79:55:d0",
+    "ip": "10.90.5.75",
+    "dns": "ap-rnd-12",
+    "active": true,
+    "time_first": "2025-08-29T16:30:46",
+    "time_last": "2026-04-26T15:07:30"
+  },
+  {
+    "mac": "64:16:7f:f9:4f:61",
+    "ip": "10.50.5.174",
+    "dns": "pbx-ops-13",
+    "active": true,
+    "time_first": "2025-03-31T16:41:42",
+    "time_last": "2026-04-25T09:11:51"
+  },
+  {
+    "mac": "00:1f:29:23:22:78",
+    "ip": "10.90.6.21",
+    "dns": "printer-rnd-14",
+    "active": true,
+    "time_first": "2025-04-06T02:50:18",
+    "time_last": "2026-04-25T10:47:40"
+  },
+  {
+    "mac": "c8:5b:76:a0:7a:87",
+    "ip": "10.50.6.112",
+    "dns": "ws-ops-15",
+    "active": true,
+    "time_first": "2025-05-30T02:23:12",
+    "time_last": "2026-04-27T08:06:01"
+  },
+  {
+    "mac": "00:1b:21:87:43:b2",
+    "ip": "10.20.6.203",
+    "dns": "file-hr-16",
+    "active": true,
+    "time_first": "2025-04-18T14:00:10",
+    "time_last": "2026-04-26T20:25:10"
+  },
+  {
+    "mac": "f4:cf:e2:3b:36:4f",
+    "ip": "10.20.7.146",
+    "dns": "voip-hr-17",
+    "active": true,
+    "time_first": "2025-06-12T11:19:00",
+    "time_last": "2026-04-24T09:56:28"
+  },
+  {
+    "mac": "c8:5b:76:d8:8d:16",
+    "ip": "10.10.7.230",
+    "dns": "laptop-fin-18",
+    "active": false,
+    "time_first": "2025-05-10T05:07:39",
+    "time_last": "2025-12-06T17:25:40"
+  },
+  {
+    "mac": "00:1a:11:12:bd:4b",
+    "ip": "10.20.8.79",
+    "dns": "thinkpad-hr-19",
+    "active": true,
+    "time_first": "2025-10-03T01:43:17",
+    "time_last": "2026-04-26T21:14:18"
+  },
+  {
+    "mac": "00:14:22:4f:79:53",
+    "ip": "10.60.8.216",
+    "dns": "thinkpad-it-20",
+    "active": true,
+    "time_first": "2025-05-02T06:47:44",
+    "time_last": "2026-04-23T06:25:19"
+  },
+  {
+    "mac": "ac:cc:8e:66:eb:b3",
+    "ip": "10.10.9.84",
+    "dns": "nvr-fin-22",
+    "active": true,
+    "time_first": "2025-05-05T08:50:29",
+    "time_last": "2026-04-27T20:15:50"
+  },
+  {
+    "mac": "64:16:7f:5b:87:13",
+    "ip": "10.10.9.206",
+    "dns": "phone-fin-24",
+    "active": false,
+    "time_first": "2025-07-16T12:35:38",
+    "time_last": "2025-11-27T13:59:30"
+  },
+  {
+    "mac": "ec:b1:d7:df:00:64",
+    "ip": "10.50.10.55",
+    "dns": "srv-ops-25",
+    "active": true,
+    "time_first": "2025-09-27T10:37:32",
+    "time_last": "2026-04-24T18:54:29"
+  },
+  {
+    "mac": "e4:5f:01:a7:ce:97",
+    "ip": "10.50.10.96",
+    "dns": "device-ops-26",
+    "active": true,
+    "time_first": "2025-09-03T01:40:03",
+    "time_last": "2026-04-24T18:47:30"
+  },
+  {
+    "mac": "00:1f:29:dc:a4:ee",
+    "ip": "10.50.10.203",
+    "dns": "mfp-ops-27",
+    "active": true,
+    "time_first": "2025-05-29T07:29:21",
+    "time_last": "2026-04-25T20:37:21"
+  },
+  {
+    "mac": "00:1f:29:73:65:4b",
+    "ip": "10.40.11.149",
+    "dns": "thinkpad-mkt-28",
+    "active": false,
+    "time_first": "2025-08-23T11:15:20",
+    "time_last": "2025-12-22T22:10:21"
+  },
+  {
+    "mac": "f8:db:88:4b:02:36",
+    "ip": "10.80.11.205",
+    "dns": "macbook-lab-29",
+    "active": true,
+    "time_first": "2025-08-28T16:03:45",
+    "time_last": "2026-04-23T19:24:34"
+  },
+  {
+    "mac": "70:5a:0f:a2:e2:da",
+    "ip": "10.30.12.52",
+    "dns": "mfp-eng-30",
+    "active": true,
+    "time_first": "2025-06-23T20:42:52",
+    "time_last": "2026-04-23T03:46:08"
+  },
+  {
+    "mac": "d4:be:d9:7a:8c:e1",
+    "ip": "10.90.12.110",
+    "dns": "macbook-rnd-31",
+    "active": false,
+    "time_first": "2025-08-15T07:00:17",
+    "time_last": "2026-01-12T06:23:01"
+  },
+  {
+    "mac": "f8:db:88:20:d4:d0",
+    "ip": "10.30.12.143",
+    "dns": "pc-eng-32",
+    "active": true,
+    "time_first": "2025-07-10T06:03:48",
+    "time_last": "2026-04-29T00:02:21"
+  },
+  {
+    "mac": "ac:cc:8e:98:c7:d6",
+    "ip": "10.80.12.212",
+    "dns": "cam-lab-33",
+    "active": true,
+    "time_first": "2025-05-17T12:15:23",
+    "time_last": "2026-04-23T20:07:19"
+  },
+  {
+    "mac": "00:21:cc:cf:54:ef",
+    "ip": "10.70.1.112",
+    "dns": "macbook-sales-34",
+    "active": true,
+    "time_first": "2025-03-29T07:02:04",
+    "time_last": "2026-04-25T16:46:02"
+  },
+  {
+    "mac": "70:e4:22:19:85:c2",
+    "ip": "10.30.1.141",
+    "dns": "voip-eng-35",
+    "active": true,
+    "time_first": "2025-07-12T11:56:35",
+    "time_last": "2026-04-27T01:47:59"
+  },
+  {
+    "mac": "84:25:db:1a:b3:72",
+    "ip": "10.20.1.191",
+    "dns": "screen-hr-36",
+    "active": true,
+    "time_first": "2025-05-08T04:34:52",
+    "time_last": "2026-04-24T21:00:18"
+  },
+  {
+    "mac": "b8:ca:3a:3a:6f:ee",
+    "ip": "10.30.2.112",
+    "dns": "desktop-eng-37",
+    "active": true,
+    "time_first": "2025-05-11T01:23:20",
+    "time_last": "2026-04-28T06:18:41"
+  },
+  {
+    "mac": "b8:27:eb:c0:cb:65",
+    "ip": "10.100.2.209",
+    "dns": "iot-qa-38",
+    "active": false,
+    "time_first": "2025-05-26T07:33:02",
+    "time_last": "2025-12-07T17:07:05"
+  },
+  {
+    "mac": "00:21:cc:bd:23:ae",
+    "ip": "10.60.3.157",
+    "dns": "pc-it-39",
+    "active": false,
+    "time_first": "2025-07-19T10:13:04",
+    "time_last": "2025-12-21T10:00:57"
+  },
+  {
+    "mac": "78:1d:ba:8a:f7:ee",
+    "ip": "10.30.3.201",
+    "dns": "wifi-eng-40",
+    "active": true,
+    "time_first": "2025-05-18T05:34:27",
+    "time_last": "2026-04-27T13:24:34"
+  },
+  {
+    "mac": "70:e4:22:c2:ac:0e",
+    "ip": "10.100.4.112",
+    "dns": "access-qa-41",
+    "active": true,
+    "time_first": "2025-08-07T10:25:55",
+    "time_last": "2026-04-26T00:35:29"
+  },
+  {
+    "mac": "00:1f:29:7b:d0:fa",
+    "ip": "10.90.4.135",
+    "dns": "laptop-rnd-42",
+    "active": true,
+    "time_first": "2025-08-24T08:56:42",
+    "time_last": "2026-04-26T02:30:58"
+  },
+  {
+    "mac": "ec:b1:d7:9c:bc:f2",
+    "ip": "10.70.4.205",
+    "dns": "pc-sales-43",
+    "active": true,
+    "time_first": "2025-08-03T16:27:52",
+    "time_last": "2026-04-22T11:03:57"
+  },
+  {
+    "mac": "9c:8e:99:62:a1:3d",
+    "ip": "10.40.5.56",
+    "dns": "srv-mkt-44",
+    "active": true,
+    "time_first": "2025-04-04T06:17:15",
+    "time_last": "2026-04-24T14:33:09"
+  },
+  {
+    "mac": "00:1f:29:b8:5b:9a",
+    "ip": "10.40.5.144",
+    "dns": "mfp-mkt-45",
+    "active": false,
+    "time_first": "2025-06-26T14:39:05",
+    "time_last": "2026-01-12T00:09:10"
+  },
+  {
+    "mac": "70:e4:22:91:f0:f5",
+    "ip": "10.20.5.226",
+    "dns": "phone-hr-46",
+    "active": true,
+    "time_first": "2025-09-04T13:33:15",
+    "time_last": "2026-04-29T01:52:07"
+  },
+  {
+    "mac": "dc:a6:32:1b:4d:4c",
+    "ip": "10.20.6.50",
+    "dns": "device-hr-47",
+    "active": true,
+    "time_first": "2025-04-04T14:41:48",
+    "time_last": "2026-04-28T20:11:22"
+  },
+  {
+    "mac": "f8:db:88:db:9c:1e",
+    "ip": "10.80.6.89",
+    "dns": "macbook-lab-48",
+    "active": true,
+    "time_first": "2025-05-16T10:04:16",
+    "time_last": "2026-04-22T19:18:17"
+  },
+  {
+    "mac": "00:1e:13:50:01:d1",
+    "ip": "10.30.6.134",
+    "dns": "handset-eng-49",
+    "active": true,
+    "time_first": "2025-06-14T16:12:22",
+    "time_last": "2026-04-27T09:34:06"
+  },
+  {
+    "mac": "00:04:f2:73:4c:88",
+    "ip": "10.70.7.104",
+    "dns": "phone-sales-50",
+    "active": true,
+    "time_first": "2025-09-27T03:43:58",
+    "time_last": "2026-04-28T06:37:29"
+  },
+  {
+    "mac": "a4:83:e7:8b:fc:e0",
+    "ip": "10.50.7.215",
+    "dns": "thinkpad-ops-51",
+    "active": false,
+    "time_first": "2025-10-03T11:10:05",
+    "time_last": "2025-12-27T05:37:52"
+  },
+  {
+    "mac": "00:21:cc:59:f0:e2",
+    "ip": "10.50.8.12",
+    "dns": "pc-ops-52",
+    "active": true,
+    "time_first": "2025-09-05T03:21:07",
+    "time_last": "2026-04-25T08:09:52"
+  },
+  {
+    "mac": "70:5a:0f:35:52:a8",
+    "ip": "10.60.8.112",
+    "dns": "desktop-it-53",
+    "active": true,
+    "time_first": "2025-07-04T08:14:55",
+    "time_last": "2026-04-24T19:11:09"
+  },
+  {
+    "mac": "9c:8e:99:00:ec:d3",
+    "ip": "10.20.8.222",
+    "dns": "desktop-hr-54",
+    "active": false,
+    "time_first": "2025-06-29T17:59:27",
+    "time_last": "2025-12-08T04:10:43"
+  },
+  {
+    "mac": "ec:b1:d7:f8:3e:0e",
+    "ip": "10.50.9.54",
+    "dns": "desktop-ops-55",
+    "active": true,
+    "time_first": "2025-06-11T15:54:57",
+    "time_last": "2026-04-27T18:17:52"
+  },
+  {
+    "mac": "ec:b1:d7:4e:ff:95",
+    "ip": "10.20.9.77",
+    "dns": "mfp-hr-56",
+    "active": true,
+    "time_first": "2025-08-17T18:03:37",
+    "time_last": "2026-04-23T14:15:58"
+  },
+  {
+    "mac": "ec:b1:d7:8d:d4:ae",
+    "ip": "10.100.9.134",
+    "dns": "printer-qa-57",
+    "active": true,
+    "time_first": "2025-07-01T21:21:32",
+    "time_last": "2026-04-23T16:38:51"
+  },
+  {
+    "mac": "ec:b1:d7:aa:c1:e9",
+    "ip": "10.80.9.212",
+    "dns": "mfp-lab-58",
+    "active": true,
+    "time_first": "2025-04-20T12:24:42",
+    "time_last": "2026-04-22T13:43:47"
+  },
+  {
+    "mac": "00:18:82:c3:c5:4d",
+    "ip": "10.60.10.40",
+    "dns": "access-it-59",
+    "active": true,
+    "time_first": "2025-10-04T00:48:21",
+    "time_last": "2026-04-25T22:06:54"
+  },
+  {
+    "mac": "00:1f:29:4f:26:f0",
+    "ip": "10.30.10.231",
+    "dns": "app-eng-60",
+    "active": true,
+    "time_first": "2025-08-19T10:23:26",
+    "time_last": "2026-04-25T01:47:32"
+  },
+  {
+    "mac": "c8:5b:76:23:78:93",
+    "ip": "10.80.11.12",
+    "dns": "thinkpad-lab-61",
+    "active": true,
+    "time_first": "2025-05-15T02:01:17",
+    "time_last": "2026-04-26T09:35:34"
+  },
+  {
+    "mac": "00:18:82:a6:1c:96",
+    "ip": "10.50.11.72",
+    "dns": "ap-ops-62",
+    "active": true,
+    "time_first": "2025-07-17T07:12:12",
+    "time_last": "2026-04-27T17:28:29"
+  },
+  {
+    "mac": "00:14:22:7b:fe:49",
+    "ip": "10.100.11.169",
+    "dns": "desktop-qa-63",
+    "active": true,
+    "time_first": "2025-06-05T20:33:27",
+    "time_last": "2026-04-26T05:17:31"
+  },
+  {
+    "mac": "00:14:22:99:d9:80",
+    "ip": "10.80.12.47",
+    "dns": "macbook-lab-64",
+    "active": true,
+    "time_first": "2025-08-12T00:18:57",
+    "time_last": "2026-04-22T10:36:18"
+  },
+  {
+    "mac": "9c:8e:99:ca:8c:04",
+    "ip": "10.50.12.112",
+    "dns": "laptop-ops-65",
+    "active": true,
+    "time_first": "2025-05-27T06:39:44",
+    "time_last": "2026-04-24T05:23:44"
+  },
+  {
+    "mac": "ec:b1:d7:14:9e:e1",
+    "ip": "10.20.12.231",
+    "dns": "pc-hr-67",
+    "active": false,
+    "time_first": "2025-07-30T11:09:57",
+    "time_last": "2026-01-26T07:06:41"
+  },
+  {
+    "mac": "b8:ca:3a:8b:54:83",
+    "ip": "10.90.1.103",
+    "dns": "macbook-rnd-68",
+    "active": true,
+    "time_first": "2025-04-05T14:23:54",
+    "time_last": "2026-04-22T15:58:46"
+  },
+  {
+    "mac": "f8:db:88:ca:07:87",
+    "ip": "10.90.2.15",
+    "dns": "desktop-rnd-69",
+    "active": true,
+    "time_first": "2025-07-12T11:31:37",
+    "time_last": "2026-04-24T17:27:53"
+  },
+  {
+    "mac": "b8:27:eb:a7:71:20",
+    "ip": "10.40.2.71",
+    "dns": "sensor-mkt-70",
+    "active": true,
+    "time_first": "2025-07-10T14:00:56",
+    "time_last": "2026-04-24T12:43:08"
+  },
+  {
+    "mac": "d4:be:d9:78:45:c6",
+    "ip": "10.80.2.136",
+    "dns": "ws-lab-71",
+    "active": true,
+    "time_first": "2025-05-30T08:09:58",
+    "time_last": "2026-04-24T05:39:08"
+  },
+  {
+    "mac": "70:e4:22:d0:8f:10",
+    "ip": "10.20.2.229",
+    "dns": "voip-hr-72",
+    "active": true,
+    "time_first": "2025-08-28T23:36:19",
+    "time_last": "2026-04-26T07:47:27"
+  },
+  {
+    "mac": "64:16:7f:61:3e:e8",
+    "ip": "10.10.3.27",
+    "dns": "pbx-fin-73",
+    "active": false,
+    "time_first": "2025-08-30T00:23:31",
+    "time_last": "2025-12-06T11:43:01"
+  },
+  {
+    "mac": "b8:ca:3a:6e:77:a8",
+    "ip": "10.20.3.83",
+    "dns": "thinkpad-hr-74",
+    "active": true,
+    "time_first": "2025-05-06T17:00:35",
+    "time_last": "2026-04-25T06:22:30"
+  },
+  {
+    "mac": "00:40:8c:79:a5:08",
+    "ip": "10.30.4.32",
+    "dns": "cam-eng-75",
+    "active": true,
+    "time_first": "2025-09-30T22:59:04",
+    "time_last": "2026-04-24T05:53:28"
+  },
+  {
+    "mac": "ac:cc:8e:16:9a:ea",
+    "ip": "10.90.4.169",
+    "dns": "cam-rnd-76",
+    "active": true,
+    "time_first": "2025-10-05T04:58:36",
+    "time_last": "2026-04-22T10:44:14"
+  },
+  {
+    "mac": "e4:54:e8:4b:21:40",
+    "ip": "10.20.4.210",
+    "dns": "ws-hr-77",
+    "active": true,
+    "time_first": "2025-06-06T19:43:54",
+    "time_last": "2026-04-25T14:22:34"
+  },
+  {
+    "mac": "3c:fd:fe:6e:dc:e7",
+    "ip": "10.20.5.111",
+    "dns": "srv-hr-78",
+    "active": true,
+    "time_first": "2025-07-20T16:11:41",
+    "time_last": "2026-04-23T15:29:36"
+  },
+  {
+    "mac": "9c:8e:99:22:2e:2b",
+    "ip": "10.30.5.220",
+    "dns": "thinkpad-eng-79",
+    "active": false,
+    "time_first": "2025-09-22T02:59:26",
+    "time_last": "2025-11-26T13:23:22"
+  },
+  {
+    "mac": "00:1f:29:d8:1a:93",
+    "ip": "10.70.6.52",
+    "dns": "mfp-sales-80",
+    "active": true,
+    "time_first": "2025-08-02T02:35:53",
+    "time_last": "2026-04-25T09:24:34"
+  },
+  {
+    "mac": "d4:be:d9:8e:73:db",
+    "ip": "10.90.6.77",
+    "dns": "desktop-rnd-81",
+    "active": true,
+    "time_first": "2025-03-30T12:40:34",
+    "time_last": "2026-04-23T17:00:15"
+  },
+  {
+    "mac": "c8:5b:76:9e:ad:b3",
+    "ip": "10.10.6.147",
+    "dns": "ws-fin-82",
+    "active": false,
+    "time_first": "2025-04-20T11:09:32",
+    "time_last": "2025-12-13T19:19:45"
+  },
+  {
+    "mac": "00:1b:0c:d6:e8:ae",
+    "ip": "10.90.6.214",
+    "dns": "phone-rnd-83",
+    "active": true,
+    "time_first": "2025-08-10T02:38:26",
+    "time_last": "2026-04-27T04:00:13"
+  },
+  {
+    "mac": "00:1e:13:29:8b:e2",
+    "ip": "10.100.7.53",
+    "dns": "ap-qa-84",
+    "active": true,
+    "time_first": "2025-07-06T07:19:25",
+    "time_last": "2026-04-26T08:14:11"
+  },
+  {
+    "mac": "70:5a:0f:17:70:ca",
+    "ip": "10.90.7.149",
+    "dns": "thinkpad-rnd-85",
+    "active": true,
+    "time_first": "2025-09-30T11:32:47",
+    "time_last": "2026-04-28T00:09:24"
+  },
+  {
+    "mac": "70:5a:0f:75:b5:24",
+    "ip": "10.30.8.94",
+    "dns": "ws-eng-86",
+    "active": true,
+    "time_first": "2025-05-16T00:42:05",
+    "time_last": "2026-04-26T09:12:54"
+  },
+  {
+    "mac": "e4:54:e8:cf:0a:a6",
+    "ip": "10.70.8.137",
+    "dns": "macbook-sales-87",
+    "active": true,
+    "time_first": "2025-04-04T21:57:04",
+    "time_last": "2026-04-26T05:12:13"
+  },
+  {
+    "mac": "ac:de:48:28:ca:9e",
+    "ip": "10.70.8.215",
+    "dns": "thinkpad-sales-88",
+    "active": true,
+    "time_first": "2025-08-28T02:57:14",
+    "time_last": "2026-04-23T23:36:29"
+  },
+  {
+    "mac": "d4:be:d9:34:4a:83",
+    "ip": "10.60.9.25",
+    "dns": "web-it-89",
+    "active": true,
+    "time_first": "2025-06-12T22:59:05",
+    "time_last": "2026-04-24T02:47:01"
+  },
+  {
+    "mac": "ac:cc:8e:a5:a1:4d",
+    "ip": "10.100.9.113",
+    "dns": "nvr-qa-90",
+    "active": true,
+    "time_first": "2025-07-09T15:40:43",
+    "time_last": "2026-04-25T00:25:38"
+  },
+  {
+    "mac": "f0:18:98:1d:bc:92",
+    "ip": "10.80.9.132",
+    "dns": "macbook-lab-91",
+    "active": false,
+    "time_first": "2025-04-21T14:05:59",
+    "time_last": "2025-11-14T21:47:45"
+  },
+  {
+    "mac": "00:1b:21:60:a4:f3",
+    "ip": "10.80.9.231",
+    "dns": "file-lab-92",
+    "active": true,
+    "time_first": "2025-04-02T21:25:57",
+    "time_last": "2026-04-26T06:48:43"
+  },
+  {
+    "mac": "00:1e:13:51:ba:be",
+    "ip": "10.80.10.163",
+    "dns": "voip-lab-93",
+    "active": true,
+    "time_first": "2025-07-25T22:54:01",
+    "time_last": "2026-04-24T00:23:23"
+  },
+  {
+    "mac": "00:04:f2:c5:91:81",
+    "ip": "10.60.10.225",
+    "dns": "phone-it-94",
+    "active": true,
+    "time_first": "2025-06-02T02:59:32",
+    "time_last": "2026-04-23T02:14:03"
+  },
+  {
+    "mac": "9c:8e:99:2b:9e:c0",
+    "ip": "10.50.11.18",
+    "dns": "mfp-ops-95",
+    "active": true,
+    "time_first": "2025-08-06T17:48:45",
+    "time_last": "2026-04-28T13:01:50"
+  },
+  {
+    "mac": "00:04:f2:6d:ae:f8",
+    "ip": "10.60.12.21",
+    "dns": "voip-it-96",
+    "active": true,
+    "time_first": "2025-03-25T10:36:43",
+    "time_last": "2026-04-28T08:28:09"
+  },
+  {
+    "mac": "00:1b:21:c0:4e:53",
+    "ip": "10.60.12.138",
+    "dns": "file-it-97",
+    "active": true,
+    "time_first": "2025-05-25T20:50:27",
+    "time_last": "2026-04-25T01:32:36"
+  },
+  {
+    "mac": "f8:db:88:e5:77:7a",
+    "ip": "10.100.1.118",
+    "dns": "macbook-qa-98",
+    "active": true,
+    "time_first": "2025-05-02T17:06:19",
+    "time_last": "2026-04-26T03:42:19"
+  },
+  {
+    "mac": "a4:83:e7:d6:52:66",
+    "ip": "10.50.1.162",
+    "dns": "phone-ops-99",
+    "active": true,
+    "time_first": "2025-09-13T18:11:13",
+    "time_last": "2026-04-27T16:29:58"
+  },
+  {
+    "mac": "00:21:cc:52:8b:e6",
+    "ip": "10.50.2.58",
+    "dns": "ws-ops-00",
+    "active": true,
+    "time_first": "2025-09-11T23:13:35",
+    "time_last": "2026-04-26T09:00:16"
+  },
+  {
+    "mac": "00:1f:29:bf:78:c5",
+    "ip": "10.70.2.95",
+    "dns": "srv-sales-01",
+    "active": true,
+    "time_first": "2025-07-28T10:55:09",
+    "time_last": "2026-04-29T05:45:52"
+  },
+  {
+    "mac": "00:40:8c:47:f0:e5",
+    "ip": "10.50.2.234",
+    "dns": "nvr-ops-02",
+    "active": true,
+    "time_first": "2025-04-13T06:23:02",
+    "time_last": "2026-04-29T07:18:26"
+  },
+  {
+    "mac": "00:1a:11:3e:18:7a",
+    "ip": "10.50.3.29",
+    "dns": "mobile-ops-03",
+    "active": true,
+    "time_first": "2025-05-05T15:47:03",
+    "time_last": "2026-04-26T05:42:17"
+  },
+  {
+    "mac": "54:e1:ad:00:b4:7b",
+    "ip": "10.30.3.157",
+    "dns": "desktop-eng-04",
+    "active": true,
+    "time_first": "2025-09-03T23:23:35",
+    "time_last": "2026-04-24T18:14:23"
+  },
+  {
+    "mac": "84:25:db:c6:bf:81",
+    "ip": "10.80.3.230",
+    "dns": "display-lab-05",
+    "active": true,
+    "time_first": "2025-08-01T00:26:57",
+    "time_last": "2026-04-28T23:08:59"
+  },
+  {
+    "mac": "c8:5b:76:ad:59:ed",
+    "ip": "10.30.4.32",
+    "dns": "ws-eng-06",
+    "active": true,
+    "time_first": "2025-07-07T17:33:01",
+    "time_last": "2026-04-28T03:52:38"
+  },
+  {
+    "mac": "00:14:22:cb:f2:81",
+    "ip": "10.60.4.222",
+    "dns": "desktop-it-07",
+    "active": false,
+    "time_first": "2025-06-04T01:22:39",
+    "time_last": "2026-01-10T19:50:01"
+  },
+  {
+    "mac": "00:04:f2:e1:c5:ad",
+    "ip": "10.60.5.35",
+    "dns": "voip-it-08",
+    "active": true,
+    "time_first": "2025-07-04T04:43:28",
+    "time_last": "2026-04-25T22:54:57"
+  },
+  {
+    "mac": "b8:27:eb:96:a4:34",
+    "ip": "10.70.5.81",
+    "dns": "device-sales-09",
+    "active": false,
+    "time_first": "2025-06-01T06:05:15",
+    "time_last": "2026-01-08T18:54:35"
+  },
+  {
+    "mac": "64:16:7f:de:8c:1d",
+    "ip": "10.10.5.152",
+    "dns": "handset-fin-10",
+    "active": false,
+    "time_first": "2025-06-05T22:26:23",
+    "time_last": "2026-01-03T02:33:11"
+  },
+  {
+    "mac": "c8:19:f7:22:78:bb",
+    "ip": "10.80.5.198",
+    "dns": "display-lab-11",
+    "active": true,
+    "time_first": "2025-04-04T13:03:28",
+    "time_last": "2026-04-29T05:03:33"
+  },
+  {
+    "mac": "00:21:cc:bb:cb:a0",
+    "ip": "10.100.6.43",
+    "dns": "laptop-qa-12",
+    "active": true,
+    "time_first": "2025-08-22T12:21:50",
+    "time_last": "2026-04-28T15:26:26"
+  },
+  {
+    "mac": "f0:18:98:6d:92:fb",
+    "ip": "10.50.6.98",
+    "dns": "thinkpad-ops-13",
+    "active": true,
+    "time_first": "2025-09-14T07:00:12",
+    "time_last": "2026-04-28T22:03:33"
+  },
+  {
+    "mac": "64:16:7f:59:b9:72",
+    "ip": "10.30.7.235",
+    "dns": "handset-eng-14",
+    "active": false,
+    "time_first": "2025-09-01T05:47:39",
+    "time_last": "2026-01-25T13:11:43"
+  },
+  {
+    "mac": "70:5a:0f:2c:21:9e",
+    "ip": "10.90.8.49",
+    "dns": "printer-rnd-15",
+    "active": true,
+    "time_first": "2025-05-21T01:13:07",
+    "time_last": "2026-04-26T02:05:03"
+  },
+  {
+    "mac": "9c:8e:99:b0:41:5d",
+    "ip": "10.20.8.99",
+    "dns": "mfp-hr-16",
+    "active": true,
+    "time_first": "2025-09-15T15:08:30",
+    "time_last": "2026-04-25T22:01:07"
+  },
+  {
+    "mac": "d4:be:d9:91:28:80",
+    "ip": "10.40.8.223",
+    "dns": "macbook-mkt-17",
+    "active": true,
+    "time_first": "2025-04-03T04:00:43",
+    "time_last": "2026-04-27T12:23:32"
+  },
+  {
+    "mac": "54:e1:ad:57:ac:15",
+    "ip": "10.100.9.19",
+    "dns": "pc-qa-18",
+    "active": true,
+    "time_first": "2025-10-05T18:18:26",
+    "time_last": "2026-04-29T02:51:44"
+  },
+  {
+    "mac": "00:04:f2:94:9a:f7",
+    "ip": "10.80.9.104",
+    "dns": "handset-lab-19",
+    "active": true,
+    "time_first": "2025-05-02T23:13:23",
+    "time_last": "2026-04-26T14:16:35"
+  },
+  {
+    "mac": "70:5a:0f:49:a0:a3",
+    "ip": "10.80.9.151",
+    "dns": "ws-lab-20",
+    "active": true,
+    "time_first": "2025-04-22T06:46:07",
+    "time_last": "2026-04-22T14:38:13"
+  },
+  {
+    "mac": "ec:b1:d7:e6:7e:48",
+    "ip": "10.80.9.207",
+    "dns": "printer-lab-21",
+    "active": false,
+    "time_first": "2025-08-14T09:28:56",
+    "time_last": "2026-01-01T00:32:25"
+  },
+  {
+    "mac": "f4:cf:e2:61:51:ff",
+    "ip": "10.100.10.30",
+    "dns": "access-qa-22",
+    "active": true,
+    "time_first": "2025-07-10T01:47:14",
+    "time_last": "2026-04-23T06:48:55"
+  },
+  {
+    "mac": "54:e1:ad:18:19:90",
+    "ip": "10.40.10.92",
+    "dns": "thinkpad-mkt-23",
+    "active": true,
+    "time_first": "2025-04-17T23:16:13",
+    "time_last": "2026-04-24T20:35:03"
+  },
+  {
+    "mac": "b8:27:eb:ce:bb:17",
+    "ip": "10.50.10.153",
+    "dns": "device-ops-24",
+    "active": true,
+    "time_first": "2025-06-19T09:08:53",
+    "time_last": "2026-04-28T01:47:52"
+  },
+  {
+    "mac": "ec:8e:b5:41:31:c9",
+    "ip": "10.100.10.197",
+    "dns": "file-qa-25",
+    "active": true,
+    "time_first": "2025-03-28T01:55:09",
+    "time_last": "2026-04-25T12:47:03"
+  },
+  {
+    "mac": "00:04:f2:aa:f2:e9",
+    "ip": "10.10.11.18",
+    "dns": "phone-fin-26",
+    "active": false,
+    "time_first": "2025-04-15T19:28:04",
+    "time_last": "2026-01-25T11:01:32"
+  },
+  {
+    "mac": "9c:8e:99:fa:99:f3",
+    "ip": "10.90.11.104",
+    "dns": "thinkpad-rnd-27",
+    "active": true,
+    "time_first": "2025-07-29T18:22:57",
+    "time_last": "2026-04-24T17:18:01"
+  },
+  {
+    "mac": "ac:cc:8e:1a:f5:57",
+    "ip": "10.50.11.176",
+    "dns": "cam-ops-28",
+    "active": true,
+    "time_first": "2025-05-20T04:49:20",
+    "time_last": "2026-04-24T00:21:58"
+  },
+  {
+    "mac": "ec:b1:d7:d6:4d:d3",
+    "ip": "10.10.12.30",
+    "dns": "mfp-fin-29",
+    "active": true,
+    "time_first": "2025-07-21T08:41:18",
+    "time_last": "2026-04-24T00:18:16"
+  },
+  {
+    "mac": "d4:be:d9:a0:58:eb",
+    "ip": "10.80.12.214",
+    "dns": "pc-lab-30",
+    "active": true,
+    "time_first": "2025-08-03T23:19:49",
+    "time_last": "2026-04-26T22:58:47"
+  },
+  {
+    "mac": "00:04:f2:98:73:98",
+    "ip": "10.40.1.165",
+    "dns": "voip-mkt-31",
+    "active": true,
+    "time_first": "2025-05-23T10:58:31",
+    "time_last": "2026-04-24T14:32:22"
+  },
+  {
+    "mac": "9c:8e:99:b0:4a:94",
+    "ip": "10.20.1.215",
+    "dns": "mfp-hr-32",
+    "active": false,
+    "time_first": "2025-04-03T08:59:38",
+    "time_last": "2026-01-31T12:49:45"
+  },
+  {
+    "mac": "00:1e:13:8b:46:37",
+    "ip": "10.90.2.45",
+    "dns": "voip-rnd-33",
+    "active": true,
+    "time_first": "2025-06-16T01:42:48",
+    "time_last": "2026-04-27T17:46:01"
+  },
+  {
+    "mac": "00:1b:0c:f1:33:46",
+    "ip": "10.70.2.115",
+    "dns": "voip-sales-34",
+    "active": false,
+    "time_first": "2025-06-23T08:48:27",
+    "time_last": "2025-11-07T12:39:38"
+  },
+  {
+    "mac": "9c:8e:99:2d:76:13",
+    "ip": "10.50.3.13",
+    "dns": "pc-ops-35",
+    "active": true,
+    "time_first": "2025-09-06T10:11:20",
+    "time_last": "2026-04-23T06:16:58"
+  },
+  {
+    "mac": "ec:8e:b5:36:ab:91",
+    "ip": "10.10.3.209",
+    "dns": "srv-fin-36",
+    "active": true,
+    "time_first": "2025-06-05T04:12:01",
+    "time_last": "2026-04-25T18:24:52"
+  },
+  {
+    "mac": "ec:b1:d7:ea:83:5f",
+    "ip": "10.20.4.20",
+    "dns": "db-hr-37",
+    "active": false,
+    "time_first": "2025-08-05T00:21:41",
+    "time_last": "2026-01-09T22:26:30"
+  },
+  {
+    "mac": "64:16:7f:cd:30:5e",
+    "ip": "10.90.4.75",
+    "dns": "voip-rnd-38",
+    "active": true,
+    "time_first": "2025-07-07T22:43:13",
+    "time_last": "2026-04-22T21:16:52"
+  },
+  {
+    "mac": "9c:8e:99:3c:ee:9d",
+    "ip": "10.60.4.133",
+    "dns": "printer-it-40",
+    "active": true,
+    "time_first": "2025-05-27T05:20:47",
+    "time_last": "2026-04-22T23:25:05"
+  },
+  {
+    "mac": "64:16:7f:44:f4:4e",
+    "ip": "10.100.5.24",
+    "dns": "phone-qa-41",
+    "active": true,
+    "time_first": "2025-03-27T16:04:40",
+    "time_last": "2026-04-26T19:43:51"
+  },
+  {
+    "mac": "70:5a:0f:39:1f:67",
+    "ip": "10.90.6.134",
+    "dns": "mfp-rnd-42",
+    "active": true,
+    "time_first": "2025-09-11T11:12:30",
+    "time_last": "2026-04-27T03:22:34"
+  },
+  {
+    "mac": "e4:54:e8:1c:e8:43",
+    "ip": "10.20.6.218",
+    "dns": "pc-hr-43",
+    "active": true,
+    "time_first": "2025-07-12T01:52:02",
+    "time_last": "2026-04-29T00:48:00"
+  },
+  {
+    "mac": "e4:5f:01:b0:20:1e",
+    "ip": "10.20.7.157",
+    "dns": "iot-hr-44",
+    "active": true,
+    "time_first": "2025-09-27T15:12:29",
+    "time_last": "2026-04-22T21:37:32"
+  },
+  {
+    "mac": "e4:54:e8:44:b2:3c",
+    "ip": "10.70.8.15",
+    "dns": "macbook-sales-46",
+    "active": true,
+    "time_first": "2025-06-25T23:39:33",
+    "time_last": "2026-04-25T17:39:16"
+  },
+  {
+    "mac": "d4:be:d9:d9:c2:75",
+    "ip": "10.80.8.116",
+    "dns": "pc-lab-47",
+    "active": true,
+    "time_first": "2025-08-03T04:55:59",
+    "time_last": "2026-04-27T12:11:27"
+  },
+  {
+    "mac": "e4:5f:01:22:33:11",
+    "ip": "10.10.8.203",
+    "dns": "iot-fin-48",
+    "active": true,
+    "time_first": "2025-05-30T00:47:11",
+    "time_last": "2026-04-23T07:58:05"
+  },
+  {
+    "mac": "00:14:22:77:a3:a4",
+    "ip": "10.30.9.28",
+    "dns": "thinkpad-eng-49",
+    "active": true,
+    "time_first": "2025-04-19T04:27:36",
+    "time_last": "2026-04-22T12:54:11"
+  },
+  {
+    "mac": "f8:db:88:b0:c3:a3",
+    "ip": "10.90.9.73",
+    "dns": "macbook-rnd-50",
+    "active": true,
+    "time_first": "2025-07-21T18:51:21",
+    "time_last": "2026-04-27T08:07:07"
+  },
+  {
+    "mac": "d4:be:d9:d3:d5:44",
+    "ip": "10.30.9.133",
+    "dns": "desktop-eng-51",
+    "active": true,
+    "time_first": "2025-08-21T10:31:15",
+    "time_last": "2026-04-27T03:00:56"
+  },
+  {
+    "mac": "00:14:22:14:25:60",
+    "ip": "10.50.9.233",
+    "dns": "macbook-ops-52",
+    "active": true,
+    "time_first": "2025-06-15T22:05:53",
+    "time_last": "2026-04-24T17:41:46"
+  },
+  {
+    "mac": "00:1a:11:3c:f5:7c",
+    "ip": "10.40.10.57",
+    "dns": "mobile-mkt-53",
+    "active": true,
+    "time_first": "2025-05-23T16:24:38",
+    "time_last": "2026-04-26T15:51:56"
+  },
+  {
+    "mac": "c8:5b:76:fe:ee:32",
+    "ip": "10.50.10.93",
+    "dns": "macbook-ops-54",
+    "active": true,
+    "time_first": "2025-05-19T22:54:53",
+    "time_last": "2026-04-24T02:32:46"
+  },
+  {
+    "mac": "ac:de:48:d5:97:4e",
+    "ip": "10.30.10.146",
+    "dns": "laptop-eng-55",
+    "active": true,
+    "time_first": "2025-08-26T10:24:38",
+    "time_last": "2026-04-25T10:46:31"
+  },
+  {
+    "mac": "f0:18:98:fb:eb:56",
+    "ip": "10.80.10.231",
+    "dns": "ipad-lab-56",
+    "active": true,
+    "time_first": "2025-08-02T00:03:15",
+    "time_last": "2026-04-28T10:59:13"
+  },
+  {
+    "mac": "00:1b:0c:03:d3:46",
+    "ip": "10.20.11.13",
+    "dns": "access-hr-57",
+    "active": true,
+    "time_first": "2025-08-26T03:37:10",
+    "time_last": "2026-04-24T11:41:43"
+  },
+  {
+    "mac": "64:16:7f:d2:06:08",
+    "ip": "10.10.11.104",
+    "dns": "phone-fin-59",
+    "active": true,
+    "time_first": "2025-08-17T11:44:40",
+    "time_last": "2026-04-22T14:17:00"
+  },
+  {
+    "mac": "c8:5b:76:cb:28:bf",
+    "ip": "10.60.11.180",
+    "dns": "desktop-it-61",
+    "active": true,
+    "time_first": "2025-07-11T15:18:38",
+    "time_last": "2026-04-27T17:38:27"
+  },
+  {
+    "mac": "e4:5f:01:c2:c1:f3",
+    "ip": "10.10.11.215",
+    "dns": "iot-fin-62",
+    "active": false,
+    "time_first": "2025-10-09T13:08:21",
+    "time_last": "2026-01-22T07:10:45"
+  },
+  {
+    "mac": "00:40:8c:f3:8a:17",
+    "ip": "10.40.12.54",
+    "dns": "cam-mkt-63",
+    "active": true,
+    "time_first": "2025-05-27T13:14:31",
+    "time_last": "2026-04-27T11:23:50"
+  },
+  {
+    "mac": "00:1f:29:cb:27:99",
+    "ip": "10.40.12.79",
+    "dns": "pc-mkt-64",
+    "active": true,
+    "time_first": "2025-08-24T08:14:00",
+    "time_last": "2026-04-23T14:16:43"
+  },
+  {
+    "mac": "00:40:8c:32:df:76",
+    "ip": "10.90.12.193",
+    "dns": "nvr-rnd-65",
+    "active": true,
+    "time_first": "2025-08-04T07:39:17",
+    "time_last": "2026-04-24T01:18:25"
+  },
+  {
+    "mac": "ac:cc:8e:b6:c0:dd",
+    "ip": "10.80.1.84",
+    "dns": "nvr-lab-66",
+    "active": true,
+    "time_first": "2025-06-16T06:17:57",
+    "time_last": "2026-04-26T18:38:52"
+  },
+  {
+    "mac": "00:14:22:4e:c7:a2",
+    "ip": "10.50.1.154",
+    "dns": "ws-ops-67",
+    "active": true,
+    "time_first": "2025-09-23T03:12:06",
+    "time_last": "2026-04-22T20:04:57"
+  },
+  {
+    "mac": "70:5a:0f:d0:34:0d",
+    "ip": "10.90.2.42",
+    "dns": "pc-rnd-68",
+    "active": false,
+    "time_first": "2025-06-22T14:14:41",
+    "time_last": "2025-12-10T17:52:51"
+  },
+  {
+    "mac": "ac:de:48:c2:56:47",
+    "ip": "10.100.2.140",
+    "dns": "thinkpad-qa-69",
+    "active": true,
+    "time_first": "2025-08-18T18:08:50",
+    "time_last": "2026-04-28T09:58:58"
+  },
+  {
+    "mac": "f0:18:98:fd:64:ea",
+    "ip": "10.50.2.236",
+    "dns": "laptop-ops-70",
+    "active": false,
+    "time_first": "2025-08-11T12:08:29",
+    "time_last": "2025-11-05T13:19:25"
+  },
+  {
+    "mac": "dc:a6:32:45:99:a4",
+    "ip": "10.60.3.51",
+    "dns": "sensor-it-71",
+    "active": true,
+    "time_first": "2025-05-25T09:05:49",
+    "time_last": "2026-04-26T02:01:34"
+  },
+  {
+    "mac": "54:e1:ad:c9:ba:3a",
+    "ip": "10.60.3.87",
+    "dns": "macbook-it-72",
+    "active": true,
+    "time_first": "2025-09-01T11:27:35",
+    "time_last": "2026-04-22T10:57:34"
+  },
+  {
+    "mac": "70:e4:22:d1:ff:47",
+    "ip": "10.50.3.194",
+    "dns": "handset-ops-73",
+    "active": true,
+    "time_first": "2025-08-24T00:47:54",
+    "time_last": "2026-04-24T19:50:40"
+  },
+  {
+    "mac": "64:16:7f:12:b8:2b",
+    "ip": "10.90.4.104",
+    "dns": "pbx-rnd-74",
+    "active": false,
+    "time_first": "2025-08-22T18:59:28",
+    "time_last": "2025-12-03T23:14:04"
+  },
+  {
+    "mac": "9c:8e:99:32:84:71",
+    "ip": "10.70.4.130",
+    "dns": "printer-sales-75",
+    "active": true,
+    "time_first": "2025-06-29T16:16:14",
+    "time_last": "2026-04-25T08:58:22"
+  },
+  {
+    "mac": "d4:be:d9:97:d4:2b",
+    "ip": "10.10.4.196",
+    "dns": "macbook-fin-76",
+    "active": false,
+    "time_first": "2025-04-06T07:15:15",
+    "time_last": "2026-01-25T06:28:46"
+  },
+  {
+    "mac": "9c:8e:99:e7:a3:22",
+    "ip": "10.80.5.38",
+    "dns": "ws-lab-77",
+    "active": true,
+    "time_first": "2025-05-02T09:36:27",
+    "time_last": "2026-04-28T15:09:56"
+  },
+  {
+    "mac": "00:1e:13:51:a9:da",
+    "ip": "10.90.5.105",
+    "dns": "phone-rnd-78",
+    "active": true,
+    "time_first": "2025-08-26T01:35:36",
+    "time_last": "2026-04-26T14:27:07"
+  },
+  {
+    "mac": "ac:de:48:c7:02:6d",
+    "ip": "10.80.5.157",
+    "dns": "thinkpad-lab-79",
+    "active": true,
+    "time_first": "2025-05-13T23:20:15",
+    "time_last": "2026-04-23T18:38:00"
+  },
+  {
+    "mac": "f4:cf:e2:3a:86:fa",
+    "ip": "10.60.5.219",
+    "dns": "ap-it-80",
+    "active": true,
+    "time_first": "2025-06-05T14:46:43",
+    "time_last": "2026-04-25T06:12:32"
+  },
+  {
+    "mac": "54:e1:ad:2b:44:a0",
+    "ip": "10.50.6.47",
+    "dns": "thinkpad-ops-81",
+    "active": false,
+    "time_first": "2025-08-11T08:40:33",
+    "time_last": "2026-01-21T03:11:35"
+  },
+  {
+    "mac": "f8:db:88:58:55:fa",
+    "ip": "10.70.6.101",
+    "dns": "laptop-sales-82",
+    "active": true,
+    "time_first": "2025-09-04T00:25:36",
+    "time_last": "2026-04-23T13:02:47"
+  },
+  {
+    "mac": "70:5a:0f:d4:e3:fa",
+    "ip": "10.70.7.41",
+    "dns": "pc-sales-83",
+    "active": true,
+    "time_first": "2025-06-20T08:35:26",
+    "time_last": "2026-04-23T20:47:31"
+  },
+  {
+    "mac": "ec:b1:d7:fd:39:3a",
+    "ip": "10.80.7.117",
+    "dns": "pc-lab-84",
+    "active": true,
+    "time_first": "2025-06-24T19:35:25",
+    "time_last": "2026-04-22T12:01:47"
+  },
+  {
+    "mac": "00:1f:29:e6:86:b2",
+    "ip": "10.40.8.12",
+    "dns": "desktop-mkt-85",
+    "active": true,
+    "time_first": "2025-09-24T00:58:53",
+    "time_last": "2026-04-23T09:07:52"
+  },
+  {
+    "mac": "64:16:7f:69:69:1e",
+    "ip": "10.30.8.138",
+    "dns": "handset-eng-86",
+    "active": true,
+    "time_first": "2025-06-26T23:33:07",
+    "time_last": "2026-04-25T06:13:40"
+  },
+  {
+    "mac": "ec:b1:d7:40:43:7f",
+    "ip": "10.70.9.27",
+    "dns": "printer-sales-87",
+    "active": false,
+    "time_first": "2025-08-08T00:26:08",
+    "time_last": "2026-01-14T16:22:07"
+  },
+  {
+    "mac": "c8:5b:76:26:2f:ce",
+    "ip": "10.70.9.98",
+    "dns": "desktop-sales-88",
+    "active": true,
+    "time_first": "2025-08-16T19:01:00",
+    "time_last": "2026-04-22T21:11:43"
+  },
+  {
+    "mac": "00:21:cc:b7:20:cb",
+    "ip": "10.80.9.232",
+    "dns": "pc-lab-89",
+    "active": true,
+    "time_first": "2025-07-17T12:12:47",
+    "time_last": "2026-04-27T22:54:32"
+  },
+  {
+    "mac": "9c:8e:99:eb:08:3f",
+    "ip": "10.10.10.76",
+    "dns": "printer-fin-90",
+    "active": true,
+    "time_first": "2025-09-09T20:10:44",
+    "time_last": "2026-04-26T05:48:17"
+  },
+  {
+    "mac": "f4:cf:e2:b8:80:2a",
+    "ip": "10.30.10.135",
+    "dns": "pbx-eng-91",
+    "active": true,
+    "time_first": "2025-04-13T16:15:31",
+    "time_last": "2026-04-28T06:41:30"
+  },
+  {
+    "mac": "70:e4:22:00:6d:f4",
+    "ip": "10.20.10.196",
+    "dns": "handset-hr-92",
+    "active": false,
+    "time_first": "2025-06-14T16:50:18",
+    "time_last": "2025-12-18T11:50:01"
+  },
+  {
+    "mac": "a4:83:e7:75:c4:2d",
+    "ip": "10.30.11.14",
+    "dns": "macbook-eng-93",
+    "active": true,
+    "time_first": "2025-09-20T22:50:58",
+    "time_last": "2026-04-27T05:51:25"
+  },
+  {
+    "mac": "00:40:8c:54:e1:b3",
+    "ip": "10.20.11.109",
+    "dns": "cam-hr-94",
+    "active": true,
+    "time_first": "2025-06-07T19:42:56",
+    "time_last": "2026-04-28T09:04:08"
+  },
+  {
+    "mac": "00:1b:0c:c4:b3:db",
+    "ip": "10.30.11.167",
+    "dns": "ap-eng-95",
+    "active": true,
+    "time_first": "2025-09-13T11:18:54",
+    "time_last": "2026-04-27T11:58:09"
+  },
+  {
+    "mac": "00:04:f2:60:c8:97",
+    "ip": "10.50.11.223",
+    "dns": "phone-ops-96",
+    "active": true,
+    "time_first": "2025-05-07T16:15:08",
+    "time_last": "2026-04-23T21:08:43"
+  },
+  {
+    "mac": "00:21:cc:a2:43:c6",
+    "ip": "10.90.12.33",
+    "dns": "ws-rnd-97",
+    "active": true,
+    "time_first": "2025-06-19T18:16:26",
+    "time_last": "2026-04-26T21:06:38"
+  },
+  {
+    "mac": "ec:b1:d7:cb:92:d4",
+    "ip": "10.10.1.120",
+    "dns": "ws-fin-98",
+    "active": true,
+    "time_first": "2025-07-22T23:34:06",
+    "time_last": "2026-04-24T22:53:23"
+  },
+  {
+    "mac": "b8:ca:3a:c8:21:9e",
+    "ip": "10.30.1.150",
+    "dns": "pc-eng-99",
+    "active": true,
+    "time_first": "2025-05-18T10:41:59",
+    "time_last": "2026-04-23T12:17:36"
+  },
+  {
+    "mac": "00:21:cc:59:3d:06",
+    "ip": "10.50.1.237",
+    "dns": "thinkpad-ops-00",
+    "active": true,
+    "time_first": "2025-05-24T03:18:06",
+    "time_last": "2026-04-28T06:58:34"
+  },
+  {
+    "mac": "00:40:8c:89:3c:0f",
+    "ip": "10.60.2.57",
+    "dns": "cam-it-01",
+    "active": true,
+    "time_first": "2025-07-17T13:44:31",
+    "time_last": "2026-04-25T18:29:32"
+  },
+  {
+    "mac": "ec:8e:b5:55:bc:50",
+    "ip": "10.10.2.166",
+    "dns": "app-fin-02",
+    "active": true,
+    "time_first": "2025-09-20T20:33:23",
+    "time_last": "2026-04-25T10:04:57"
+  },
+  {
+    "mac": "00:14:22:ba:c4:4c",
+    "ip": "10.40.2.220",
+    "dns": "srv-mkt-03",
+    "active": true,
+    "time_first": "2025-04-02T08:51:27",
+    "time_last": "2026-04-29T04:33:32"
+  },
+  {
+    "mac": "f8:db:88:be:3d:1a",
+    "ip": "10.60.3.74",
+    "dns": "desktop-it-04",
+    "active": true,
+    "time_first": "2025-05-03T13:40:39",
+    "time_last": "2026-04-22T13:37:20"
+  },
+  {
+    "mac": "9c:8e:99:e9:04:bc",
+    "ip": "10.60.3.165",
+    "dns": "srv-it-05",
+    "active": true,
+    "time_first": "2025-06-20T16:13:39",
+    "time_last": "2026-04-27T07:26:35"
+  },
+  {
+    "mac": "ec:b1:d7:03:d1:0c",
+    "ip": "10.90.3.199",
+    "dns": "printer-rnd-06",
+    "active": true,
+    "time_first": "2025-08-03T03:39:58",
+    "time_last": "2026-04-23T13:27:05"
+  },
+  {
+    "mac": "00:04:f2:d6:fb:1e",
+    "ip": "10.40.4.85",
+    "dns": "handset-mkt-07",
+    "active": true,
+    "time_first": "2025-09-12T23:06:26",
+    "time_last": "2026-04-27T11:29:21"
+  },
+  {
+    "mac": "00:1e:13:1f:de:42",
+    "ip": "10.70.4.167",
+    "dns": "phone-sales-09",
+    "active": true,
+    "time_first": "2025-08-20T05:44:36",
+    "time_last": "2026-04-27T05:34:42"
+  },
+  {
+    "mac": "ac:de:48:4f:36:54",
+    "ip": "10.30.5.76",
+    "dns": "thinkpad-eng-10",
+    "active": true,
+    "time_first": "2025-08-09T15:08:24",
+    "time_last": "2026-04-28T14:12:58"
+  },
+  {
+    "mac": "00:14:22:14:6e:a7",
+    "ip": "10.30.5.235",
+    "dns": "db-eng-11",
+    "active": false,
+    "time_first": "2025-05-22T04:56:40",
+    "time_last": "2025-11-03T14:20:23"
+  },
+  {
+    "mac": "00:14:22:7f:30:ec",
+    "ip": "10.70.6.45",
+    "dns": "macbook-sales-12",
+    "active": false,
+    "time_first": "2025-05-05T16:12:47",
+    "time_last": "2026-01-27T07:00:43"
+  },
+  {
+    "mac": "9c:8e:99:84:26:0b",
+    "ip": "10.20.6.167",
+    "dns": "pc-hr-13",
+    "active": true,
+    "time_first": "2025-09-01T21:17:54",
+    "time_last": "2026-04-24T21:58:27"
+  },
+  {
+    "mac": "b8:27:eb:56:dd:ca",
+    "ip": "10.10.6.193",
+    "dns": "sensor-fin-14",
+    "active": true,
+    "time_first": "2025-07-26T21:23:55",
+    "time_last": "2026-04-26T10:49:13"
+  },
+  {
+    "mac": "00:14:22:7d:97:ff",
+    "ip": "10.100.7.109",
+    "dns": "thinkpad-qa-15",
+    "active": true,
+    "time_first": "2025-06-23T07:11:39",
+    "time_last": "2026-04-29T00:15:19"
+  },
+  {
+    "mac": "54:e1:ad:b7:f5:f8",
+    "ip": "10.90.7.154",
+    "dns": "ws-rnd-16",
+    "active": true,
+    "time_first": "2025-06-20T07:22:28",
+    "time_last": "2026-04-27T04:28:13"
+  },
+  {
+    "mac": "9c:8e:99:b7:77:51",
+    "ip": "10.10.7.223",
+    "dns": "mfp-fin-17",
+    "active": false,
+    "time_first": "2025-06-02T01:33:02",
+    "time_last": "2026-01-12T18:50:06"
+  },
+  {
+    "mac": "70:e4:22:79:a2:b7",
+    "ip": "10.60.8.81",
+    "dns": "voip-it-18",
+    "active": true,
+    "time_first": "2025-10-05T19:06:30",
+    "time_last": "2026-04-24T12:48:20"
+  },
+  {
+    "mac": "70:5a:0f:fb:13:2e",
+    "ip": "10.90.8.141",
+    "dns": "mfp-rnd-19",
+    "active": false,
+    "time_first": "2025-06-13T02:31:07",
+    "time_last": "2026-02-06T10:40:22"
+  },
+  {
+    "mac": "f4:cf:e2:0b:4b:48",
+    "ip": "10.30.8.193",
+    "dns": "voip-eng-20",
+    "active": true,
+    "time_first": "2025-04-25T03:23:30",
+    "time_last": "2026-04-23T09:54:27"
+  },
+  {
+    "mac": "00:1a:11:45:50:df",
+    "ip": "10.60.9.30",
+    "dns": "phone-it-21",
+    "active": true,
+    "time_first": "2025-04-02T07:19:18",
+    "time_last": "2026-04-24T21:26:15"
+  },
+  {
+    "mac": "ac:de:48:9d:96:41",
+    "ip": "10.100.9.154",
+    "dns": "mobile-qa-22",
+    "active": true,
+    "time_first": "2025-10-11T01:52:12",
+    "time_last": "2026-04-24T12:33:45"
+  },
+  {
+    "mac": "ec:b1:d7:48:a9:27",
+    "ip": "10.100.10.101",
+    "dns": "ws-qa-23",
+    "active": true,
+    "time_first": "2025-03-28T23:04:39",
+    "time_last": "2026-04-28T06:17:41"
+  },
+  {
+    "mac": "64:16:7f:7f:22:b3",
+    "ip": "10.10.10.143",
+    "dns": "voip-fin-24",
+    "active": true,
+    "time_first": "2025-09-19T19:56:02",
+    "time_last": "2026-04-29T10:17:05"
+  },
+  {
+    "mac": "00:21:cc:73:53:e7",
+    "ip": "10.80.11.171",
+    "dns": "thinkpad-lab-25",
+    "active": false,
+    "time_first": "2025-04-25T06:50:24",
+    "time_last": "2026-01-09T22:43:09"
+  },
+  {
+    "mac": "ec:b1:d7:ad:f7:0f",
+    "ip": "10.20.12.15",
+    "dns": "pc-hr-26",
+    "active": true,
+    "time_first": "2025-06-02T17:03:04",
+    "time_last": "2026-04-25T04:28:14"
+  },
+  {
+    "mac": "f8:db:88:87:90:98",
+    "ip": "10.90.12.116",
+    "dns": "thinkpad-rnd-27",
+    "active": true,
+    "time_first": "2025-10-01T12:14:59",
+    "time_last": "2026-04-25T10:26:33"
+  },
+  {
+    "mac": "00:21:cc:f5:66:31",
+    "ip": "10.50.12.170",
+    "dns": "thinkpad-ops-28",
+    "active": false,
+    "time_first": "2025-09-07T06:30:19",
+    "time_last": "2026-01-10T06:09:08"
+  },
+  {
+    "mac": "c8:5b:76:c6:5e:bd",
+    "ip": "10.20.1.104",
+    "dns": "thinkpad-hr-29",
+    "active": true,
+    "time_first": "2025-07-29T13:22:19",
+    "time_last": "2026-04-26T07:36:35"
+  },
+  {
+    "mac": "00:1f:29:31:2b:b0",
+    "ip": "10.30.1.172",
+    "dns": "pc-eng-30",
+    "active": true,
+    "time_first": "2025-07-20T15:21:50",
+    "time_last": "2026-04-24T03:24:54"
+  },
+  {
+    "mac": "e4:54:e8:99:28:ca",
+    "ip": "10.100.1.220",
+    "dns": "laptop-qa-31",
+    "active": true,
+    "time_first": "2025-05-21T13:49:57",
+    "time_last": "2026-04-25T22:08:49"
+  },
+  {
+    "mac": "70:e4:22:62:40:15",
+    "ip": "10.30.2.83",
+    "dns": "phone-eng-32",
+    "active": true,
+    "time_first": "2025-03-27T18:45:22",
+    "time_last": "2026-04-26T09:21:14"
+  },
+  {
+    "mac": "dc:a6:32:cb:a6:8d",
+    "ip": "10.20.2.154",
+    "dns": "iot-hr-33",
+    "active": true,
+    "time_first": "2025-04-11T00:07:22",
+    "time_last": "2026-04-29T08:25:22"
+  },
+  {
+    "mac": "ac:cc:8e:33:36:33",
+    "ip": "10.30.2.226",
+    "dns": "cam-eng-34",
+    "active": true,
+    "time_first": "2025-04-20T22:37:07",
+    "time_last": "2026-04-23T06:38:13"
+  },
+  {
+    "mac": "00:04:f2:49:cd:13",
+    "ip": "10.30.3.35",
+    "dns": "voip-eng-35",
+    "active": true,
+    "time_first": "2025-04-18T15:30:12",
+    "time_last": "2026-04-24T14:29:37"
+  },
+  {
+    "mac": "00:21:cc:e2:a4:89",
+    "ip": "10.40.3.149",
+    "dns": "laptop-mkt-37",
+    "active": true,
+    "time_first": "2025-06-12T10:36:00",
+    "time_last": "2026-04-28T19:29:59"
+  },
+  {
+    "mac": "ec:8e:b5:51:21:9f",
+    "ip": "10.10.4.60",
+    "dns": "file-fin-38",
+    "active": true,
+    "time_first": "2025-07-22T18:15:04",
+    "time_last": "2026-04-23T23:22:23"
+  },
+  {
+    "mac": "00:14:22:19:b8:65",
+    "ip": "10.40.4.99",
+    "dns": "ws-mkt-39",
+    "active": true,
+    "time_first": "2025-04-29T17:40:11",
+    "time_last": "2026-04-25T21:38:19"
+  },
+  {
+    "mac": "70:5a:0f:f2:b3:b0",
+    "ip": "10.100.4.141",
+    "dns": "desktop-qa-40",
+    "active": true,
+    "time_first": "2025-04-15T12:56:19",
+    "time_last": "2026-04-24T04:40:28"
+  },
+  {
+    "mac": "b8:ca:3a:69:89:d1",
+    "ip": "10.40.4.204",
+    "dns": "thinkpad-mkt-41",
+    "active": true,
+    "time_first": "2025-04-21T12:16:34",
+    "time_last": "2026-04-22T16:01:14"
+  },
+  {
+    "mac": "00:14:22:9c:8c:d8",
+    "ip": "10.40.5.48",
+    "dns": "desktop-mkt-42",
+    "active": true,
+    "time_first": "2025-04-24T02:53:10",
+    "time_last": "2026-04-26T05:23:17"
+  },
+  {
+    "mac": "3c:fd:fe:bf:90:98",
+    "ip": "10.100.5.70",
+    "dns": "srv-qa-43",
+    "active": true,
+    "time_first": "2025-07-07T02:09:20",
+    "time_last": "2026-04-27T02:00:15"
+  },
+  {
+    "mac": "ec:b1:d7:7b:1d:ce",
+    "ip": "10.30.5.178",
+    "dns": "thinkpad-eng-44",
+    "active": true,
+    "time_first": "2025-05-28T06:52:20",
+    "time_last": "2026-04-24T09:19:27"
+  },
+  {
+    "mac": "00:21:cc:61:af:71",
+    "ip": "10.100.6.46",
+    "dns": "thinkpad-qa-45",
+    "active": true,
+    "time_first": "2025-06-05T18:35:41",
+    "time_last": "2026-04-26T02:34:35"
+  },
+  {
+    "mac": "b8:ca:3a:41:84:5d",
+    "ip": "10.50.6.100",
+    "dns": "laptop-ops-46",
+    "active": true,
+    "time_first": "2025-04-14T12:27:44",
+    "time_last": "2026-04-24T20:33:17"
+  },
+  {
+    "mac": "d4:6e:5c:96:ed:3c",
+    "ip": "10.60.6.167",
+    "dns": "wifi-it-47",
+    "active": true,
+    "time_first": "2025-04-21T03:48:42",
+    "time_last": "2026-04-25T08:27:34"
+  },
+  {
+    "mac": "70:e4:22:1b:4d:46",
+    "ip": "10.90.6.216",
+    "dns": "wifi-rnd-48",
+    "active": true,
+    "time_first": "2025-08-03T21:41:04",
+    "time_last": "2026-04-22T12:39:06"
+  },
+  {
+    "mac": "00:1b:0c:5a:a0:1d",
+    "ip": "10.80.7.110",
+    "dns": "wifi-lab-49",
+    "active": false,
+    "time_first": "2025-08-17T17:33:58",
+    "time_last": "2025-11-24T07:38:10"
+  },
+  {
+    "mac": "00:40:8c:db:ce:db",
+    "ip": "10.100.7.230",
+    "dns": "nvr-qa-50",
+    "active": true,
+    "time_first": "2025-07-26T18:34:52",
+    "time_last": "2026-04-29T04:09:43"
+  },
+  {
+    "mac": "ec:b1:d7:7f:73:b0",
+    "ip": "10.10.8.10",
+    "dns": "pc-fin-51",
+    "active": true,
+    "time_first": "2025-09-20T21:30:01",
+    "time_last": "2026-04-25T21:56:22"
+  },
+  {
+    "mac": "70:5a:0f:ac:de:44",
+    "ip": "10.90.8.103",
+    "dns": "pc-rnd-52",
+    "active": true,
+    "time_first": "2025-04-14T03:51:28",
+    "time_last": "2026-04-26T22:08:45"
+  },
+  {
+    "mac": "54:e1:ad:56:3f:bb",
+    "ip": "10.40.9.11",
+    "dns": "pc-mkt-53",
+    "active": true,
+    "time_first": "2025-05-06T00:17:22",
+    "time_last": "2026-04-26T19:28:03"
+  },
+  {
+    "mac": "00:1f:29:3b:d5:e3",
+    "ip": "10.10.9.174",
+    "dns": "printer-fin-54",
+    "active": true,
+    "time_first": "2025-06-23T23:32:40",
+    "time_last": "2026-04-26T02:48:05"
+  },
+  {
+    "mac": "64:16:7f:8a:46:d6",
+    "ip": "10.20.9.223",
+    "dns": "handset-hr-55",
+    "active": true,
+    "time_first": "2025-09-20T10:54:41",
+    "time_last": "2026-04-24T09:44:50"
+  },
+  {
+    "mac": "b8:ca:3a:b7:d1:97",
+    "ip": "10.50.10.22",
+    "dns": "pc-ops-56",
+    "active": true,
+    "time_first": "2025-06-23T19:26:02",
+    "time_last": "2026-04-23T01:33:36"
+  },
+  {
+    "mac": "00:14:22:fc:4c:2e",
+    "ip": "10.20.10.112",
+    "dns": "pc-hr-57",
+    "active": true,
+    "time_first": "2025-09-26T10:16:06",
+    "time_last": "2026-04-24T08:56:21"
+  },
+  {
+    "mac": "9c:8e:99:59:14:94",
+    "ip": "10.80.10.136",
+    "dns": "srv-lab-58",
+    "active": true,
+    "time_first": "2025-05-29T02:01:14",
+    "time_last": "2026-04-26T10:55:58"
+  },
+  {
+    "mac": "54:e1:ad:89:2f:be",
+    "ip": "10.60.11.98",
+    "dns": "desktop-it-59",
+    "active": true,
+    "time_first": "2025-09-04T20:43:36",
+    "time_last": "2026-04-26T15:10:09"
+  },
+  {
+    "mac": "e4:54:e8:1e:51:35",
+    "ip": "10.30.11.138",
+    "dns": "laptop-eng-60",
+    "active": true,
+    "time_first": "2025-06-15T06:53:54",
+    "time_last": "2026-04-23T19:43:10"
+  },
+  {
+    "mac": "00:1f:29:39:d2:e1",
+    "ip": "10.30.11.221",
+    "dns": "macbook-eng-61",
+    "active": false,
+    "time_first": "2025-08-20T02:45:29",
+    "time_last": "2026-01-08T00:19:44"
+  },
+  {
+    "mac": "ac:cc:8e:7f:f6:b1",
+    "ip": "10.90.12.37",
+    "dns": "cam-rnd-62",
+    "active": true,
+    "time_first": "2025-06-05T03:45:31",
+    "time_last": "2026-04-28T09:31:33"
+  },
+  {
+    "mac": "f8:db:88:fb:a4:7b",
+    "ip": "10.80.12.134",
+    "dns": "ws-lab-63",
+    "active": true,
+    "time_first": "2025-08-16T19:20:44",
+    "time_last": "2026-04-25T21:20:09"
+  },
+  {
+    "mac": "dc:a6:32:2d:ff:e4",
+    "ip": "10.80.12.218",
+    "dns": "device-lab-64",
+    "active": true,
+    "time_first": "2025-03-29T07:16:49",
+    "time_last": "2026-04-24T05:17:59"
+  },
+  {
+    "mac": "70:e4:22:72:e8:a9",
+    "ip": "10.60.2.13",
+    "dns": "wifi-it-66",
+    "active": true,
+    "time_first": "2025-06-09T11:39:42",
+    "time_last": "2026-04-26T03:00:48"
+  },
+  {
+    "mac": "00:40:8c:95:bf:36",
+    "ip": "10.60.2.170",
+    "dns": "nvr-it-67",
+    "active": false,
+    "time_first": "2025-09-08T14:33:15",
+    "time_last": "2026-01-25T09:25:19"
+  },
+  {
+    "mac": "00:1b:0c:61:ad:37",
+    "ip": "10.70.3.39",
+    "dns": "phone-sales-68",
+    "active": true,
+    "time_first": "2025-10-02T03:17:53",
+    "time_last": "2026-04-25T00:06:56"
+  },
+  {
+    "mac": "78:1d:ba:ff:02:18",
+    "ip": "10.100.3.78",
+    "dns": "access-qa-69",
+    "active": true,
+    "time_first": "2025-07-16T21:00:36",
+    "time_last": "2026-04-25T08:11:58"
+  },
+  {
+    "mac": "00:14:22:a4:c4:d6",
+    "ip": "10.70.4.48",
+    "dns": "pc-sales-70",
+    "active": true,
+    "time_first": "2025-04-11T06:07:51",
+    "time_last": "2026-04-24T02:25:15"
+  },
+  {
+    "mac": "9c:8e:99:6f:66:6b",
+    "ip": "10.90.4.235",
+    "dns": "desktop-rnd-71",
+    "active": true,
+    "time_first": "2025-08-14T07:43:06",
+    "time_last": "2026-04-27T00:29:26"
+  },
+  {
+    "mac": "c8:19:f7:f5:d5:92",
+    "ip": "10.20.5.105",
+    "dns": "screen-hr-72",
+    "active": true,
+    "time_first": "2025-07-18T23:02:43",
+    "time_last": "2026-04-29T08:21:16"
+  },
+  {
+    "mac": "b8:ca:3a:80:4a:1f",
+    "ip": "10.50.5.148",
+    "dns": "ws-ops-73",
+    "active": true,
+    "time_first": "2025-08-13T09:49:31",
+    "time_last": "2026-04-24T03:53:46"
+  },
+  {
+    "mac": "e4:54:e8:93:18:c3",
+    "ip": "10.40.5.240",
+    "dns": "pc-mkt-75",
+    "active": true,
+    "time_first": "2025-04-03T02:19:49",
+    "time_last": "2026-04-22T14:33:42"
+  },
+  {
+    "mac": "ec:b1:d7:bc:64:63",
+    "ip": "10.100.6.24",
+    "dns": "desktop-qa-76",
+    "active": true,
+    "time_first": "2025-09-05T22:51:20",
+    "time_last": "2026-04-24T15:48:47"
+  },
+  {
+    "mac": "00:1f:29:87:42:52",
+    "ip": "10.70.6.105",
+    "dns": "db-sales-77",
+    "active": true,
+    "time_first": "2025-08-21T10:25:20",
+    "time_last": "2026-04-27T02:57:55"
+  },
+  {
+    "mac": "00:1f:29:fb:b7:25",
+    "ip": "10.100.6.149",
+    "dns": "pc-qa-78",
+    "active": true,
+    "time_first": "2025-08-08T20:46:36",
+    "time_last": "2026-04-27T21:32:46"
+  },
+  {
+    "mac": "70:5a:0f:6d:a9:a9",
+    "ip": "10.20.6.204",
+    "dns": "db-hr-79",
+    "active": true,
+    "time_first": "2025-08-28T17:57:45",
+    "time_last": "2026-04-24T04:03:13"
+  },
+  {
+    "mac": "00:04:f2:14:a4:c3",
+    "ip": "10.100.7.205",
+    "dns": "handset-qa-80",
+    "active": true,
+    "time_first": "2025-04-05T10:33:33",
+    "time_last": "2026-04-26T17:40:22"
+  },
+  {
+    "mac": "a4:83:e7:62:a4:2a",
+    "ip": "10.80.8.28",
+    "dns": "mobile-lab-81",
+    "active": true,
+    "time_first": "2025-09-07T23:00:17",
+    "time_last": "2026-04-22T17:50:44"
+  },
+  {
+    "mac": "54:e1:ad:de:24:4e",
+    "ip": "10.70.8.83",
+    "dns": "ws-sales-82",
+    "active": false,
+    "time_first": "2025-05-21T01:31:56",
+    "time_last": "2026-02-04T15:34:22"
+  },
+  {
+    "mac": "ac:de:48:e6:cf:dd",
+    "ip": "10.50.8.154",
+    "dns": "macbook-ops-83",
+    "active": true,
+    "time_first": "2025-07-25T12:53:27",
+    "time_last": "2026-04-28T14:37:28"
+  },
+  {
+    "mac": "9c:8e:99:e0:c3:ca",
+    "ip": "10.100.8.208",
+    "dns": "srv-qa-85",
+    "active": true,
+    "time_first": "2025-10-05T06:34:05",
+    "time_last": "2026-04-28T08:14:15"
+  },
+  {
+    "mac": "64:16:7f:48:3f:15",
+    "ip": "10.10.9.225",
+    "dns": "handset-fin-86",
+    "active": false,
+    "time_first": "2025-06-14T02:33:23",
+    "time_last": "2025-12-16T17:20:06"
+  },
+  {
+    "mac": "00:04:f2:48:52:5e",
+    "ip": "10.70.10.42",
+    "dns": "handset-sales-87",
+    "active": true,
+    "time_first": "2025-04-27T11:42:28",
+    "time_last": "2026-04-28T01:51:11"
+  },
+  {
+    "mac": "00:1f:29:f9:a9:b6",
+    "ip": "10.50.11.142",
+    "dns": "srv-ops-88",
+    "active": false,
+    "time_first": "2025-06-02T08:13:46",
+    "time_last": "2026-01-29T10:23:30"
+  },
+  {
+    "mac": "ec:8e:b5:ba:a1:db",
+    "ip": "10.100.12.46",
+    "dns": "web-qa-89",
+    "active": true,
+    "time_first": "2025-08-09T19:04:08",
+    "time_last": "2026-04-23T22:30:32"
+  },
+  {
+    "mac": "ec:b1:d7:e4:b7:9c",
+    "ip": "10.60.12.99",
+    "dns": "macbook-it-90",
+    "active": true,
+    "time_first": "2025-09-19T16:06:12",
+    "time_last": "2026-04-24T22:02:50"
+  },
+  {
+    "mac": "dc:a6:32:09:0f:cf",
+    "ip": "10.20.12.134",
+    "dns": "device-hr-91",
+    "active": true,
+    "time_first": "2025-08-29T21:14:55",
+    "time_last": "2026-04-29T04:20:30"
+  },
+  {
+    "mac": "f4:cf:e2:94:44:ed",
+    "ip": "10.70.1.119",
+    "dns": "phone-sales-92",
+    "active": true,
+    "time_first": "2025-09-23T07:50:26",
+    "time_last": "2026-04-26T21:22:14"
+  },
+  {
+    "mac": "54:e1:ad:70:f9:76",
+    "ip": "10.80.1.132",
+    "dns": "desktop-lab-94",
+    "active": false,
+    "time_first": "2025-07-29T13:12:39",
+    "time_last": "2026-02-04T03:45:35"
+  },
+  {
+    "mac": "00:1f:29:8c:86:59",
+    "ip": "10.10.2.16",
+    "dns": "db-fin-95",
+    "active": true,
+    "time_first": "2025-07-27T17:36:40",
+    "time_last": "2026-04-25T07:46:11"
+  },
+  {
+    "mac": "f8:db:88:f6:03:47",
+    "ip": "10.60.2.101",
+    "dns": "macbook-it-96",
+    "active": true,
+    "time_first": "2025-08-26T10:32:39",
+    "time_last": "2026-04-25T20:03:25"
+  },
+  {
+    "mac": "00:21:cc:3a:f6:f5",
+    "ip": "10.40.2.151",
+    "dns": "desktop-mkt-97",
+    "active": true,
+    "time_first": "2025-06-15T06:42:13",
+    "time_last": "2026-04-24T21:45:37"
+  },
+  {
+    "mac": "54:e1:ad:14:4b:1c",
+    "ip": "10.30.2.222",
+    "dns": "pc-eng-98",
+    "active": true,
+    "time_first": "2025-04-09T22:45:18",
+    "time_last": "2026-04-25T19:42:15"
+  },
+  {
+    "mac": "00:18:82:f1:f6:57",
+    "ip": "10.40.3.108",
+    "dns": "wifi-mkt-99",
+    "active": true,
+    "time_first": "2025-07-21T06:49:08",
+    "time_last": "2026-04-28T10:31:27"
+  },
+  {
+    "mac": "d4:be:d9:23:75:c1",
+    "ip": "10.80.3.227",
+    "dns": "file-lab-00",
+    "active": true,
+    "time_first": "2025-09-19T17:21:48",
+    "time_last": "2026-04-28T00:30:19"
+  },
+  {
+    "mac": "00:14:22:13:3c:2f",
+    "ip": "10.30.4.49",
+    "dns": "macbook-eng-01",
+    "active": true,
+    "time_first": "2025-09-15T08:55:17",
+    "time_last": "2026-04-25T05:06:58"
+  },
+  {
+    "mac": "00:1f:29:f6:c3:b3",
+    "ip": "10.90.4.204",
+    "dns": "app-rnd-02",
+    "active": true,
+    "time_first": "2025-05-16T03:48:30",
+    "time_last": "2026-04-24T02:33:41"
+  },
+  {
+    "mac": "ec:b1:d7:d1:83:60",
+    "ip": "10.20.5.48",
+    "dns": "desktop-hr-03",
+    "active": false,
+    "time_first": "2025-05-15T17:00:02",
+    "time_last": "2026-02-07T17:25:34"
+  },
+  {
+    "mac": "d4:be:d9:4f:da:81",
+    "ip": "10.70.5.76",
+    "dns": "macbook-sales-04",
+    "active": true,
+    "time_first": "2025-06-26T05:11:47",
+    "time_last": "2026-04-25T11:38:07"
+  },
+  {
+    "mac": "e4:54:e8:f7:81:9d",
+    "ip": "10.30.5.225",
+    "dns": "desktop-eng-05",
+    "active": true,
+    "time_first": "2025-05-09T14:21:59",
+    "time_last": "2026-04-26T15:36:51"
+  },
+  {
+    "mac": "54:e1:ad:cd:ad:1a",
+    "ip": "10.20.6.102",
+    "dns": "ws-hr-06",
+    "active": true,
+    "time_first": "2025-04-01T12:33:46",
+    "time_last": "2026-04-29T09:36:40"
+  },
+  {
+    "mac": "00:1a:11:bd:28:13",
+    "ip": "10.20.6.144",
+    "dns": "phone-hr-07",
+    "active": true,
+    "time_first": "2025-04-08T07:12:43",
+    "time_last": "2026-04-26T15:11:29"
+  },
+  {
+    "mac": "00:12:fb:67:92:63",
+    "ip": "10.80.6.190",
+    "dns": "screen-lab-08",
+    "active": false,
+    "time_first": "2025-06-13T12:49:42",
+    "time_last": "2025-12-18T20:32:50"
+  },
+  {
+    "mac": "00:14:22:cc:b4:ca",
+    "ip": "10.30.7.27",
+    "dns": "ws-eng-09",
+    "active": true,
+    "time_first": "2025-09-01T09:00:36",
+    "time_last": "2026-04-29T07:55:06"
+  },
+  {
+    "mac": "64:16:7f:63:e8:ce",
+    "ip": "10.50.7.168",
+    "dns": "phone-ops-10",
+    "active": true,
+    "time_first": "2025-08-20T05:11:02",
+    "time_last": "2026-04-26T14:06:04"
+  },
+  {
+    "mac": "f0:18:98:e2:c1:f7",
+    "ip": "10.90.7.206",
+    "dns": "thinkpad-rnd-11",
+    "active": true,
+    "time_first": "2025-05-12T22:37:41",
+    "time_last": "2026-04-22T17:00:42"
+  },
+  {
+    "mac": "70:5a:0f:c3:70:75",
+    "ip": "10.20.8.14",
+    "dns": "mfp-hr-12",
+    "active": true,
+    "time_first": "2025-07-20T22:51:19",
+    "time_last": "2026-04-26T23:10:47"
+  },
+  {
+    "mac": "c8:5b:76:f3:a0:b5",
+    "ip": "10.20.8.141",
+    "dns": "thinkpad-hr-13",
+    "active": true,
+    "time_first": "2025-06-18T16:40:45",
+    "time_last": "2026-04-28T03:47:31"
+  },
+  {
+    "mac": "00:1e:13:67:7f:b6",
+    "ip": "10.50.9.24",
+    "dns": "phone-ops-14",
+    "active": true,
+    "time_first": "2025-09-20T02:23:29",
+    "time_last": "2026-04-22T23:54:30"
+  },
+  {
+    "mac": "70:e4:22:fc:8c:fb",
+    "ip": "10.60.9.90",
+    "dns": "handset-it-15",
+    "active": true,
+    "time_first": "2025-05-11T14:02:27",
+    "time_last": "2026-04-25T20:37:46"
+  },
+  {
+    "mac": "70:5a:0f:b1:c9:59",
+    "ip": "10.90.9.222",
+    "dns": "srv-rnd-16",
+    "active": true,
+    "time_first": "2025-09-17T08:43:57",
+    "time_last": "2026-04-25T19:26:29"
+  },
+  {
+    "mac": "00:04:f2:84:5f:86",
+    "ip": "10.60.10.49",
+    "dns": "voip-it-17",
+    "active": true,
+    "time_first": "2025-07-09T04:02:32",
+    "time_last": "2026-04-25T03:30:06"
+  },
+  {
+    "mac": "c8:5b:76:e6:5c:43",
+    "ip": "10.60.10.87",
+    "dns": "desktop-it-18",
+    "active": true,
+    "time_first": "2025-05-27T05:38:34",
+    "time_last": "2026-04-23T17:42:57"
+  },
+  {
+    "mac": "00:1e:13:5a:d7:ff",
+    "ip": "10.30.10.190",
+    "dns": "wifi-eng-19",
+    "active": false,
+    "time_first": "2025-04-15T18:48:07",
+    "time_last": "2025-12-07T08:56:06"
+  },
+  {
+    "mac": "00:1f:29:53:1e:6e",
+    "ip": "10.70.11.54",
+    "dns": "srv-sales-20",
+    "active": true,
+    "time_first": "2025-07-08T03:06:38",
+    "time_last": "2026-04-25T00:40:59"
+  },
+  {
+    "mac": "9c:8e:99:b3:65:59",
+    "ip": "10.10.11.77",
+    "dns": "macbook-fin-21",
+    "active": true,
+    "time_first": "2025-08-15T12:22:41",
+    "time_last": "2026-04-27T03:53:05"
+  },
+  {
+    "mac": "c8:5b:76:55:ac:d7",
+    "ip": "10.80.11.199",
+    "dns": "pc-lab-22",
+    "active": true,
+    "time_first": "2025-06-19T02:38:22",
+    "time_last": "2026-04-23T11:53:04"
+  },
+  {
+    "mac": "9c:8e:99:ca:8a:e3",
+    "ip": "10.50.12.51",
+    "dns": "pc-ops-23",
+    "active": true,
+    "time_first": "2025-04-06T16:24:17",
+    "time_last": "2026-04-24T04:51:12"
+  },
+  {
+    "mac": "b8:ca:3a:28:6b:55",
+    "ip": "10.40.12.86",
+    "dns": "pc-mkt-24",
+    "active": true,
+    "time_first": "2025-09-22T07:50:31",
+    "time_last": "2026-04-22T21:07:07"
+  },
+  {
+    "mac": "00:40:8c:c7:9e:75",
+    "ip": "10.50.12.135",
+    "dns": "cam-ops-25",
+    "active": true,
+    "time_first": "2025-08-15T14:27:31",
+    "time_last": "2026-04-25T01:15:04"
+  },
+  {
+    "mac": "64:16:7f:e3:45:5a",
+    "ip": "10.80.1.87",
+    "dns": "handset-lab-26",
+    "active": true,
+    "time_first": "2025-07-12T03:05:29",
+    "time_last": "2026-04-24T04:40:58"
+  },
+  {
+    "mac": "64:16:7f:2d:e2:9d",
+    "ip": "10.80.1.144",
+    "dns": "handset-lab-27",
+    "active": true,
+    "time_first": "2025-08-20T11:25:34",
+    "time_last": "2026-04-27T07:29:59"
+  },
+  {
+    "mac": "9c:8e:99:76:03:bf",
+    "ip": "10.10.1.208",
+    "dns": "app-fin-29",
+    "active": true,
+    "time_first": "2025-04-18T00:07:19",
+    "time_last": "2026-04-26T09:03:58"
+  },
+  {
+    "mac": "dc:a6:32:7a:8b:91",
+    "ip": "10.20.2.110",
+    "dns": "sensor-hr-30",
+    "active": true,
+    "time_first": "2025-06-27T01:10:03",
+    "time_last": "2026-04-27T13:20:16"
+  },
+  {
+    "mac": "f8:db:88:fb:60:a4",
+    "ip": "10.100.2.147",
+    "dns": "desktop-qa-31",
+    "active": false,
+    "time_first": "2025-10-01T12:15:57",
+    "time_last": "2025-12-16T22:34:12"
+  },
+  {
+    "mac": "00:21:cc:07:fc:6f",
+    "ip": "10.40.2.199",
+    "dns": "laptop-mkt-32",
+    "active": true,
+    "time_first": "2025-08-10T02:55:54",
+    "time_last": "2026-04-23T20:11:25"
+  },
+  {
+    "mac": "00:40:8c:c8:24:f0",
+    "ip": "10.30.3.27",
+    "dns": "cam-eng-33",
+    "active": true,
+    "time_first": "2025-04-15T07:08:41",
+    "time_last": "2026-04-27T16:29:11"
+  },
+  {
+    "mac": "70:e4:22:11:65:eb",
+    "ip": "10.80.3.117",
+    "dns": "voip-lab-34",
+    "active": true,
+    "time_first": "2025-09-22T15:29:25",
+    "time_last": "2026-04-24T18:36:38"
+  },
+  {
+    "mac": "00:12:fb:f6:98:65",
+    "ip": "10.10.3.146",
+    "dns": "display-fin-35",
+    "active": true,
+    "time_first": "2025-10-01T00:28:47",
+    "time_last": "2026-04-24T18:29:42"
+  },
+  {
+    "mac": "ac:de:48:ca:7c:04",
+    "ip": "10.50.3.197",
+    "dns": "thinkpad-ops-36",
+    "active": true,
+    "time_first": "2025-06-17T05:19:49",
+    "time_last": "2026-04-24T14:27:13"
+  },
+  {
+    "mac": "00:40:8c:ad:1e:1e",
+    "ip": "10.80.4.53",
+    "dns": "cam-lab-37",
+    "active": true,
+    "time_first": "2025-09-10T15:41:29",
+    "time_last": "2026-04-25T16:23:33"
+  },
+  {
+    "mac": "70:5a:0f:c1:b7:44",
+    "ip": "10.40.4.114",
+    "dns": "laptop-mkt-38",
+    "active": true,
+    "time_first": "2025-10-03T12:57:17",
+    "time_last": "2026-04-24T11:47:12"
+  },
+  {
+    "mac": "a0:36:9f:ef:8c:52",
+    "ip": "10.90.4.150",
+    "dns": "db-rnd-39",
+    "active": false,
+    "time_first": "2025-09-10T10:22:39",
+    "time_last": "2026-01-09T20:53:08"
+  },
+  {
+    "mac": "e4:54:e8:ba:7a:a4",
+    "ip": "10.30.4.229",
+    "dns": "ws-eng-40",
+    "active": true,
+    "time_first": "2025-06-01T18:42:38",
+    "time_last": "2026-04-25T15:57:19"
+  },
+  {
+    "mac": "a0:36:9f:d1:a4:38",
+    "ip": "10.100.5.30",
+    "dns": "db-qa-41",
+    "active": false,
+    "time_first": "2025-06-01T15:49:22",
+    "time_last": "2026-02-04T01:26:04"
+  },
+  {
+    "mac": "f8:db:88:c6:fa:83",
+    "ip": "10.40.5.72",
+    "dns": "ws-mkt-42",
+    "active": false,
+    "time_first": "2025-08-28T07:01:50",
+    "time_last": "2025-11-28T15:40:17"
+  },
+  {
+    "mac": "dc:a6:32:bc:1d:88",
+    "ip": "10.90.5.156",
+    "dns": "device-rnd-44",
+    "active": true,
+    "time_first": "2025-05-17T13:51:30",
+    "time_last": "2026-04-23T14:18:40"
+  },
+  {
+    "mac": "b8:ca:3a:62:7f:5b",
+    "ip": "10.90.5.202",
+    "dns": "app-rnd-45",
+    "active": true,
+    "time_first": "2025-06-21T19:25:13",
+    "time_last": "2026-04-24T05:09:13"
+  },
+  {
+    "mac": "00:04:f2:cd:ac:50",
+    "ip": "10.30.6.45",
+    "dns": "phone-eng-46",
+    "active": true,
+    "time_first": "2025-06-13T10:54:16",
+    "time_last": "2026-04-22T21:40:07"
+  },
+  {
+    "mac": "64:16:7f:7b:6d:c0",
+    "ip": "10.70.6.108",
+    "dns": "pbx-sales-47",
+    "active": true,
+    "time_first": "2025-04-09T04:59:41",
+    "time_last": "2026-04-27T15:48:46"
+  },
+  {
+    "mac": "f0:18:98:45:9a:03",
+    "ip": "10.100.6.163",
+    "dns": "laptop-qa-48",
+    "active": true,
+    "time_first": "2025-08-28T01:26:37",
+    "time_last": "2026-04-23T10:44:20"
+  },
+  {
+    "mac": "9c:8e:99:bb:7f:77",
+    "ip": "10.30.6.206",
+    "dns": "ws-eng-50",
+    "active": true,
+    "time_first": "2025-08-12T09:02:53",
+    "time_last": "2026-04-25T10:39:29"
+  },
+  {
+    "mac": "70:5a:0f:30:99:13",
+    "ip": "10.30.7.54",
+    "dns": "desktop-eng-51",
+    "active": true,
+    "time_first": "2025-06-18T04:20:17",
+    "time_last": "2026-04-28T21:18:56"
+  },
+  {
+    "mac": "b8:27:eb:05:c3:1b",
+    "ip": "10.40.7.171",
+    "dns": "device-mkt-52",
+    "active": true,
+    "time_first": "2025-10-03T04:49:30",
+    "time_last": "2026-04-25T15:47:30"
+  },
+  {
+    "mac": "f8:db:88:2e:71:dd",
+    "ip": "10.80.7.226",
+    "dns": "pc-lab-53",
+    "active": true,
+    "time_first": "2025-07-24T13:45:08",
+    "time_last": "2026-04-28T12:17:32"
+  },
+  {
+    "mac": "9c:8e:99:de:42:45",
+    "ip": "10.20.8.42",
+    "dns": "desktop-hr-54",
+    "active": true,
+    "time_first": "2025-09-01T19:34:44",
+    "time_last": "2026-04-26T16:05:11"
+  },
+  {
+    "mac": "00:1e:13:dc:a5:2d",
+    "ip": "10.20.8.119",
+    "dns": "pbx-hr-55",
+    "active": false,
+    "time_first": "2025-07-20T17:18:22",
+    "time_last": "2026-01-02T21:51:27"
+  },
+  {
+    "mac": "00:04:f2:4a:e1:16",
+    "ip": "10.60.8.158",
+    "dns": "handset-it-56",
+    "active": true,
+    "time_first": "2025-08-25T17:44:59",
+    "time_last": "2026-04-24T15:21:34"
+  },
+  {
+    "mac": "00:1e:13:38:9c:e6",
+    "ip": "10.50.9.31",
+    "dns": "phone-ops-57",
+    "active": true,
+    "time_first": "2025-08-06T01:29:30",
+    "time_last": "2026-04-24T06:10:40"
+  },
+  {
+    "mac": "00:40:8c:16:82:57",
+    "ip": "10.10.9.107",
+    "dns": "nvr-fin-58",
+    "active": false,
+    "time_first": "2025-09-01T07:09:32",
+    "time_last": "2025-11-30T18:50:09"
+  },
+  {
+    "mac": "84:25:db:b8:37:09",
+    "ip": "10.50.9.172",
+    "dns": "ipad-ops-59",
+    "active": true,
+    "time_first": "2025-04-17T18:10:07",
+    "time_last": "2026-04-26T17:33:50"
+  },
+  {
+    "mac": "64:16:7f:5f:65:ea",
+    "ip": "10.100.9.195",
+    "dns": "handset-qa-60",
+    "active": true,
+    "time_first": "2025-05-21T22:38:52",
+    "time_last": "2026-04-29T03:49:17"
+  },
+  {
+    "mac": "a0:36:9f:b4:b5:9a",
+    "ip": "10.10.10.53",
+    "dns": "db-fin-61",
+    "active": true,
+    "time_first": "2025-03-29T18:55:39",
+    "time_last": "2026-04-25T22:17:23"
+  },
+  {
+    "mac": "f4:cf:e2:c9:46:2c",
+    "ip": "10.40.10.91",
+    "dns": "ap-mkt-62",
+    "active": true,
+    "time_first": "2025-06-29T07:03:15",
+    "time_last": "2026-04-24T16:35:48"
+  },
+  {
+    "mac": "f8:db:88:e5:43:69",
+    "ip": "10.50.10.151",
+    "dns": "thinkpad-ops-63",
+    "active": true,
+    "time_first": "2025-06-17T05:33:09",
+    "time_last": "2026-04-24T15:34:47"
+  },
+  {
+    "mac": "70:e4:22:50:a2:22",
+    "ip": "10.30.10.226",
+    "dns": "handset-eng-64",
+    "active": true,
+    "time_first": "2025-04-04T17:12:44",
+    "time_last": "2026-04-28T14:36:39"
+  },
+  {
+    "mac": "c8:5b:76:43:5e:0d",
+    "ip": "10.30.12.16",
+    "dns": "laptop-eng-65",
+    "active": true,
+    "time_first": "2025-06-11T00:59:17",
+    "time_last": "2026-04-27T13:40:01"
+  },
+  {
+    "mac": "00:21:cc:f4:44:f0",
+    "ip": "10.60.12.114",
+    "dns": "ws-it-66",
+    "active": true,
+    "time_first": "2025-07-28T15:29:41",
+    "time_last": "2026-04-23T11:20:32"
+  },
+  {
+    "mac": "f8:db:88:71:67:68",
+    "ip": "10.10.12.156",
+    "dns": "desktop-fin-67",
+    "active": false,
+    "time_first": "2025-04-09T00:24:16",
+    "time_last": "2025-11-01T20:59:37"
+  },
+  {
+    "mac": "54:e1:ad:15:c2:a0",
+    "ip": "10.70.12.239",
+    "dns": "macbook-sales-68",
+    "active": true,
+    "time_first": "2025-04-06T14:37:55",
+    "time_last": "2026-04-25T10:24:54"
+  },
+  {
+    "mac": "00:1b:0c:7d:ca:14",
+    "ip": "10.80.1.72",
+    "dns": "voip-lab-69",
+    "active": true,
+    "time_first": "2025-06-30T05:05:30",
+    "time_last": "2026-04-25T00:33:03"
+  },
+  {
+    "mac": "ac:de:48:2e:39:5c",
+    "ip": "10.80.1.218",
+    "dns": "thinkpad-lab-71",
+    "active": true,
+    "time_first": "2025-04-06T20:51:22",
+    "time_last": "2026-04-24T13:33:10"
+  },
+  {
+    "mac": "f8:db:88:2e:80:a5",
+    "ip": "10.100.2.39",
+    "dns": "web-qa-72",
+    "active": true,
+    "time_first": "2025-04-13T00:07:12",
+    "time_last": "2026-04-23T20:41:25"
+  },
+  {
+    "mac": "9c:8e:99:c4:51:c1",
+    "ip": "10.20.2.115",
+    "dns": "pc-hr-73",
+    "active": true,
+    "time_first": "2025-10-02T15:45:02",
+    "time_last": "2026-04-28T05:47:28"
+  },
+  {
+    "mac": "00:21:cc:e4:93:5c",
+    "ip": "10.70.3.29",
+    "dns": "desktop-sales-74",
+    "active": false,
+    "time_first": "2025-09-15T02:57:32",
+    "time_last": "2026-01-19T03:39:21"
+  },
+  {
+    "mac": "00:1f:29:6f:f3:e8",
+    "ip": "10.100.3.85",
+    "dns": "app-qa-75",
+    "active": true,
+    "time_first": "2025-09-25T13:21:23",
+    "time_last": "2026-04-25T05:40:58"
+  },
+  {
+    "mac": "00:1b:0c:b2:12:4a",
+    "ip": "10.30.3.133",
+    "dns": "phone-eng-76",
+    "active": true,
+    "time_first": "2025-05-31T00:54:59",
+    "time_last": "2026-04-23T13:42:48"
+  },
+  {
+    "mac": "b8:ca:3a:5a:e9:b8",
+    "ip": "10.50.4.52",
+    "dns": "thinkpad-ops-77",
+    "active": true,
+    "time_first": "2025-09-22T19:29:37",
+    "time_last": "2026-04-27T08:13:06"
+  },
+  {
+    "mac": "00:1f:29:3e:8c:a8",
+    "ip": "10.50.4.78",
+    "dns": "desktop-ops-78",
+    "active": true,
+    "time_first": "2025-06-28T12:11:53",
+    "time_last": "2026-04-24T13:36:02"
+  },
+  {
+    "mac": "70:e4:22:da:a2:84",
+    "ip": "10.100.4.148",
+    "dns": "handset-qa-79",
+    "active": true,
+    "time_first": "2025-03-26T10:22:59",
+    "time_last": "2026-04-26T23:03:09"
+  },
+  {
+    "mac": "3c:fd:fe:77:94:63",
+    "ip": "10.80.4.229",
+    "dns": "web-lab-80",
+    "active": false,
+    "time_first": "2025-10-06T15:21:48",
+    "time_last": "2025-12-07T21:23:39"
+  },
+  {
+    "mac": "00:14:22:82:22:9d",
+    "ip": "10.40.5.208",
+    "dns": "thinkpad-mkt-81",
+    "active": true,
+    "time_first": "2025-06-23T10:31:50",
+    "time_last": "2026-04-24T01:38:18"
+  },
+  {
+    "mac": "ac:de:48:f5:f2:12",
+    "ip": "10.40.6.31",
+    "dns": "macbook-mkt-82",
+    "active": true,
+    "time_first": "2025-07-07T03:19:17",
+    "time_last": "2026-04-25T01:07:49"
+  },
+  {
+    "mac": "00:21:cc:a1:09:6a",
+    "ip": "10.90.6.106",
+    "dns": "macbook-rnd-83",
+    "active": true,
+    "time_first": "2025-08-06T02:14:50",
+    "time_last": "2026-04-23T00:34:50"
+  },
+  {
+    "mac": "d4:be:d9:54:c7:5f",
+    "ip": "10.70.6.164",
+    "dns": "pc-sales-84",
+    "active": true,
+    "time_first": "2025-04-21T12:27:01",
+    "time_last": "2026-04-24T04:14:28"
+  },
+  {
+    "mac": "00:1f:29:e7:9a:6e",
+    "ip": "10.80.6.213",
+    "dns": "ws-lab-85",
+    "active": true,
+    "time_first": "2025-09-06T10:26:19",
+    "time_last": "2026-04-26T19:37:54"
+  },
+  {
+    "mac": "d4:be:d9:a7:49:32",
+    "ip": "10.80.7.29",
+    "dns": "file-lab-87",
+    "active": true,
+    "time_first": "2025-04-06T19:59:07",
+    "time_last": "2026-04-24T16:48:41"
+  },
+  {
+    "mac": "00:1b:0c:2c:aa:ef",
+    "ip": "10.50.7.173",
+    "dns": "phone-ops-88",
+    "active": true,
+    "time_first": "2025-09-20T19:36:23",
+    "time_last": "2026-04-24T01:46:54"
+  },
+  {
+    "mac": "ac:cc:8e:8d:a3:e1",
+    "ip": "10.40.7.208",
+    "dns": "cam-mkt-89",
+    "active": true,
+    "time_first": "2025-08-17T21:45:35",
+    "time_last": "2026-04-28T08:02:26"
+  },
+  {
+    "mac": "c8:5b:76:48:91:7d",
+    "ip": "10.90.8.87",
+    "dns": "desktop-rnd-90",
+    "active": true,
+    "time_first": "2025-08-10T03:53:15",
+    "time_last": "2026-04-23T04:36:11"
+  },
+  {
+    "mac": "00:21:cc:2c:da:c8",
+    "ip": "10.20.8.133",
+    "dns": "desktop-hr-91",
+    "active": true,
+    "time_first": "2025-06-14T05:07:02",
+    "time_last": "2026-04-25T06:55:01"
+  },
+  {
+    "mac": "64:16:7f:28:ee:43",
+    "ip": "10.40.8.238",
+    "dns": "handset-mkt-92",
+    "active": false,
+    "time_first": "2025-05-03T23:13:03",
+    "time_last": "2025-11-30T13:51:41"
+  },
+  {
+    "mac": "64:16:7f:84:ba:c8",
+    "ip": "10.40.9.19",
+    "dns": "phone-mkt-93",
+    "active": true,
+    "time_first": "2025-04-10T23:37:50",
+    "time_last": "2026-04-27T03:00:17"
+  },
+  {
+    "mac": "f8:db:88:ec:57:90",
+    "ip": "10.20.9.100",
+    "dns": "db-hr-94",
+    "active": true,
+    "time_first": "2025-06-12T13:11:12",
+    "time_last": "2026-04-28T13:05:52"
+  },
+  {
+    "mac": "64:16:7f:7a:7c:51",
+    "ip": "10.70.10.36",
+    "dns": "handset-sales-95",
+    "active": true,
+    "time_first": "2025-07-26T16:10:51",
+    "time_last": "2026-04-27T01:15:36"
+  },
+  {
+    "mac": "ac:cc:8e:27:f9:3a",
+    "ip": "10.90.10.81",
+    "dns": "cam-rnd-96",
+    "active": true,
+    "time_first": "2025-07-10T20:32:22",
+    "time_last": "2026-04-25T13:14:42"
+  },
+  {
+    "mac": "c8:19:f7:fd:1f:2e",
+    "ip": "10.20.10.150",
+    "dns": "screen-hr-97",
+    "active": true,
+    "time_first": "2025-09-13T15:41:58",
+    "time_last": "2026-04-25T08:55:51"
+  },
+  {
+    "mac": "70:5a:0f:64:69:a2",
+    "ip": "10.100.11.98",
+    "dns": "file-qa-98",
+    "active": true,
+    "time_first": "2025-05-05T13:38:09",
+    "time_last": "2026-04-24T16:20:02"
+  },
+  {
+    "mac": "00:04:f2:1b:00:b7",
+    "ip": "10.50.12.153",
+    "dns": "phone-ops-99",
+    "active": false,
+    "time_first": "2025-08-15T23:53:44",
+    "time_last": "2026-02-05T07:39:23"
+  },
+  {
+    "mac": "64:16:7f:6c:58:f3",
+    "ip": "10.70.12.224",
+    "dns": "voip-sales-00",
+    "active": false,
+    "time_first": "2025-06-22T08:28:35",
+    "time_last": "2025-11-16T02:30:48"
+  },
+  {
+    "mac": "b8:ca:3a:08:49:f9",
+    "ip": "10.10.1.111",
+    "dns": "laptop-fin-01",
+    "active": true,
+    "time_first": "2025-03-30T10:37:11",
+    "time_last": "2026-04-28T11:41:22"
+  },
+  {
+    "mac": "84:25:db:e6:c4:b5",
+    "ip": "10.90.2.105",
+    "dns": "phone-rnd-02",
+    "active": true,
+    "time_first": "2025-07-18T11:35:42",
+    "time_last": "2026-04-29T09:15:06"
+  },
+  {
+    "mac": "00:1a:11:bc:39:f6",
+    "ip": "10.10.3.40",
+    "dns": "ipad-fin-03",
+    "active": true,
+    "time_first": "2025-09-25T10:11:49",
+    "time_last": "2026-04-24T07:49:43"
+  },
+  {
+    "mac": "00:1b:21:27:9f:1b",
+    "ip": "10.40.3.230",
+    "dns": "app-mkt-04",
+    "active": true,
+    "time_first": "2025-06-26T10:20:25",
+    "time_last": "2026-04-29T08:41:18"
+  },
+  {
+    "mac": "9c:8e:99:9b:85:1f",
+    "ip": "10.50.4.72",
+    "dns": "laptop-ops-05",
+    "active": true,
+    "time_first": "2025-06-17T19:25:22",
+    "time_last": "2026-04-25T10:15:34"
+  },
+  {
+    "mac": "f4:cf:e2:27:8e:81",
+    "ip": "10.80.4.138",
+    "dns": "phone-lab-06",
+    "active": false,
+    "time_first": "2025-08-16T05:50:05",
+    "time_last": "2025-11-14T15:38:23"
+  },
+  {
+    "mac": "d4:be:d9:10:af:2b",
+    "ip": "10.40.4.201",
+    "dns": "macbook-mkt-08",
+    "active": true,
+    "time_first": "2025-06-14T07:53:18",
+    "time_last": "2026-04-23T16:27:01"
+  },
+  {
+    "mac": "54:e1:ad:b0:1b:87",
+    "ip": "10.40.5.116",
+    "dns": "thinkpad-mkt-09",
+    "active": true,
+    "time_first": "2025-09-18T05:43:37",
+    "time_last": "2026-04-28T06:20:35"
+  },
+  {
+    "mac": "70:e4:22:4a:de:06",
+    "ip": "10.70.5.146",
+    "dns": "voip-sales-10",
+    "active": true,
+    "time_first": "2025-05-04T23:24:59",
+    "time_last": "2026-04-26T18:19:23"
+  },
+  {
+    "mac": "c8:19:f7:8b:ab:8a",
+    "ip": "10.60.5.229",
+    "dns": "screen-it-11",
+    "active": true,
+    "time_first": "2025-09-21T18:46:17",
+    "time_last": "2026-04-24T20:34:13"
+  },
+  {
+    "mac": "ec:b1:d7:04:22:06",
+    "ip": "10.60.6.190",
+    "dns": "pc-it-12",
+    "active": true,
+    "time_first": "2025-06-28T09:13:53",
+    "time_last": "2026-04-24T15:20:09"
+  },
+  {
+    "mac": "00:21:cc:6f:3e:3d",
+    "ip": "10.10.7.112",
+    "dns": "pc-fin-13",
+    "active": false,
+    "time_first": "2025-06-12T12:00:29",
+    "time_last": "2026-01-01T20:11:59"
+  },
+  {
+    "mac": "b8:27:eb:ef:26:e8",
+    "ip": "10.30.7.148",
+    "dns": "sensor-eng-14",
+    "active": true,
+    "time_first": "2025-08-17T03:51:32",
+    "time_last": "2026-04-26T10:46:00"
+  },
+  {
+    "mac": "d4:be:d9:aa:1e:84",
+    "ip": "10.10.8.34",
+    "dns": "desktop-fin-15",
+    "active": true,
+    "time_first": "2025-08-19T12:06:31",
+    "time_last": "2026-04-26T08:29:00"
+  },
+  {
+    "mac": "00:1f:29:dc:6f:36",
+    "ip": "10.30.8.179",
+    "dns": "pc-eng-16",
+    "active": true,
+    "time_first": "2025-05-21T08:34:42",
+    "time_last": "2026-04-28T17:08:51"
+  },
+  {
+    "mac": "00:21:cc:00:13:c7",
+    "ip": "10.80.8.231",
+    "dns": "laptop-lab-17",
+    "active": true,
+    "time_first": "2025-05-24T10:14:06",
+    "time_last": "2026-04-23T02:31:27"
+  },
+  {
+    "mac": "a4:83:e7:23:73:01",
+    "ip": "10.70.9.56",
+    "dns": "phone-sales-18",
+    "active": true,
+    "time_first": "2025-05-26T14:02:44",
+    "time_last": "2026-04-23T23:29:18"
+  },
+  {
+    "mac": "64:16:7f:2e:bb:ae",
+    "ip": "10.70.9.110",
+    "dns": "voip-sales-19",
+    "active": false,
+    "time_first": "2025-07-11T12:13:51",
+    "time_last": "2025-11-23T18:52:50"
+  },
+  {
+    "mac": "ec:b1:d7:36:b7:f9",
+    "ip": "10.50.9.154",
+    "dns": "pc-ops-20",
+    "active": false,
+    "time_first": "2025-06-06T21:06:06",
+    "time_last": "2025-11-26T21:43:19"
+  },
+  {
+    "mac": "70:e4:22:9d:ff:e6",
+    "ip": "10.70.9.240",
+    "dns": "phone-sales-21",
+    "active": true,
+    "time_first": "2025-10-08T03:41:32",
+    "time_last": "2026-04-27T01:30:00"
+  },
+  {
+    "mac": "e4:54:e8:77:24:12",
+    "ip": "10.90.10.117",
+    "dns": "ws-rnd-22",
+    "active": true,
+    "time_first": "2025-07-05T15:48:19",
+    "time_last": "2026-04-29T07:17:50"
+  },
+  {
+    "mac": "54:e1:ad:19:9d:31",
+    "ip": "10.10.10.170",
+    "dns": "ws-fin-23",
+    "active": true,
+    "time_first": "2025-09-07T07:11:27",
+    "time_last": "2026-04-25T07:12:17"
+  },
+  {
+    "mac": "a0:36:9f:ac:cd:a6",
+    "ip": "10.20.10.217",
+    "dns": "web-hr-24",
+    "active": false,
+    "time_first": "2025-05-27T14:52:32",
+    "time_last": "2025-12-15T20:22:35"
+  },
+  {
+    "mac": "d4:be:d9:48:d4:56",
+    "ip": "10.20.11.87",
+    "dns": "ws-hr-25",
+    "active": true,
+    "time_first": "2025-06-22T18:08:34",
+    "time_last": "2026-04-26T08:48:17"
+  },
+  {
+    "mac": "e4:54:e8:29:03:03",
+    "ip": "10.30.11.161",
+    "dns": "ws-eng-26",
+    "active": true,
+    "time_first": "2025-09-23T14:37:19",
+    "time_last": "2026-04-24T21:00:18"
+  },
+  {
+    "mac": "e4:5f:01:8a:e6:d2",
+    "ip": "10.30.11.199",
+    "dns": "iot-eng-27",
+    "active": true,
+    "time_first": "2025-09-06T12:39:54",
+    "time_last": "2026-04-24T14:17:55"
+  },
+  {
+    "mac": "9c:8e:99:78:62:3c",
+    "ip": "10.70.12.105",
+    "dns": "ws-sales-28",
+    "active": true,
+    "time_first": "2025-03-30T01:54:03",
+    "time_last": "2026-04-25T02:31:16"
+  },
+  {
+    "mac": "a0:36:9f:39:4c:f2",
+    "ip": "10.50.12.202",
+    "dns": "srv-ops-29",
+    "active": true,
+    "time_first": "2025-09-09T11:39:14",
+    "time_last": "2026-04-22T23:29:27"
+  },
+  {
+    "mac": "9c:8e:99:35:1a:5a",
+    "ip": "10.100.1.72",
+    "dns": "desktop-qa-30",
+    "active": true,
+    "time_first": "2025-10-05T14:59:12",
+    "time_last": "2026-04-25T19:59:46"
+  },
+  {
+    "mac": "70:5a:0f:a6:75:38",
+    "ip": "10.40.1.173",
+    "dns": "thinkpad-mkt-31",
+    "active": true,
+    "time_first": "2025-09-21T19:47:31",
+    "time_last": "2026-04-24T06:33:30"
+  },
+  {
+    "mac": "70:5a:0f:6e:e8:5b",
+    "ip": "10.10.1.199",
+    "dns": "desktop-fin-32",
+    "active": true,
+    "time_first": "2025-09-14T03:45:28",
+    "time_last": "2026-04-24T09:34:12"
+  },
+  {
+    "mac": "00:21:cc:ee:ea:d6",
+    "ip": "10.50.2.77",
+    "dns": "ws-ops-33",
+    "active": true,
+    "time_first": "2025-08-03T17:20:06",
+    "time_last": "2026-04-23T05:34:59"
+  },
+  {
+    "mac": "00:1e:13:fa:6e:f2",
+    "ip": "10.20.2.223",
+    "dns": "voip-hr-34",
+    "active": true,
+    "time_first": "2025-08-16T14:28:47",
+    "time_last": "2026-04-24T07:51:25"
+  },
+  {
+    "mac": "b8:ca:3a:16:14:f0",
+    "ip": "10.100.3.36",
+    "dns": "laptop-qa-35",
+    "active": true,
+    "time_first": "2025-07-02T14:15:41",
+    "time_last": "2026-04-26T10:58:58"
+  },
+  {
+    "mac": "ec:b1:d7:06:d0:6f",
+    "ip": "10.20.3.178",
+    "dns": "pc-hr-36",
+    "active": false,
+    "time_first": "2025-08-13T06:42:21",
+    "time_last": "2025-12-05T16:09:48"
+  },
+  {
+    "mac": "00:21:cc:46:cf:5e",
+    "ip": "10.80.3.239",
+    "dns": "macbook-lab-37",
+    "active": true,
+    "time_first": "2025-07-29T08:28:54",
+    "time_last": "2026-04-26T04:29:53"
+  },
+  {
+    "mac": "78:1d:ba:8a:6a:29",
+    "ip": "10.10.4.97",
+    "dns": "wifi-fin-38",
+    "active": true,
+    "time_first": "2025-08-05T07:09:55",
+    "time_last": "2026-04-22T21:52:59"
+  },
+  {
+    "mac": "9c:8e:99:bb:bb:59",
+    "ip": "10.80.4.192",
+    "dns": "pc-lab-39",
+    "active": true,
+    "time_first": "2025-05-23T11:06:23",
+    "time_last": "2026-04-25T12:17:33"
+  },
+  {
+    "mac": "a4:83:e7:73:a4:b4",
+    "ip": "10.100.5.23",
+    "dns": "thinkpad-qa-40",
+    "active": true,
+    "time_first": "2025-07-02T17:23:00",
+    "time_last": "2026-04-26T11:26:52"
+  },
+  {
+    "mac": "00:1b:21:95:e7:bc",
+    "ip": "10.80.5.113",
+    "dns": "file-lab-41",
+    "active": true,
+    "time_first": "2025-04-05T08:44:47",
+    "time_last": "2026-04-23T18:37:20"
+  },
+  {
+    "mac": "00:18:82:93:27:37",
+    "ip": "10.20.5.141",
+    "dns": "wifi-hr-42",
+    "active": true,
+    "time_first": "2025-09-19T00:46:55",
+    "time_last": "2026-04-28T09:38:37"
+  },
+  {
+    "mac": "84:25:db:b1:d7:e3",
+    "ip": "10.70.5.220",
+    "dns": "display-sales-43",
+    "active": true,
+    "time_first": "2025-10-07T03:23:05",
+    "time_last": "2026-04-28T02:44:16"
+  },
+  {
+    "mac": "64:16:7f:e3:ea:9b",
+    "ip": "10.100.6.54",
+    "dns": "handset-qa-45",
+    "active": true,
+    "time_first": "2025-04-14T18:44:48",
+    "time_last": "2026-04-27T07:00:31"
+  },
+  {
+    "mac": "00:1f:29:e9:55:52",
+    "ip": "10.30.6.88",
+    "dns": "macbook-eng-46",
+    "active": true,
+    "time_first": "2025-08-15T09:18:59",
+    "time_last": "2026-04-22T15:00:04"
+  },
+  {
+    "mac": "00:1e:13:a2:40:e1",
+    "ip": "10.40.6.132",
+    "dns": "phone-mkt-47",
+    "active": true,
+    "time_first": "2025-09-04T12:54:59",
+    "time_last": "2026-04-25T12:00:07"
+  },
+  {
+    "mac": "f8:db:88:a3:4f:02",
+    "ip": "10.80.7.39",
+    "dns": "ws-lab-49",
+    "active": true,
+    "time_first": "2025-06-24T05:00:04",
+    "time_last": "2026-04-25T21:15:19"
+  },
+  {
+    "mac": "70:e4:22:f5:14:47",
+    "ip": "10.60.7.77",
+    "dns": "access-it-50",
+    "active": true,
+    "time_first": "2025-09-18T01:29:41",
+    "time_last": "2026-04-29T06:20:03"
+  },
+  {
+    "mac": "00:1f:29:71:8e:64",
+    "ip": "10.100.7.142",
+    "dns": "thinkpad-qa-51",
+    "active": false,
+    "time_first": "2025-06-25T18:07:15",
+    "time_last": "2025-12-25T21:24:02"
+  },
+  {
+    "mac": "f8:db:88:1c:b8:cb",
+    "ip": "10.60.7.228",
+    "dns": "file-it-52",
+    "active": false,
+    "time_first": "2025-04-23T16:14:25",
+    "time_last": "2026-01-02T11:23:17"
+  },
+  {
+    "mac": "00:21:cc:d4:e2:93",
+    "ip": "10.40.8.38",
+    "dns": "thinkpad-mkt-53",
+    "active": true,
+    "time_first": "2025-05-18T20:05:48",
+    "time_last": "2026-04-23T03:40:56"
+  },
+  {
+    "mac": "b8:27:eb:ab:21:c0",
+    "ip": "10.40.8.100",
+    "dns": "sensor-mkt-54",
+    "active": false,
+    "time_first": "2025-07-21T13:05:20",
+    "time_last": "2025-11-08T23:54:53"
+  },
+  {
+    "mac": "00:1e:13:fb:15:9a",
+    "ip": "10.30.8.148",
+    "dns": "voip-eng-55",
+    "active": true,
+    "time_first": "2025-08-11T15:42:39",
+    "time_last": "2026-04-25T12:32:26"
+  },
+  {
+    "mac": "9c:8e:99:93:d5:5b",
+    "ip": "10.80.8.231",
+    "dns": "ws-lab-56",
+    "active": true,
+    "time_first": "2025-05-26T20:51:09",
+    "time_last": "2026-04-27T17:22:55"
+  },
+  {
+    "mac": "f4:cf:e2:df:84:f3",
+    "ip": "10.100.9.46",
+    "dns": "pbx-qa-57",
+    "active": true,
+    "time_first": "2025-04-30T18:45:07",
+    "time_last": "2026-04-26T19:48:07"
+  },
+  {
+    "mac": "ac:de:48:45:b6:53",
+    "ip": "10.60.9.114",
+    "dns": "macbook-it-58",
+    "active": false,
+    "time_first": "2025-07-31T04:54:55",
+    "time_last": "2025-12-06T19:30:24"
+  },
+  {
+    "mac": "ac:de:48:55:a5:a1",
+    "ip": "10.30.9.168",
+    "dns": "laptop-eng-59",
+    "active": true,
+    "time_first": "2025-05-27T10:39:27",
+    "time_last": "2026-04-27T07:55:11"
+  },
+  {
+    "mac": "c8:5b:76:90:be:f8",
+    "ip": "10.30.9.198",
+    "dns": "ws-eng-60",
+    "active": true,
+    "time_first": "2025-04-10T06:08:40",
+    "time_last": "2026-04-28T07:06:39"
+  },
+  {
+    "mac": "dc:a6:32:43:08:f5",
+    "ip": "10.80.10.17",
+    "dns": "iot-lab-61",
+    "active": true,
+    "time_first": "2025-05-26T05:27:23",
+    "time_last": "2026-04-28T11:08:44"
+  },
+  {
+    "mac": "f4:cf:e2:41:48:74",
+    "ip": "10.10.10.144",
+    "dns": "voip-fin-62",
+    "active": true,
+    "time_first": "2025-08-30T11:15:47",
+    "time_last": "2026-04-22T13:40:24"
+  },
+  {
+    "mac": "70:5a:0f:10:1e:f0",
+    "ip": "10.10.11.16",
+    "dns": "ws-fin-63",
+    "active": false,
+    "time_first": "2025-08-21T20:02:24",
+    "time_last": "2026-02-01T19:30:22"
+  },
+  {
+    "mac": "c8:19:f7:4a:8e:b2",
+    "ip": "10.60.12.15",
+    "dns": "mobile-it-64",
+    "active": true,
+    "time_first": "2025-04-23T09:50:13",
+    "time_last": "2026-04-23T23:19:30"
+  },
+  {
+    "mac": "00:21:cc:62:90:57",
+    "ip": "10.90.12.115",
+    "dns": "ws-rnd-65",
+    "active": true,
+    "time_first": "2025-06-26T00:17:34",
+    "time_last": "2026-04-22T14:56:18"
+  },
+  {
+    "mac": "3c:fd:fe:e1:36:5c",
+    "ip": "10.60.12.141",
+    "dns": "file-it-66",
+    "active": true,
+    "time_first": "2025-03-29T04:15:16",
+    "time_last": "2026-04-26T11:15:09"
+  },
+  {
+    "mac": "00:40:8c:45:fd:b8",
+    "ip": "10.80.12.223",
+    "dns": "cam-lab-67",
+    "active": true,
+    "time_first": "2025-06-22T00:15:56",
+    "time_last": "2026-04-29T03:40:39"
+  },
+  {
+    "mac": "70:5a:0f:94:db:60",
+    "ip": "10.40.1.96",
+    "dns": "thinkpad-mkt-68",
+    "active": true,
+    "time_first": "2025-04-15T11:40:39",
+    "time_last": "2026-04-23T19:41:26"
+  },
+  {
+    "mac": "e4:54:e8:2b:3d:49",
+    "ip": "10.20.1.158",
+    "dns": "desktop-hr-69",
+    "active": true,
+    "time_first": "2025-05-25T10:19:18",
+    "time_last": "2026-04-22T14:16:05"
+  },
+  {
+    "mac": "d4:be:d9:3e:77:d9",
+    "ip": "10.40.2.35",
+    "dns": "thinkpad-mkt-70",
+    "active": true,
+    "time_first": "2025-08-16T17:36:43",
+    "time_last": "2026-04-24T10:37:58"
+  },
+  {
+    "mac": "ac:cc:8e:8e:4b:e8",
+    "ip": "10.80.2.101",
+    "dns": "nvr-lab-71",
+    "active": false,
+    "time_first": "2025-08-22T07:11:19",
+    "time_last": "2025-12-20T17:02:34"
+  },
+  {
+    "mac": "00:14:22:5b:c3:a7",
+    "ip": "10.80.2.131",
+    "dns": "pc-lab-72",
+    "active": true,
+    "time_first": "2025-06-09T01:03:34",
+    "time_last": "2026-04-28T18:18:57"
+  },
+  {
+    "mac": "64:16:7f:09:10:dc",
+    "ip": "10.90.3.164",
+    "dns": "voip-rnd-73",
+    "active": true,
+    "time_first": "2025-09-17T14:39:22",
+    "time_last": "2026-04-26T06:52:50"
+  },
+  {
+    "mac": "d4:be:d9:44:9f:c7",
+    "ip": "10.30.3.217",
+    "dns": "desktop-eng-74",
+    "active": true,
+    "time_first": "2025-09-19T13:27:59",
+    "time_last": "2026-04-24T17:05:45"
+  },
+  {
+    "mac": "ec:b1:d7:86:fd:c1",
+    "ip": "10.90.4.35",
+    "dns": "printer-rnd-75",
+    "active": true,
+    "time_first": "2025-08-01T21:14:02",
+    "time_last": "2026-04-22T14:13:56"
+  },
+  {
+    "mac": "9c:8e:99:ae:c2:31",
+    "ip": "10.100.4.118",
+    "dns": "ws-qa-76",
+    "active": true,
+    "time_first": "2025-03-27T01:09:41",
+    "time_last": "2026-04-26T13:17:44"
+  },
+  {
+    "mac": "00:1f:29:ac:56:0a",
+    "ip": "10.20.4.137",
+    "dns": "desktop-hr-77",
+    "active": true,
+    "time_first": "2025-10-03T23:05:14",
+    "time_last": "2026-04-24T19:59:42"
+  },
+  {
+    "mac": "a4:83:e7:c1:c7:a5",
+    "ip": "10.100.4.210",
+    "dns": "laptop-qa-78",
+    "active": true,
+    "time_first": "2025-05-02T18:31:56",
+    "time_last": "2026-04-28T17:41:25"
+  },
+  {
+    "mac": "ec:8e:b5:ba:df:67",
+    "ip": "10.30.5.29",
+    "dns": "file-eng-79",
+    "active": true,
+    "time_first": "2025-04-24T23:17:46",
+    "time_last": "2026-04-23T22:15:31"
+  },
+  {
+    "mac": "f0:18:98:2f:30:ac",
+    "ip": "10.100.5.84",
+    "dns": "macbook-qa-80",
+    "active": true,
+    "time_first": "2025-06-20T03:38:39",
+    "time_last": "2026-04-25T17:16:52"
+  },
+  {
+    "mac": "9c:8e:99:a0:66:d4",
+    "ip": "10.70.5.164",
+    "dns": "pc-sales-81",
+    "active": true,
+    "time_first": "2025-06-08T10:40:24",
+    "time_last": "2026-04-26T06:21:27"
+  },
+  {
+    "mac": "54:e1:ad:ef:89:de",
+    "ip": "10.100.5.203",
+    "dns": "desktop-qa-82",
+    "active": true,
+    "time_first": "2025-05-19T02:44:51",
+    "time_last": "2026-04-29T00:26:23"
+  },
+  {
+    "mac": "c8:5b:76:20:68:d3",
+    "ip": "10.70.6.30",
+    "dns": "desktop-sales-83",
+    "active": true,
+    "time_first": "2025-08-15T00:41:09",
+    "time_last": "2026-04-28T07:31:18"
+  },
+  {
+    "mac": "b8:ca:3a:ed:f8:df",
+    "ip": "10.10.6.89",
+    "dns": "ws-fin-84",
+    "active": true,
+    "time_first": "2025-04-13T07:21:10",
+    "time_last": "2026-04-28T00:33:56"
+  },
+  {
+    "mac": "00:40:8c:0a:1c:2a",
+    "ip": "10.10.6.180",
+    "dns": "nvr-fin-85",
+    "active": true,
+    "time_first": "2025-08-12T20:11:59",
+    "time_last": "2026-04-28T23:49:05"
+  },
+  {
+    "mac": "78:1d:ba:3d:80:fe",
+    "ip": "10.30.7.17",
+    "dns": "ap-eng-86",
+    "active": true,
+    "time_first": "2025-08-24T19:43:51",
+    "time_last": "2026-04-28T13:57:26"
+  },
+  {
+    "mac": "ec:b1:d7:36:59:6d",
+    "ip": "10.70.7.79",
+    "dns": "printer-sales-87",
+    "active": true,
+    "time_first": "2025-07-15T13:01:04",
+    "time_last": "2026-04-27T15:46:35"
+  },
+  {
+    "mac": "f0:18:98:7e:8e:4a",
+    "ip": "10.90.7.160",
+    "dns": "macbook-rnd-88",
+    "active": true,
+    "time_first": "2025-05-21T07:16:41",
+    "time_last": "2026-04-23T16:30:38"
+  },
+  {
+    "mac": "c8:5b:76:79:e2:c6",
+    "ip": "10.60.8.17",
+    "dns": "thinkpad-it-90",
+    "active": false,
+    "time_first": "2025-04-02T06:54:35",
+    "time_last": "2025-11-07T16:28:56"
+  },
+  {
+    "mac": "84:25:db:a2:d0:11",
+    "ip": "10.40.8.98",
+    "dns": "mobile-mkt-91",
+    "active": true,
+    "time_first": "2025-09-25T10:02:46",
+    "time_last": "2026-04-23T23:33:04"
+  },
+  {
+    "mac": "ac:de:48:b4:d7:a7",
+    "ip": "10.50.9.14",
+    "dns": "thinkpad-ops-92",
+    "active": true,
+    "time_first": "2025-10-05T23:12:56",
+    "time_last": "2026-04-29T01:44:50"
+  },
+  {
+    "mac": "00:40:8c:9c:a0:2a",
+    "ip": "10.70.9.110",
+    "dns": "cam-sales-93",
+    "active": false,
+    "time_first": "2025-08-22T12:24:10",
+    "time_last": "2025-11-29T01:56:47"
+  },
+  {
+    "mac": "e4:54:e8:44:85:58",
+    "ip": "10.60.9.160",
+    "dns": "desktop-it-94",
+    "active": true,
+    "time_first": "2025-04-29T02:00:38",
+    "time_last": "2026-04-23T20:10:45"
+  },
+  {
+    "mac": "ec:b1:d7:75:2d:ec",
+    "ip": "10.10.9.225",
+    "dns": "ws-fin-95",
+    "active": true,
+    "time_first": "2025-05-24T04:26:47",
+    "time_last": "2026-04-28T06:08:56"
+  },
+  {
+    "mac": "f0:18:98:07:de:e8",
+    "ip": "10.30.10.17",
+    "dns": "thinkpad-eng-96",
+    "active": true,
+    "time_first": "2025-07-04T14:35:04",
+    "time_last": "2026-04-27T20:47:12"
+  },
+  {
+    "mac": "00:04:f2:6e:90:60",
+    "ip": "10.70.10.228",
+    "dns": "phone-sales-97",
+    "active": true,
+    "time_first": "2025-07-21T17:35:03",
+    "time_last": "2026-04-28T09:58:53"
+  },
+  {
+    "mac": "f4:cf:e2:ea:2b:05",
+    "ip": "10.100.11.51",
+    "dns": "handset-qa-98",
+    "active": true,
+    "time_first": "2025-04-20T03:34:16",
+    "time_last": "2026-04-22T14:48:03"
+  },
+  {
+    "mac": "c8:5b:76:1e:1a:aa",
+    "ip": "10.20.11.105",
+    "dns": "laptop-hr-99",
+    "active": true,
+    "time_first": "2025-07-09T06:01:27",
+    "time_last": "2026-04-26T22:58:38"
+  },
+  {
+    "mac": "b8:27:eb:c3:9a:ca",
+    "ip": "10.50.11.169",
+    "dns": "device-ops-00",
+    "active": true,
+    "time_first": "2025-09-14T23:45:22",
+    "time_last": "2026-04-23T04:36:21"
+  },
+  {
+    "mac": "d4:be:d9:85:3b:a0",
+    "ip": "10.90.11.199",
+    "dns": "app-rnd-02",
+    "active": false,
+    "time_first": "2025-09-15T20:43:00",
+    "time_last": "2025-11-13T06:28:08"
+  },
+  {
+    "mac": "78:1d:ba:a1:fb:4d",
+    "ip": "10.60.12.140",
+    "dns": "wifi-it-03",
+    "active": true,
+    "time_first": "2025-04-09T20:48:23",
+    "time_last": "2026-04-24T23:32:32"
+  },
+  {
+    "mac": "00:14:22:ef:df:3b",
+    "ip": "10.80.12.200",
+    "dns": "desktop-lab-04",
+    "active": true,
+    "time_first": "2025-04-08T23:54:34",
+    "time_last": "2026-04-29T03:38:49"
+  },
+  {
+    "mac": "a0:36:9f:68:91:5c",
+    "ip": "10.20.1.135",
+    "dns": "db-hr-05",
+    "active": true,
+    "time_first": "2025-05-14T10:48:14",
+    "time_last": "2026-04-23T16:18:28"
+  },
+  {
+    "mac": "b8:ca:3a:ff:30:a8",
+    "ip": "10.70.1.205",
+    "dns": "ws-sales-06",
+    "active": false,
+    "time_first": "2025-05-28T04:12:02",
+    "time_last": "2025-12-02T08:57:55"
+  },
+  {
+    "mac": "00:12:fb:f5:e8:89",
+    "ip": "10.10.2.39",
+    "dns": "display-fin-07",
+    "active": true,
+    "time_first": "2025-10-10T06:38:03",
+    "time_last": "2026-04-22T15:34:42"
+  },
+  {
+    "mac": "00:1e:13:a5:1c:24",
+    "ip": "10.10.2.148",
+    "dns": "handset-fin-08",
+    "active": true,
+    "time_first": "2025-06-12T23:30:02",
+    "time_last": "2026-04-28T18:57:05"
+  },
+  {
+    "mac": "00:40:8c:c6:ce:91",
+    "ip": "10.10.2.200",
+    "dns": "cam-fin-09",
+    "active": true,
+    "time_first": "2025-04-03T13:13:27",
+    "time_last": "2026-04-28T08:36:19"
+  },
+  {
+    "mac": "f0:18:98:e4:c6:f3",
+    "ip": "10.90.4.41",
+    "dns": "laptop-rnd-10",
+    "active": true,
+    "time_first": "2025-06-13T08:51:51",
+    "time_last": "2026-04-28T19:20:33"
+  },
+  {
+    "mac": "e4:54:e8:ae:ed:72",
+    "ip": "10.20.4.102",
+    "dns": "ws-hr-11",
+    "active": true,
+    "time_first": "2025-05-21T17:02:58",
+    "time_last": "2026-04-22T22:08:52"
+  },
+  {
+    "mac": "70:5a:0f:4c:41:99",
+    "ip": "10.20.4.149",
+    "dns": "desktop-hr-12",
+    "active": true,
+    "time_first": "2025-06-28T19:39:29",
+    "time_last": "2026-04-27T08:51:32"
+  },
+  {
+    "mac": "ec:8e:b5:29:08:3a",
+    "ip": "10.60.4.227",
+    "dns": "db-it-14",
+    "active": true,
+    "time_first": "2025-07-10T20:40:51",
+    "time_last": "2026-04-23T22:25:20"
+  },
+  {
+    "mac": "9c:8e:99:e6:87:ae",
+    "ip": "10.100.5.39",
+    "dns": "thinkpad-qa-15",
+    "active": true,
+    "time_first": "2025-04-20T04:02:41",
+    "time_last": "2026-04-28T03:03:06"
+  },
+  {
+    "mac": "70:e4:22:ca:3b:06",
+    "ip": "10.90.5.130",
+    "dns": "ap-rnd-16",
+    "active": true,
+    "time_first": "2025-07-08T00:19:28",
+    "time_last": "2026-04-24T14:16:35"
+  },
+  {
+    "mac": "ec:8e:b5:40:45:07",
+    "ip": "10.70.6.15",
+    "dns": "db-sales-17",
+    "active": true,
+    "time_first": "2025-05-01T05:51:09",
+    "time_last": "2026-04-24T13:33:59"
+  },
+  {
+    "mac": "b8:ca:3a:2c:9a:ed",
+    "ip": "10.70.6.82",
+    "dns": "file-sales-18",
+    "active": false,
+    "time_first": "2025-07-19T01:28:46",
+    "time_last": "2026-01-27T18:59:55"
+  },
+  {
+    "mac": "f8:db:88:96:c8:1a",
+    "ip": "10.100.6.202",
+    "dns": "web-qa-19",
+    "active": true,
+    "time_first": "2025-09-20T21:42:54",
+    "time_last": "2026-04-23T12:05:53"
+  },
+  {
+    "mac": "ec:8e:b5:f8:f9:76",
+    "ip": "10.10.7.35",
+    "dns": "app-fin-20",
+    "active": true,
+    "time_first": "2025-06-27T18:37:03",
+    "time_last": "2026-04-26T11:36:11"
+  },
+  {
+    "mac": "d4:6e:5c:b1:e5:df",
+    "ip": "10.20.7.109",
+    "dns": "wifi-hr-21",
+    "active": false,
+    "time_first": "2025-08-14T20:02:53",
+    "time_last": "2026-01-20T05:13:00"
+  },
+  {
+    "mac": "c8:5b:76:ef:43:96",
+    "ip": "10.100.7.172",
+    "dns": "pc-qa-22",
+    "active": true,
+    "time_first": "2025-07-25T08:43:05",
+    "time_last": "2026-04-26T12:28:02"
+  },
+  {
+    "mac": "54:e1:ad:2c:f7:42",
+    "ip": "10.100.7.208",
+    "dns": "laptop-qa-23",
+    "active": true,
+    "time_first": "2025-09-10T04:11:32",
+    "time_last": "2026-04-25T23:48:46"
+  },
+  {
+    "mac": "00:21:cc:b6:51:59",
+    "ip": "10.10.8.86",
+    "dns": "desktop-fin-24",
+    "active": true,
+    "time_first": "2025-04-15T13:06:14",
+    "time_last": "2026-04-29T05:07:44"
+  },
+  {
+    "mac": "00:1e:13:b5:17:88",
+    "ip": "10.80.8.151",
+    "dns": "voip-lab-25",
+    "active": true,
+    "time_first": "2025-04-23T18:08:27",
+    "time_last": "2026-04-23T07:43:08"
+  },
+  {
+    "mac": "70:5a:0f:34:15:35",
+    "ip": "10.20.8.240",
+    "dns": "ws-hr-26",
+    "active": true,
+    "time_first": "2025-09-17T19:48:54",
+    "time_last": "2026-04-27T23:59:42"
+  },
+  {
+    "mac": "f4:cf:e2:67:e0:d4",
+    "ip": "10.60.9.197",
+    "dns": "ap-it-27",
+    "active": true,
+    "time_first": "2025-10-10T02:52:46",
+    "time_last": "2026-04-23T14:15:04"
+  },
+  {
+    "mac": "9c:8e:99:7d:4d:d7",
+    "ip": "10.70.10.50",
+    "dns": "desktop-sales-28",
+    "active": true,
+    "time_first": "2025-09-13T20:07:37",
+    "time_last": "2026-04-26T10:27:27"
+  },
+  {
+    "mac": "70:e4:22:23:2b:ad",
+    "ip": "10.30.10.235",
+    "dns": "phone-eng-29",
+    "active": true,
+    "time_first": "2025-03-29T01:09:51",
+    "time_last": "2026-04-28T06:53:36"
+  },
+  {
+    "mac": "f4:cf:e2:9b:a0:b0",
+    "ip": "10.70.11.113",
+    "dns": "voip-sales-30",
+    "active": false,
+    "time_first": "2025-08-16T11:33:08",
+    "time_last": "2025-12-17T15:47:59"
+  },
+  {
+    "mac": "e4:54:e8:65:9a:2b",
+    "ip": "10.60.11.215",
+    "dns": "pc-it-31",
+    "active": false,
+    "time_first": "2025-08-05T12:56:02",
+    "time_last": "2025-11-27T22:15:47"
+  },
+  {
+    "mac": "00:04:f2:ae:51:0b",
+    "ip": "10.20.12.43",
+    "dns": "pbx-hr-32",
+    "active": false,
+    "time_first": "2025-05-05T02:49:34",
+    "time_last": "2025-12-11T04:29:28"
+  },
+  {
+    "mac": "9c:8e:99:18:3f:e5",
+    "ip": "10.90.1.77",
+    "dns": "desktop-rnd-33",
+    "active": true,
+    "time_first": "2025-05-17T01:34:41",
+    "time_last": "2026-04-26T06:22:16"
+  },
+  {
+    "mac": "f4:cf:e2:47:c1:7e",
+    "ip": "10.50.2.52",
+    "dns": "wifi-ops-34",
+    "active": false,
+    "time_first": "2025-06-30T03:31:52",
+    "time_last": "2026-01-20T04:22:02"
+  },
+  {
+    "mac": "70:5a:0f:d9:42:f3",
+    "ip": "10.20.2.73",
+    "dns": "ws-hr-35",
+    "active": true,
+    "time_first": "2025-09-25T19:45:03",
+    "time_last": "2026-04-24T16:47:37"
+  },
+  {
+    "mac": "ac:cc:8e:fa:d5:53",
+    "ip": "10.70.2.174",
+    "dns": "nvr-sales-36",
+    "active": false,
+    "time_first": "2025-09-16T00:18:17",
+    "time_last": "2025-11-29T07:44:19"
+  },
+  {
+    "mac": "00:1f:29:3c:d1:38",
+    "ip": "10.30.3.93",
+    "dns": "pc-eng-37",
+    "active": false,
+    "time_first": "2025-06-19T02:01:45",
+    "time_last": "2026-02-04T09:49:22"
+  },
+  {
+    "mac": "64:16:7f:49:48:d7",
+    "ip": "10.80.3.180",
+    "dns": "voip-lab-38",
+    "active": false,
+    "time_first": "2025-04-15T14:05:09",
+    "time_last": "2025-11-11T12:45:45"
+  },
+  {
+    "mac": "00:1f:29:9e:e7:ac",
+    "ip": "10.10.4.40",
+    "dns": "desktop-fin-39",
+    "active": true,
+    "time_first": "2025-07-08T09:24:27",
+    "time_last": "2026-04-24T09:32:03"
+  },
+  {
+    "mac": "70:5a:0f:d1:c6:77",
+    "ip": "10.30.4.135",
+    "dns": "db-eng-40",
+    "active": true,
+    "time_first": "2025-08-04T15:18:36",
+    "time_last": "2026-04-29T02:48:08"
+  },
+  {
+    "mac": "ac:de:48:9e:3f:2b",
+    "ip": "10.10.4.230",
+    "dns": "thinkpad-fin-41",
+    "active": true,
+    "time_first": "2025-06-09T16:43:13",
+    "time_last": "2026-04-25T09:35:17"
+  },
+  {
+    "mac": "00:1f:29:5c:09:8c",
+    "ip": "10.20.5.44",
+    "dns": "pc-hr-42",
+    "active": true,
+    "time_first": "2025-08-23T09:07:25",
+    "time_last": "2026-04-24T11:57:22"
+  },
+  {
+    "mac": "dc:a6:32:0b:ae:df",
+    "ip": "10.100.5.101",
+    "dns": "iot-qa-43",
+    "active": true,
+    "time_first": "2025-10-06T15:01:36",
+    "time_last": "2026-04-25T17:48:45"
+  },
+  {
+    "mac": "f4:cf:e2:2d:4e:9d",
+    "ip": "10.30.5.146",
+    "dns": "voip-eng-44",
+    "active": true,
+    "time_first": "2025-05-28T17:10:43",
+    "time_last": "2026-04-29T00:36:08"
+  },
+  {
+    "mac": "64:16:7f:d3:a5:84",
+    "ip": "10.20.5.199",
+    "dns": "voip-hr-45",
+    "active": true,
+    "time_first": "2025-04-28T21:20:28",
+    "time_last": "2026-04-28T14:10:39"
+  },
+  {
+    "mac": "3c:fd:fe:a2:ed:d0",
+    "ip": "10.20.6.73",
+    "dns": "db-hr-46",
+    "active": false,
+    "time_first": "2025-10-05T15:44:56",
+    "time_last": "2025-12-07T02:00:03"
+  },
+  {
+    "mac": "ec:b1:d7:d0:e4:2a",
+    "ip": "10.90.6.149",
+    "dns": "printer-rnd-47",
+    "active": true,
+    "time_first": "2025-07-03T08:25:28",
+    "time_last": "2026-04-23T22:58:33"
+  },
+  {
+    "mac": "f8:db:88:00:ed:94",
+    "ip": "10.90.6.192",
+    "dns": "desktop-rnd-48",
+    "active": true,
+    "time_first": "2025-09-07T23:04:04",
+    "time_last": "2026-04-29T00:23:26"
+  },
+  {
+    "mac": "c8:5b:76:90:17:52",
+    "ip": "10.40.7.42",
+    "dns": "thinkpad-mkt-49",
+    "active": true,
+    "time_first": "2025-06-20T19:42:30",
+    "time_last": "2026-04-27T07:59:33"
+  },
+  {
+    "mac": "c8:5b:76:a2:af:85",
+    "ip": "10.70.7.109",
+    "dns": "ws-sales-50",
+    "active": true,
+    "time_first": "2025-05-22T21:16:49",
+    "time_last": "2026-04-27T12:38:01"
+  },
+  {
+    "mac": "c8:5b:76:01:f3:02",
+    "ip": "10.10.7.138",
+    "dns": "pc-fin-51",
+    "active": true,
+    "time_first": "2025-05-29T21:30:33",
+    "time_last": "2026-04-26T13:05:18"
+  },
+  {
+    "mac": "00:40:8c:c0:b7:c6",
+    "ip": "10.80.8.92",
+    "dns": "cam-lab-52",
+    "active": true,
+    "time_first": "2025-05-10T20:15:50",
+    "time_last": "2026-04-24T13:23:56"
+  },
+  {
+    "mac": "9c:8e:99:9b:71:77",
+    "ip": "10.40.8.169",
+    "dns": "ws-mkt-54",
+    "active": true,
+    "time_first": "2025-03-31T23:28:36",
+    "time_last": "2026-04-29T04:19:05"
+  },
+  {
+    "mac": "e4:54:e8:fc:57:63",
+    "ip": "10.20.9.46",
+    "dns": "desktop-hr-55",
+    "active": true,
+    "time_first": "2025-06-20T07:06:22",
+    "time_last": "2026-04-24T15:51:34"
+  },
+  {
+    "mac": "b8:ca:3a:8c:62:0b",
+    "ip": "10.50.9.84",
+    "dns": "pc-ops-56",
+    "active": true,
+    "time_first": "2025-05-25T20:10:05",
+    "time_last": "2026-04-25T16:57:56"
+  },
+  {
+    "mac": "00:1f:29:8c:3e:ee",
+    "ip": "10.60.9.156",
+    "dns": "app-it-57",
+    "active": true,
+    "time_first": "2025-06-29T23:40:00",
+    "time_last": "2026-04-29T03:11:52"
+  },
+  {
+    "mac": "f0:18:98:ab:29:0c",
+    "ip": "10.10.9.202",
+    "dns": "phone-fin-58",
+    "active": true,
+    "time_first": "2025-08-27T07:29:08",
+    "time_last": "2026-04-24T14:39:20"
+  },
+  {
+    "mac": "00:1a:11:0c:ab:80",
+    "ip": "10.10.10.97",
+    "dns": "macbook-fin-59",
+    "active": true,
+    "time_first": "2025-07-08T17:19:57",
+    "time_last": "2026-04-22T17:25:16"
+  },
+  {
+    "mac": "f8:db:88:3f:2b:1f",
+    "ip": "10.20.10.218",
+    "dns": "pc-hr-60",
+    "active": true,
+    "time_first": "2025-07-27T23:00:12",
+    "time_last": "2026-04-23T04:57:57"
+  },
+  {
+    "mac": "dc:a6:32:21:34:1c",
+    "ip": "10.100.11.97",
+    "dns": "device-qa-61",
+    "active": true,
+    "time_first": "2025-08-13T10:53:58",
+    "time_last": "2026-04-26T18:24:55"
+  },
+  {
+    "mac": "70:5a:0f:db:33:ad",
+    "ip": "10.70.11.240",
+    "dns": "mfp-sales-62",
+    "active": true,
+    "time_first": "2025-05-29T06:46:28",
+    "time_last": "2026-04-29T06:08:12"
+  },
+  {
+    "mac": "00:14:22:40:83:b5",
+    "ip": "10.100.12.46",
+    "dns": "ws-qa-63",
+    "active": true,
+    "time_first": "2025-05-19T12:18:33",
+    "time_last": "2026-04-26T07:48:11"
+  },
+  {
+    "mac": "c8:5b:76:4a:4b:f0",
+    "ip": "10.50.12.164",
+    "dns": "thinkpad-ops-64",
+    "active": true,
+    "time_first": "2025-08-03T20:34:42",
+    "time_last": "2026-04-26T20:32:11"
+  },
+  {
+    "mac": "dc:a6:32:67:23:ae",
+    "ip": "10.60.12.202",
+    "dns": "iot-it-66",
+    "active": true,
+    "time_first": "2025-07-08T07:01:10",
+    "time_last": "2026-04-24T14:16:14"
+  },
+  {
+    "mac": "78:1d:ba:53:35:e8",
+    "ip": "10.50.1.91",
+    "dns": "wifi-ops-67",
+    "active": true,
+    "time_first": "2025-04-12T07:53:36",
+    "time_last": "2026-04-25T23:11:01"
+  },
+  {
+    "mac": "00:04:f2:a9:c0:69",
+    "ip": "10.40.1.177",
+    "dns": "voip-mkt-68",
+    "active": true,
+    "time_first": "2025-04-29T05:17:42",
+    "time_last": "2026-04-29T09:22:12"
+  },
+  {
+    "mac": "00:04:f2:91:59:70",
+    "ip": "10.10.1.202",
+    "dns": "phone-fin-70",
+    "active": true,
+    "time_first": "2025-05-20T16:05:02",
+    "time_last": "2026-04-27T01:24:38"
+  },
+  {
+    "mac": "00:1f:29:c2:38:ad",
+    "ip": "10.10.2.18",
+    "dns": "pc-fin-71",
+    "active": true,
+    "time_first": "2025-08-11T10:09:09",
+    "time_last": "2026-04-27T18:09:17"
+  },
+  {
+    "mac": "00:1a:11:61:62:c1",
+    "ip": "10.20.2.78",
+    "dns": "mobile-hr-72",
+    "active": true,
+    "time_first": "2025-08-08T20:19:56",
+    "time_last": "2026-04-26T10:20:14"
+  },
+  {
+    "mac": "00:18:82:8f:40:fa",
+    "ip": "10.60.3.13",
+    "dns": "ap-it-73",
+    "active": true,
+    "time_first": "2025-09-25T03:44:34",
+    "time_last": "2026-04-26T03:25:40"
+  },
+  {
+    "mac": "ec:8e:b5:5b:a4:bf",
+    "ip": "10.80.3.99",
+    "dns": "file-lab-74",
+    "active": true,
+    "time_first": "2025-07-06T18:40:26",
+    "time_last": "2026-04-22T17:56:01"
+  },
+  {
+    "mac": "00:1e:13:78:ca:6f",
+    "ip": "10.40.3.158",
+    "dns": "phone-mkt-75",
+    "active": true,
+    "time_first": "2025-04-16T16:41:49",
+    "time_last": "2026-04-25T10:30:35"
+  },
+  {
+    "mac": "00:1f:29:b4:75:15",
+    "ip": "10.50.3.223",
+    "dns": "mfp-ops-76",
+    "active": true,
+    "time_first": "2025-06-09T05:05:45",
+    "time_last": "2026-04-26T10:54:53"
+  },
+  {
+    "mac": "dc:a6:32:e2:77:87",
+    "ip": "10.70.4.21",
+    "dns": "iot-sales-77",
+    "active": true,
+    "time_first": "2025-07-31T14:51:14",
+    "time_last": "2026-04-28T20:39:13"
+  },
+  {
+    "mac": "00:04:f2:b8:13:66",
+    "ip": "10.20.4.74",
+    "dns": "phone-hr-78",
+    "active": true,
+    "time_first": "2025-05-29T09:59:05",
+    "time_last": "2026-04-27T16:29:45"
+  },
+  {
+    "mac": "f4:cf:e2:b1:ce:cf",
+    "ip": "10.10.5.28",
+    "dns": "voip-fin-79",
+    "active": true,
+    "time_first": "2025-05-12T21:01:51",
+    "time_last": "2026-04-29T08:30:08"
+  },
+  {
+    "mac": "70:e4:22:ef:ec:ae",
+    "ip": "10.40.6.47",
+    "dns": "handset-mkt-80",
+    "active": true,
+    "time_first": "2025-08-09T19:44:26",
+    "time_last": "2026-04-28T02:56:30"
+  },
+  {
+    "mac": "00:1f:29:41:9c:04",
+    "ip": "10.60.6.106",
+    "dns": "ws-it-81",
+    "active": true,
+    "time_first": "2025-06-01T16:01:44",
+    "time_last": "2026-04-26T22:55:00"
+  },
+  {
+    "mac": "ac:cc:8e:10:47:4e",
+    "ip": "10.100.6.166",
+    "dns": "cam-qa-82",
+    "active": true,
+    "time_first": "2025-03-26T14:03:52",
+    "time_last": "2026-04-25T11:02:38"
+  },
+  {
+    "mac": "54:e1:ad:c5:60:f3",
+    "ip": "10.70.7.44",
+    "dns": "laptop-sales-83",
+    "active": false,
+    "time_first": "2025-06-19T12:49:40",
+    "time_last": "2025-12-25T06:48:54"
+  },
+  {
+    "mac": "54:e1:ad:fa:0d:5f",
+    "ip": "10.10.7.108",
+    "dns": "pc-fin-84",
+    "active": true,
+    "time_first": "2025-04-12T04:02:33",
+    "time_last": "2026-04-26T17:40:11"
+  },
+  {
+    "mac": "00:1f:29:57:a7:d2",
+    "ip": "10.60.7.130",
+    "dns": "file-it-85",
+    "active": true,
+    "time_first": "2025-03-27T12:26:36",
+    "time_last": "2026-04-28T12:48:17"
+  },
+  {
+    "mac": "00:12:fb:f3:51:9e",
+    "ip": "10.40.8.37",
+    "dns": "phone-mkt-86",
+    "active": true,
+    "time_first": "2025-07-02T22:37:11",
+    "time_last": "2026-04-24T15:26:51"
+  },
+  {
+    "mac": "f8:db:88:a8:fb:eb",
+    "ip": "10.100.8.103",
+    "dns": "ws-qa-87",
+    "active": true,
+    "time_first": "2025-10-03T14:53:34",
+    "time_last": "2026-04-28T19:11:41"
+  },
+  {
+    "mac": "dc:a6:32:7f:5b:dd",
+    "ip": "10.100.8.216",
+    "dns": "iot-qa-88",
+    "active": true,
+    "time_first": "2025-04-12T06:30:04",
+    "time_last": "2026-04-28T03:40:52"
+  },
+  {
+    "mac": "00:12:fb:95:22:6f",
+    "ip": "10.50.9.44",
+    "dns": "ipad-ops-89",
+    "active": true,
+    "time_first": "2025-07-21T04:21:53",
+    "time_last": "2026-04-24T02:30:26"
+  },
+  {
+    "mac": "ac:cc:8e:6a:16:ec",
+    "ip": "10.80.9.86",
+    "dns": "cam-lab-90",
+    "active": false,
+    "time_first": "2025-06-05T15:56:24",
+    "time_last": "2025-12-02T21:00:25"
+  },
+  {
+    "mac": "f8:db:88:3a:45:a7",
+    "ip": "10.10.9.146",
+    "dns": "laptop-fin-91",
+    "active": true,
+    "time_first": "2025-07-10T14:07:16",
+    "time_last": "2026-04-26T04:59:31"
+  },
+  {
+    "mac": "00:04:f2:57:09:33",
+    "ip": "10.80.9.200",
+    "dns": "voip-lab-92",
+    "active": true,
+    "time_first": "2025-09-16T14:34:24",
+    "time_last": "2026-04-24T05:56:13"
+  },
+  {
+    "mac": "ec:b1:d7:6e:11:6e",
+    "ip": "10.80.10.21",
+    "dns": "desktop-lab-93",
+    "active": true,
+    "time_first": "2025-10-01T21:16:15",
+    "time_last": "2026-04-24T23:51:18"
+  },
+  {
+    "mac": "70:e4:22:02:18:c1",
+    "ip": "10.50.10.73",
+    "dns": "voip-ops-94",
+    "active": true,
+    "time_first": "2025-04-08T16:09:40",
+    "time_last": "2026-04-26T19:33:34"
+  },
+  {
+    "mac": "f0:18:98:20:70:31",
+    "ip": "10.40.10.172",
+    "dns": "thinkpad-mkt-95",
+    "active": true,
+    "time_first": "2025-04-28T08:20:12",
+    "time_last": "2026-04-28T06:17:44"
+  },
+  {
+    "mac": "9c:8e:99:6a:ca:db",
+    "ip": "10.90.10.202",
+    "dns": "pc-rnd-96",
+    "active": false,
+    "time_first": "2025-08-29T16:21:21",
+    "time_last": "2026-01-03T18:43:00"
+  },
+  {
+    "mac": "54:e1:ad:8e:bc:16",
+    "ip": "10.80.11.14",
+    "dns": "laptop-lab-97",
+    "active": false,
+    "time_first": "2025-08-28T17:24:28",
+    "time_last": "2026-01-09T06:49:04"
+  },
+  {
+    "mac": "a0:36:9f:a6:c6:44",
+    "ip": "10.50.11.168",
+    "dns": "srv-ops-98",
+    "active": true,
+    "time_first": "2025-06-06T08:48:12",
+    "time_last": "2026-04-23T05:59:36"
+  },
+  {
+    "mac": "e4:54:e8:77:06:77",
+    "ip": "10.90.12.57",
+    "dns": "thinkpad-rnd-99",
+    "active": false,
+    "time_first": "2025-05-12T15:34:58",
+    "time_last": "2026-01-27T00:45:54"
+  },
+  {
+    "mac": "00:14:22:97:67:4d",
+    "ip": "10.30.12.101",
+    "dns": "desktop-eng-00",
+    "active": true,
+    "time_first": "2025-06-05T00:42:47",
+    "time_last": "2026-04-27T18:30:18"
+  },
+  {
+    "mac": "f4:cf:e2:14:d4:93",
+    "ip": "10.60.12.240",
+    "dns": "access-it-01",
+    "active": true,
+    "time_first": "2025-08-26T15:15:06",
+    "time_last": "2026-04-24T07:22:38"
+  },
+  {
+    "mac": "54:e1:ad:a4:5d:e2",
+    "ip": "10.40.1.94",
+    "dns": "pc-mkt-02",
+    "active": true,
+    "time_first": "2025-09-28T12:20:20",
+    "time_last": "2026-04-25T23:54:14"
+  },
+  {
+    "mac": "00:1e:13:68:78:28",
+    "ip": "10.20.1.167",
+    "dns": "voip-hr-03",
+    "active": true,
+    "time_first": "2025-07-10T00:32:37",
+    "time_last": "2026-04-28T06:55:16"
+  },
+  {
+    "mac": "64:16:7f:67:8b:f6",
+    "ip": "10.100.1.230",
+    "dns": "voip-qa-04",
+    "active": false,
+    "time_first": "2025-03-30T22:14:06",
+    "time_last": "2025-12-30T14:42:47"
+  },
+  {
+    "mac": "3c:fd:fe:c3:da:2a",
+    "ip": "10.30.2.11",
+    "dns": "app-eng-05",
+    "active": true,
+    "time_first": "2025-04-10T03:08:38",
+    "time_last": "2026-04-25T06:30:33"
+  },
+  {
+    "mac": "9c:8e:99:f6:24:aa",
+    "ip": "10.70.2.168",
+    "dns": "file-sales-06",
+    "active": false,
+    "time_first": "2025-07-09T14:03:33",
+    "time_last": "2026-01-23T23:09:40"
+  },
+  {
+    "mac": "ec:8e:b5:ca:bf:c4",
+    "ip": "10.80.2.216",
+    "dns": "app-lab-07",
+    "active": true,
+    "time_first": "2025-06-05T05:27:58",
+    "time_last": "2026-04-25T07:39:50"
+  },
+  {
+    "mac": "ac:de:48:b2:fa:bc",
+    "ip": "10.40.3.26",
+    "dns": "phone-mkt-08",
+    "active": true,
+    "time_first": "2025-06-03T06:08:58",
+    "time_last": "2026-04-22T22:50:41"
+  },
+  {
+    "mac": "00:1f:29:e9:4b:82",
+    "ip": "10.30.3.108",
+    "dns": "desktop-eng-09",
+    "active": true,
+    "time_first": "2025-06-17T18:27:33",
+    "time_last": "2026-04-24T19:10:56"
+  },
+  {
+    "mac": "e4:54:e8:29:60:d8",
+    "ip": "10.70.3.167",
+    "dns": "pc-sales-10",
+    "active": true,
+    "time_first": "2025-07-18T01:31:00",
+    "time_last": "2026-04-24T14:16:17"
+  },
+  {
+    "mac": "78:1d:ba:37:b0:49",
+    "ip": "10.70.3.195",
+    "dns": "access-sales-11",
+    "active": true,
+    "time_first": "2025-08-30T12:46:38",
+    "time_last": "2026-04-24T04:47:14"
+  },
+  {
+    "mac": "00:1f:29:d5:d5:93",
+    "ip": "10.20.4.59",
+    "dns": "ws-hr-12",
+    "active": true,
+    "time_first": "2025-09-07T07:27:20",
+    "time_last": "2026-04-26T19:33:30"
+  },
+  {
+    "mac": "f8:db:88:66:1e:5d",
+    "ip": "10.100.4.81",
+    "dns": "ws-qa-13",
+    "active": true,
+    "time_first": "2025-09-03T01:27:10",
+    "time_last": "2026-04-22T13:21:53"
+  },
+  {
+    "mac": "c8:19:f7:2b:c1:3f",
+    "ip": "10.30.4.148",
+    "dns": "mobile-eng-14",
+    "active": true,
+    "time_first": "2025-08-04T00:10:14",
+    "time_last": "2026-04-25T08:06:41"
+  },
+  {
+    "mac": "d4:be:d9:15:31:6c",
+    "ip": "10.10.4.227",
+    "dns": "pc-fin-15",
+    "active": true,
+    "time_first": "2025-10-09T23:38:33",
+    "time_last": "2026-04-25T05:11:54"
+  },
+  {
+    "mac": "c8:5b:76:a1:7a:b8",
+    "ip": "10.60.5.151",
+    "dns": "thinkpad-it-16",
+    "active": true,
+    "time_first": "2025-07-27T18:00:31",
+    "time_last": "2026-04-29T00:53:00"
+  },
+  {
+    "mac": "70:5a:0f:3e:8f:7f",
+    "ip": "10.30.5.228",
+    "dns": "ws-eng-17",
+    "active": true,
+    "time_first": "2025-06-09T18:24:42",
+    "time_last": "2026-04-24T19:48:31"
+  },
+  {
+    "mac": "c8:5b:76:17:a6:e3",
+    "ip": "10.10.6.33",
+    "dns": "pc-fin-18",
+    "active": true,
+    "time_first": "2025-07-06T12:43:35",
+    "time_last": "2026-04-24T06:18:49"
+  },
+  {
+    "mac": "00:1a:11:63:49:10",
+    "ip": "10.70.6.108",
+    "dns": "phone-sales-19",
+    "active": false,
+    "time_first": "2025-05-05T01:45:37",
+    "time_last": "2026-01-09T07:15:50"
+  },
+  {
+    "mac": "70:e4:22:7b:7c:6c",
+    "ip": "10.20.6.172",
+    "dns": "wifi-hr-20",
+    "active": true,
+    "time_first": "2025-04-05T14:17:33",
+    "time_last": "2026-04-24T12:54:55"
+  },
+  {
+    "mac": "a4:83:e7:83:f3:3f",
+    "ip": "10.50.7.56",
+    "dns": "mobile-ops-21",
+    "active": true,
+    "time_first": "2025-04-09T21:21:58",
+    "time_last": "2026-04-25T00:03:50"
+  },
+  {
+    "mac": "00:21:cc:c3:df:77",
+    "ip": "10.60.7.175",
+    "dns": "desktop-it-22",
+    "active": true,
+    "time_first": "2025-09-18T07:11:17",
+    "time_last": "2026-04-28T19:46:10"
+  },
+  {
+    "mac": "70:5a:0f:9f:1f:61",
+    "ip": "10.100.8.130",
+    "dns": "thinkpad-qa-23",
+    "active": true,
+    "time_first": "2025-03-29T11:13:20",
+    "time_last": "2026-04-27T04:47:59"
+  },
+  {
+    "mac": "00:40:8c:eb:a1:4a",
+    "ip": "10.70.8.224",
+    "dns": "cam-sales-24",
+    "active": true,
+    "time_first": "2025-08-13T01:44:49",
+    "time_last": "2026-04-27T21:43:26"
+  },
+  {
+    "mac": "f0:18:98:3f:8c:f4",
+    "ip": "10.50.9.54",
+    "dns": "thinkpad-ops-25",
+    "active": true,
+    "time_first": "2025-08-29T07:06:56",
+    "time_last": "2026-04-27T09:31:43"
+  },
+  {
+    "mac": "e4:5f:01:1a:5b:f9",
+    "ip": "10.40.9.84",
+    "dns": "device-mkt-26",
+    "active": true,
+    "time_first": "2025-08-12T14:48:41",
+    "time_last": "2026-04-23T17:34:40"
+  },
+  {
+    "mac": "9c:8e:99:b2:c8:c8",
+    "ip": "10.70.9.160",
+    "dns": "pc-sales-27",
+    "active": false,
+    "time_first": "2025-05-19T02:04:40",
+    "time_last": "2026-01-11T04:49:34"
+  },
+  {
+    "mac": "00:1f:29:53:46:e2",
+    "ip": "10.50.10.51",
+    "dns": "desktop-ops-28",
+    "active": true,
+    "time_first": "2025-08-14T05:18:30",
+    "time_last": "2026-04-28T10:10:11"
+  },
+  {
+    "mac": "00:1e:13:56:1c:31",
+    "ip": "10.70.10.233",
+    "dns": "voip-sales-29",
+    "active": true,
+    "time_first": "2025-07-08T15:53:46",
+    "time_last": "2026-04-22T19:43:45"
+  },
+  {
+    "mac": "54:e1:ad:3c:7b:cb",
+    "ip": "10.70.11.12",
+    "dns": "laptop-sales-30",
+    "active": true,
+    "time_first": "2025-05-26T20:10:34",
+    "time_last": "2026-04-22T18:08:04"
+  },
+  {
+    "mac": "70:e4:22:e3:bc:05",
+    "ip": "10.70.11.110",
+    "dns": "voip-sales-31",
+    "active": false,
+    "time_first": "2025-09-24T21:50:32",
+    "time_last": "2025-12-21T12:22:32"
+  },
+  {
+    "mac": "e4:54:e8:30:5c:c4",
+    "ip": "10.50.11.177",
+    "dns": "pc-ops-32",
+    "active": true,
+    "time_first": "2025-06-04T12:26:09",
+    "time_last": "2026-04-26T09:38:44"
+  },
+  {
+    "mac": "54:e1:ad:c9:fa:20",
+    "ip": "10.70.11.191",
+    "dns": "pc-sales-33",
+    "active": true,
+    "time_first": "2025-06-16T11:50:11",
+    "time_last": "2026-04-24T10:35:24"
+  },
+  {
+    "mac": "00:40:8c:e4:a0:3e",
+    "ip": "10.100.12.10",
+    "dns": "cam-qa-34",
+    "active": false,
+    "time_first": "2025-06-18T10:06:39",
+    "time_last": "2025-12-05T04:09:46"
+  },
+  {
+    "mac": "00:40:8c:57:d8:00",
+    "ip": "10.90.12.93",
+    "dns": "nvr-rnd-35",
+    "active": true,
+    "time_first": "2025-10-02T04:54:06",
+    "time_last": "2026-04-22T19:36:23"
+  },
+  {
+    "mac": "f8:db:88:6b:32:16",
+    "ip": "10.60.12.152",
+    "dns": "file-it-36",
+    "active": true,
+    "time_first": "2025-09-03T19:44:47",
+    "time_last": "2026-04-27T08:08:55"
+  },
+  {
+    "mac": "9c:8e:99:d8:26:82",
+    "ip": "10.30.1.109",
+    "dns": "pc-eng-37",
+    "active": true,
+    "time_first": "2025-06-03T11:36:32",
+    "time_last": "2026-04-28T07:03:44"
+  },
+  {
+    "mac": "c8:19:f7:89:62:be",
+    "ip": "10.40.1.230",
+    "dns": "mobile-mkt-38",
+    "active": true,
+    "time_first": "2025-06-03T21:11:55",
+    "time_last": "2026-04-25T20:34:48"
+  },
+  {
+    "mac": "00:40:8c:8a:3f:38",
+    "ip": "10.100.2.74",
+    "dns": "cam-qa-39",
+    "active": true,
+    "time_first": "2025-07-22T01:56:59",
+    "time_last": "2026-04-27T03:10:04"
+  },
+  {
+    "mac": "00:40:8c:c1:35:3f",
+    "ip": "10.20.3.24",
+    "dns": "nvr-hr-40",
+    "active": true,
+    "time_first": "2025-05-18T18:31:42",
+    "time_last": "2026-04-27T06:59:58"
+  },
+  {
+    "mac": "ec:8e:b5:32:18:57",
+    "ip": "10.90.3.108",
+    "dns": "db-rnd-41",
+    "active": true,
+    "time_first": "2025-05-14T01:30:36",
+    "time_last": "2026-04-28T04:08:49"
+  },
+  {
+    "mac": "ac:cc:8e:04:4f:40",
+    "ip": "10.100.3.146",
+    "dns": "cam-qa-42",
+    "active": false,
+    "time_first": "2025-06-19T22:12:29",
+    "time_last": "2026-01-12T16:48:44"
+  },
+  {
+    "mac": "f8:db:88:b5:ef:92",
+    "ip": "10.80.3.218",
+    "dns": "laptop-lab-43",
+    "active": true,
+    "time_first": "2025-07-17T21:13:39",
+    "time_last": "2026-04-22T20:17:53"
+  },
+  {
+    "mac": "d4:6e:5c:28:27:7a",
+    "ip": "10.60.4.110",
+    "dns": "ap-it-44",
+    "active": true,
+    "time_first": "2025-09-08T09:57:25",
+    "time_last": "2026-04-29T00:51:17"
+  },
+  {
+    "mac": "f8:db:88:fe:3f:cf",
+    "ip": "10.90.4.160",
+    "dns": "web-rnd-45",
+    "active": false,
+    "time_first": "2025-09-03T09:37:00",
+    "time_last": "2025-11-17T07:08:46"
+  },
+  {
+    "mac": "c8:19:f7:73:59:26",
+    "ip": "10.80.5.53",
+    "dns": "mobile-lab-47",
+    "active": true,
+    "time_first": "2025-09-14T18:34:11",
+    "time_last": "2026-04-26T23:08:49"
+  },
+  {
+    "mac": "d4:be:d9:3c:94:99",
+    "ip": "10.40.5.119",
+    "dns": "pc-mkt-48",
+    "active": true,
+    "time_first": "2025-08-19T11:41:46",
+    "time_last": "2026-04-29T10:07:28"
+  },
+  {
+    "mac": "84:25:db:b6:03:eb",
+    "ip": "10.100.5.133",
+    "dns": "phone-qa-49",
+    "active": true,
+    "time_first": "2025-08-01T15:48:53",
+    "time_last": "2026-04-29T09:38:02"
+  },
+  {
+    "mac": "a4:83:e7:4e:d2:3f",
+    "ip": "10.80.5.195",
+    "dns": "laptop-lab-50",
+    "active": true,
+    "time_first": "2025-10-10T01:19:47",
+    "time_last": "2026-04-24T01:13:58"
+  },
+  {
+    "mac": "70:5a:0f:37:e0:e0",
+    "ip": "10.30.6.27",
+    "dns": "thinkpad-eng-51",
+    "active": true,
+    "time_first": "2025-08-01T16:33:31",
+    "time_last": "2026-04-26T09:35:40"
+  },
+  {
+    "mac": "b8:ca:3a:a9:10:52",
+    "ip": "10.70.6.177",
+    "dns": "desktop-sales-52",
+    "active": true,
+    "time_first": "2025-04-04T18:17:45",
+    "time_last": "2026-04-22T17:16:14"
+  },
+  {
+    "mac": "ec:b1:d7:c7:43:38",
+    "ip": "10.60.6.222",
+    "dns": "app-it-53",
+    "active": true,
+    "time_first": "2025-05-05T21:28:40",
+    "time_last": "2026-04-28T13:18:40"
+  },
+  {
+    "mac": "f4:cf:e2:04:de:f5",
+    "ip": "10.70.7.57",
+    "dns": "handset-sales-54",
+    "active": true,
+    "time_first": "2025-07-06T06:02:22",
+    "time_last": "2026-04-24T02:40:07"
+  },
+  {
+    "mac": "d4:be:d9:7e:db:65",
+    "ip": "10.20.7.114",
+    "dns": "db-hr-55",
+    "active": true,
+    "time_first": "2025-05-07T21:27:31",
+    "time_last": "2026-04-28T17:11:06"
+  },
+  {
+    "mac": "54:e1:ad:cd:13:8c",
+    "ip": "10.40.7.138",
+    "dns": "ws-mkt-56",
+    "active": true,
+    "time_first": "2025-04-08T14:49:40",
+    "time_last": "2026-04-26T10:52:51"
+  },
+  {
+    "mac": "9c:8e:99:da:f5:1f",
+    "ip": "10.40.7.211",
+    "dns": "ws-mkt-57",
+    "active": true,
+    "time_first": "2025-06-04T15:54:31",
+    "time_last": "2026-04-27T07:22:45"
+  },
+  {
+    "mac": "54:e1:ad:14:00:1a",
+    "ip": "10.60.8.21",
+    "dns": "laptop-it-58",
+    "active": true,
+    "time_first": "2025-08-08T02:37:47",
+    "time_last": "2026-04-27T10:34:00"
+  },
+  {
+    "mac": "70:5a:0f:39:31:06",
+    "ip": "10.60.8.89",
+    "dns": "macbook-it-59",
+    "active": true,
+    "time_first": "2025-05-10T08:16:28",
+    "time_last": "2026-04-28T12:36:29"
+  },
+  {
+    "mac": "f4:cf:e2:2c:36:42",
+    "ip": "10.40.9.34",
+    "dns": "handset-mkt-60",
+    "active": true,
+    "time_first": "2025-06-13T01:41:29",
+    "time_last": "2026-04-29T03:36:19"
+  },
+  {
+    "mac": "00:1a:11:9a:f2:67",
+    "ip": "10.90.9.211",
+    "dns": "thinkpad-rnd-61",
+    "active": true,
+    "time_first": "2025-09-10T16:52:21",
+    "time_last": "2026-04-28T13:01:27"
+  },
+  {
+    "mac": "70:5a:0f:f7:d6:0b",
+    "ip": "10.20.11.14",
+    "dns": "macbook-hr-62",
+    "active": true,
+    "time_first": "2025-08-17T14:35:11",
+    "time_last": "2026-04-22T15:57:43"
+  },
+  {
+    "mac": "70:e4:22:e0:c4:c7",
+    "ip": "10.80.11.140",
+    "dns": "voip-lab-63",
+    "active": true,
+    "time_first": "2025-08-18T03:19:40",
+    "time_last": "2026-04-28T03:34:36"
+  },
+  {
+    "mac": "64:16:7f:89:3c:57",
+    "ip": "10.50.11.208",
+    "dns": "phone-ops-64",
+    "active": true,
+    "time_first": "2025-06-26T17:23:03",
+    "time_last": "2026-04-27T09:28:13"
+  },
+  {
+    "mac": "b8:ca:3a:00:b1:bc",
+    "ip": "10.40.12.77",
+    "dns": "pc-mkt-65",
+    "active": true,
+    "time_first": "2025-04-05T03:38:47",
+    "time_last": "2026-04-23T05:59:25"
+  },
+  {
+    "mac": "d4:6e:5c:b6:70:8f",
+    "ip": "10.10.12.130",
+    "dns": "access-fin-66",
+    "active": true,
+    "time_first": "2025-03-31T02:47:50",
+    "time_last": "2026-04-25T16:13:07"
+  }
+]

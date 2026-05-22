@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010011",
+  "sys_id": "e2b2784883e40310319f5cc0deaad3c7",
+  "state": "New",
+  "priority": "5 - Planning",
+  "urgency": "3 - Low",
+  "category": "Network",
+  "opened_at": "2026-04-24 06:25:19",
+  "opened_by": "System Administrator",
+  "short_description": "Port 30 on SW-U10 link never came up after patch install",
+  "description": "Cable was run to SW-U10 port 30 (Gi1/0/30) yesterday during the desk move for MKT-4. Link has never come up. Admin=up, oper=DOWN, no light. Either the patch was never completed at PP-U08, cable is damaged, or the far-end device is off. Walk the cable and verify both ends.",
+  "target": {
+    "device": "SW-U10",
+    "port": 30,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.10",
+    "mac": "AA:BB:CC:10:10:10",
+    "model": "Catalyst 9300-48P",
+    "serial": "FCW2501A100",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": null,
+    "interface_alias": null,
+    "port_short_description": null,
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 10
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=e2b2784883e40310319f5cc0deaad3c7",
+  "polled_at": "2026-04-24T13:34:31Z"
+}

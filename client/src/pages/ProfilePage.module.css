@@ -1,0 +1,488 @@
+/* Profile — data-center themed hero + clean content below.
+   Layout: dark navy hero with rack/port/topology decorations and a
+   curved bottom edge → avatar floats on the curve → centered identity
+   block → stat tiles → recent scans card. Hero stays dark in both
+   themes (it's a brand band), content adapts via index.css tokens.
+*/
+
+.profile {
+  position: relative;
+  display: flex; flex-direction: column;
+  gap: 14px;
+  min-height: 100dvh;
+  padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  /* Match HomeDark's field (dark is the base theme) */
+  background:
+    radial-gradient(90% 55% at 50% 8%, #0A2950 0%, rgba(10,41,80,0) 58%),
+    linear-gradient(180deg, #021026 0%, #02091a 55%, #010b1f 100%);
+}
+/* Match HomeLight's lavender field */
+:global([data-theme='light']) .profile {
+  background:
+    radial-gradient(120% 70% at 50% 0%, #EFEAFE 0%, rgba(239,234,254,0) 55%),
+    linear-gradient(180deg, #EDE8FB 0%, #F4F1FB 55%, #F7F5FC 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HERO — dark navy band with data-center decorations.
+   The .heroWrap is a positioned shell so the .avatar can sit
+   *outside* the .hero (which has overflow:hidden for the curved
+   bottom edge). This is what stops the curve from clipping the
+   avatar in half.
+   ══════════════════════════════════════════════════════════════ */
+.heroWrap {
+  position: relative;
+  margin-bottom: 56px;   /* room for the overhanging avatar */
+}
+.hero {
+  position: relative;
+  height: 220px;
+  padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 16px));
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(99,102,241,0.30) 0%, transparent 65%),
+    linear-gradient(160deg, #0a1230 0%, #131641 45%, #0c1535 100%);
+  border-radius: 0 0 48% 48% / 0 0 16% 16%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.heroDecor {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroLabel {
+  position: relative; z-index: 2;
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgba(220,232,255,0.78);
+}
+
+.heroActions {
+  position: absolute;
+  top: max(14px, calc(env(safe-area-inset-top, 0px) + 10px));
+  right: 16px;
+  z-index: 3;
+  display: flex; align-items: center; gap: 8px;
+}
+.heroIconBtn {
+  width: 38px; height: 38px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: rgba(220,230,250,0.85);
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.heroIconBtn:hover {
+  background: rgba(244,63,94,0.20);
+  border-color: rgba(244,63,94,0.55);
+  color: #fff;
+}
+
+/* Avatar — sibling of .hero, positioned absolutely on top of the curve.
+   Lives outside the hero's clipping box so the full circle renders. */
+.avatarWrap {
+  position: absolute;
+  left: 50%;
+  bottom: -52px;   /* hangs ~half its height below the hero's box */
+  transform: translateX(-50%);
+  z-index: 4;
+}
+.avatar {
+  position: relative;
+  width: 104px; height: 104px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 45%),
+    linear-gradient(135deg, #6366F1 0%, #818CF8 45%, #6366F1 100%);
+  border: 4px solid var(--bg);
+  box-shadow:
+    0 0 0 1px rgba(99,102,241,0.40),
+    0 12px 28px rgba(99,102,241,0.30),
+    0 4px 12px rgba(99,102,241,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.22);
+}
+.avatarInitial {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.03em;
+  text-shadow: 0 1px 12px rgba(15,15,80,0.35);
+  line-height: 1;
+}
+.avatarStatus {
+  position: absolute;
+  bottom: 6px; right: 6px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 10px rgba(34,197,94,0.7);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   IDENTITY — name, email, badges (centered, sits below avatar)
+   ══════════════════════════════════════════════════════════════ */
+.identity {
+  margin-top: 4px;
+  padding: 0 20px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px;
+}
+.name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  color: var(--text);
+}
+.email {
+  margin: 0;
+  font-size: .82rem;
+  color: var(--muted);
+}
+.meta {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; justify-content: center;
+  margin-top: 6px;
+  font-size: .7rem;
+}
+.metaBadge {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(99,102,241,0.16);
+  color: var(--c1);
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.metaJoined {
+  color: var(--muted);
+  letter-spacing: .01em;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STAT TILES
+   ══════════════════════════════════════════════════════════════ */
+.stats {
+  margin: 4px 16px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.statTile {
+  padding: 14px 10px;
+  border-radius: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--gb);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px;
+  text-align: center;
+  transition: border-color .15s, transform .12s, box-shadow .15s;
+}
+.statTile:hover {
+  border-color: rgba(99,102,241,0.45);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99,102,241,0.10);
+}
+.statIcon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: rgba(99,102,241,0.14);
+  color: var(--c1);
+}
+.statValue {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.022em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.statLabel {
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CARD — recent scans container
+   ══════════════════════════════════════════════════════════════ */
+.card {
+  margin: 0 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--bg2);
+  border: 1px solid var(--gb);
+}
+.cardHead {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cardTitle {
+  margin: 0;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SCAN LIST
+   ══════════════════════════════════════════════════════════════ */
+.scanList {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+}
+.scanRow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--gb);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s;
+  border-radius: 8px;
+}
+.scanRow:last-child { border-bottom: none; }
+.scanRow:hover { background: rgba(99,102,241,0.07); }
+.scanRow:focus-visible {
+  outline: 2px solid var(--c1);
+  outline-offset: 2px;
+}
+.scanRowIcon {
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: rgba(99,102,241,0.14);
+  color: var(--c1);
+}
+.scanRowMain { flex: 1; min-width: 0; }
+.scanRowTitle {
+  margin: 0;
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--mono, monospace);
+  letter-spacing: -0.005em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scanRowMeta {
+  margin: 3px 0 0;
+  font-size: .7rem;
+  color: var(--muted);
+}
+.scanRowTime {
+  display: flex; align-items: center; gap: 4px;
+  font-size: .72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EMPTY STATE
+   ══════════════════════════════════════════════════════════════ */
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px;
+  padding: 24px 10px;
+  text-align: center;
+}
+.emptyText {
+  margin: 0;
+  font-size: .88rem;
+  color: var(--muted);
+}
+.startBtn {
+  display: inline-flex; align-items: center;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: none;
+  background: var(--c1);
+  color: #fff;
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, transform .12s;
+  box-shadow: 0 6px 16px rgba(99,102,241,0.32);
+}
+.startBtn:hover { background: var(--c3); transform: translateY(-1px); }
+
+/* ══════════════════════════════════════════════════════════════
+   SPINNER + ERROR BANNER
+   ══════════════════════════════════════════════════════════════ */
+.spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(99,102,241,0.20);
+  border-top-color: var(--c1);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.errBanner {
+  padding: 10px 12px;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.30);
+  border-radius: 10px;
+  color: #DC2626;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SIGN-OUT CONFIRM MODAL
+   ══════════════════════════════════════════════════════════════ */
+.confirmBackdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: fadeIn .18s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.confirmModal {
+  width: 100%; max-width: 340px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 26px 22px 20px;
+  border-radius: 18px;
+  background: var(--bg2);
+  border: 1px solid var(--gb);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+.confirmIcon {
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(244,63,94,0.10);
+  color: #DC2626;
+}
+.confirmTitle {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.confirmMsg {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.confirmActions {
+  display: flex; gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+.confirmCancel, .confirmGo {
+  flex: 1;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s, transform .12s;
+}
+.confirmCancel {
+  background: transparent;
+  border: 1px solid var(--gb);
+  color: var(--text);
+}
+.confirmCancel:hover { background: var(--card); }
+.confirmGo {
+  background: #DC2626;
+  border: 1px solid #DC2626;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(220,38,38,0.30);
+}
+.confirmGo:hover { background: #B91C1C; transform: translateY(-1px); }
+
+/* ══════════════════════════════════════════════════════════════
+   DARK-THEME-SPECIFIC ACCENTS — most tokens come from index.css.
+   The few below override surfaces that need extra contrast/saturation
+   on the dark background.
+   ══════════════════════════════════════════════════════════════ */
+:root:not([data-theme='light']) .statTile,
+:root:not([data-theme='light']) .card {
+  /* Elevated slate panel — clearly lighter than the near-black page so
+     layers read with depth (page → raised card → navy brand bands). */
+  background: linear-gradient(160deg, #16203E 0%, #111A33 100%);
+  border: 1px solid rgba(120, 140, 225, 0.20);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 30px -14px rgba(0, 0, 0, 0.70);
+}
+:root:not([data-theme='light']) .statIcon,
+:root:not([data-theme='light']) .scanRowIcon {
+  background: rgba(99,102,241,0.14);
+  color: #67e8f9;
+}
+:root:not([data-theme='light']) .metaBadge {
+  background: rgba(99,102,241,0.18);
+  color: #67e8f9;
+}
+:root:not([data-theme='light']) .scanRow:hover {
+  background: rgba(99,102,241,0.08);
+}
+:root:not([data-theme='light']) .errBanner {
+  background: rgba(244,63,94,0.10);
+  border-color: rgba(244,63,94,0.32);
+  color: #fca5a5;
+}
+:root:not([data-theme='light']) .confirmIcon {
+  background: rgba(244,63,94,0.12);
+  color: #fca5a5;
+}
+:root:not([data-theme='light']) .startBtn {
+  background: linear-gradient(135deg, #6366F1, #6366F1);
+  box-shadow: 0 6px 18px rgba(99,102,241,0.30);
+}
+
+/* Dark theme: the hero is only a touch lighter than the near-black page,
+   so the curved bottom edge showed a hard seam. Fade the hero into the
+   page bg so the curve melts in instead of floating as a lighter panel. */
+:root:not([data-theme='light']) .hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 88px;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+  z-index: 1;
+}
+/* Dark theme: var(--bg) ring would be a harsh black donut on the navy
+   hero. Use a soft cool-white rim so it reads as an intentional ring
+   (the indigo glow shadow still separates it from the page). */
+:root:not([data-theme='light']) .avatar {
+  border-color: rgba(226,232,255,0.22);
+}
+:root:not([data-theme='light']) .avatarStatus {
+  border-color: rgba(226,232,255,0.22);
+}

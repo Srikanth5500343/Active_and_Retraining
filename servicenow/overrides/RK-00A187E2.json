@@ -1,0 +1,132 @@
+{
+  "_doc": "Hand-curated metadata for RK-00A187E2 (RACK-DARK-01). Anything in this file overrides the synth defaults that bootstrap_cmdb_full.py / topology_generate.py would otherwise generate from the scan. To 'promote' another rack to real metadata, drop a similar file at servicenow/overrides/<rackId>.json.",
+
+  "rack_name": "RACK-DARK-01",
+  "u_size": 18,
+
+  "rack_meta": {
+    "asset_tag": "AT-RACK-DARK-01",
+    "serial_number": "APC-NS-42U-001",
+    "short_description": "42U APC NetShelter in DC-East Row B; 208V/30A circuits; 2x PDU; cooling zone B2",
+    "comments": "Owner: Platform/Network; power_total_kw=8.4; pdu_a=serial APC-PDU-4401; pdu_b=serial APC-PDU-4402; temperature_sensor=on"
+  },
+
+  "agg_core": {
+    "name": "AGG-CORE-01",
+    "model_number": "Catalyst 9500-32C",
+    "serial_number": "AGGCORE-2026-01",
+    "mgmt_ip": "10.10.4.1",
+    "mac": "AA:BB:CC:99:99:01",
+    "os": "IOS-XE 17.12.01",
+    "ports": 32,
+    "sfp_ports": 0,
+    "port_prefix": "Up",
+    "short_description": "Aggregation/core switch (adjacent rack); receives uplinks from RACK-DARK-01 access switches"
+  },
+
+  "switches": {
+    "SW-U02": {
+      "model_number": "Catalyst 2960X-24",
+      "serial_number": "FCW2501A002",
+      "mgmt_ip": "10.10.4.2",
+      "mac": "AA:BB:CC:10:10:02",
+      "os": "IOS 15.2(7)E4",
+      "ports": 23,
+      "sfp_ports": 0,
+      "port_prefix": "Gi0/",
+      "short_description": "ToR access switch (lower) — 23 RJ45 ports, no SFP"
+    },
+    "SW-U04": {
+      "model_number": "Catalyst 9300-48P",
+      "serial_number": "FCW2501A004",
+      "mgmt_ip": "10.10.4.4",
+      "mac": "AA:BB:CC:10:10:04",
+      "os": "IOS-XE 17.09.03",
+      "ports": 48,
+      "sfp_ports": 4,
+      "port_prefix": "Gi1/0/",
+      "short_description": "Access switch — 48 RJ45 + 4 SFP+ uplinks"
+    },
+    "SW-U07": {
+      "model_number": "Unknown / Unidentified",
+      "serial_number": "UNKNOWN-U07",
+      "mgmt_ip": "0.0.0.0",
+      "mac": "00:00:00:00:00:00",
+      "os": "unknown",
+      "ports": 0,
+      "sfp_ports": 0,
+      "port_prefix": "",
+      "short_description": "Unidentified device at U07 — low-confidence scan, no port enumeration"
+    },
+    "SW-U10": {
+      "model_number": "Catalyst 9300-48P",
+      "serial_number": "FCW2501A100",
+      "mgmt_ip": "10.10.4.10",
+      "mac": "AA:BB:CC:10:10:10",
+      "os": "IOS-XE 17.09.03",
+      "ports": 48,
+      "sfp_ports": 4,
+      "port_prefix": "Gi1/0/",
+      "short_description": "Core switch — 48 RJ45 + 4 SFP+; STP root for VLANs 10,20,30; uplink Gi1/0/49-52"
+    },
+    "SW-U15": {
+      "model_number": "Catalyst 9300-48UN",
+      "serial_number": "FCW2501A015",
+      "mgmt_ip": "10.10.4.15",
+      "mac": "AA:BB:CC:10:10:15",
+      "os": "IOS-XE 17.09.03",
+      "ports": 52,
+      "sfp_ports": 0,
+      "port_prefix": "Gi1/0/",
+      "short_description": "Distribution switch — 52 RJ45 ports"
+    }
+  },
+
+  "patch_panels": {
+    "PP-U06": {"model_number": "Panduit DP24584TGY", "serial_number": "PND-DP24-006", "ports": 24, "short_description": "Cat6a 24-port patch panel"},
+    "PP-U08": {"model_number": "Panduit DP18584TGY", "serial_number": "PND-DP18-008", "ports": 18, "short_description": "Cat6a 18-port patch panel (smaller frame)"},
+    "PP-U12": {"model_number": "Panduit DP24584TGY", "serial_number": "PND-DP24-012", "ports": 24, "short_description": "Cat6a 24-port patch panel"},
+    "PP-U13": {"model_number": "Panduit DP24584TGY", "serial_number": "PND-DP24-013", "ports": 24, "short_description": "Cat6a 24-port patch panel"},
+    "PP-U17": {"model_number": "Panduit DP24584TGY", "serial_number": "PND-DP24-017", "ports": 24, "short_description": "Cat6a 24-port patch panel"},
+    "PP-U18": {"model_number": "Panduit DP24584TGY", "serial_number": "PND-DP24-018", "ports": 24, "short_description": "Cat6a 24-port patch panel"}
+  },
+
+  "server": {
+    "name": "SRV-U01",
+    "meta": {
+      "model_number": "Dell PowerEdge R750",
+      "serial_number": "DELL-R750-001",
+      "os": "Ubuntu 22.04 LTS",
+      "cpu_name": "Intel Xeon Gold 6330",
+      "cpu_count": "2",
+      "cpu_core_count": "28",
+      "ram": "262144",
+      "short_description": "Primary web server for prod; owner Platform/Web; kernel 5.15.0-91-generic",
+      "comments": "Services: nginx (active), docker (active), node_exporter, filebeat. Uptime 42d. Services bind to eth0:443,80."
+    },
+    "nics": [
+      {"name": "SRV-U01:eth0", "alias": "eth0", "mac": "AA:BB:CC:01:01:01", "ip": "10.10.4.100", "netmask": "255.255.255.0", "gateway": "10.10.4.1", "fqdn": "web01.prod.dark", "short_description": "vlan=10 mode=access speed=1000M oper=up admin=up mtu=1500"},
+      {"name": "SRV-U01:eth1", "alias": "eth1", "mac": "AA:BB:CC:01:01:02", "ip": "10.10.4.101", "netmask": "255.255.255.0", "gateway": "10.10.4.1", "fqdn": "web01-mgmt.prod.dark", "short_description": "vlan=99 (mgmt) mode=access speed=1000M oper=up admin=up"}
+    ],
+    "disks": [
+      {
+        "name": "SRV-U01:/dev/sda",
+        "size_bytes": "500107862016",
+        "short_description": "SSD Samsung PM893 boot drive",
+        "partitions": [
+          {"name": "/boot", "partition_number": "1", "size_bytes": "1073741824", "short_description": "fs=ext4 used=280M total=1G mount=/boot"},
+          {"name": "/", "partition_number": "2", "size_bytes": "499034120192", "short_description": "fs=ext4 used=142G total=465G mount=/"}
+        ]
+      },
+      {
+        "name": "SRV-U01:/dev/sdb",
+        "size_bytes": "2000398934016",
+        "short_description": "NVMe Samsung PM9A3 data drive",
+        "partitions": [
+          {"name": "/var", "partition_number": "1", "size_bytes": "536870912000", "short_description": "fs=xfs used=55G total=500G mount=/var"},
+          {"name": "/data", "partition_number": "2", "size_bytes": "1463528022016", "short_description": "fs=xfs used=980G total=1.4T mount=/data"}
+        ]
+      }
+    ]
+  }
+}

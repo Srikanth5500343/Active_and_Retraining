@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010006",
+  "sys_id": "07a2f44883e40310319f5cc0deaad3d9",
+  "state": "New",
+  "priority": "4 - Low",
+  "urgency": "2 - Medium",
+  "category": "Network",
+  "opened_at": "2026-04-24 06:25:05",
+  "opened_by": "System Administrator",
+  "short_description": "Port 13 on SW-U10 assigned wrong VLAN - user on VLAN 10 instead of VLAN 20",
+  "description": "Helpdesk ticket from finance user on SW-U10 port 13 (Gi1/0/13). Link is up, DHCP gives an address in 10.10.10.0/24 (VLAN 10) but user should be on VLAN 20. Check interface VLAN assignment and reconfigure if the switchport is still in the wrong access VLAN. Link appears physically healthy.",
+  "target": {
+    "device": "SW-U10",
+    "port": 13,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.10",
+    "mac": "AA:BB:CC:10:10:10",
+    "model": "Catalyst 9300-48P",
+    "serial": "FCW2501A100",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U10:Gi1/0/13",
+    "interface_alias": "Gi1/0/13",
+    "port_short_description": "admin=up oper=up speed=1G duplex=full vlan=10 mode=access stp=forwarding",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 10
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=07a2f44883e40310319f5cc0deaad3d9",
+  "polled_at": "2026-04-24T13:33:34Z"
+}

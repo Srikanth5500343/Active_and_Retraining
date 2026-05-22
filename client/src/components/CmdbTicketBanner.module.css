@@ -1,0 +1,184 @@
+﻿/* CMDB ticket banner — slim horizontal strip rendered above page content. */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 12px;
+  font-size: 0.78rem;
+  color: #e5e7eb;
+}
+
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+.line1 {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.numLink {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #93c5fd;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.numLink:hover { text-decoration: underline; }
+
+.line2 {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: rgba(180, 210, 240, 0.65);
+  letter-spacing: 0.02em;
+}
+
+.errorLine {
+  font-size: 0.68rem;
+  color: #fca5a5;
+  font-family: var(--mono);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex; gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn,
+.btnGhost {
+  font-family: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.btn {
+  background: rgba(96, 165, 250, 0.10);
+  border: 1px solid rgba(96, 165, 250, 0.40);
+  color: #93c5fd;
+}
+.btn:hover:not(:disabled) {
+  background: rgba(96, 165, 250, 0.20);
+  border-color: rgba(96, 165, 250, 0.65);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btnGhost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: rgba(180, 210, 240, 0.55);
+}
+.btnGhost:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
+}
+
+/* ── State variants ─────────────────────────────────────────────────── */
+
+.b_open {
+  border-color: rgba(96, 165, 250, 0.30);
+  background: rgba(59, 130, 246, 0.04);
+}
+.b_open .dot   { background: #60a5fa; color: #60a5fa; }
+.b_open .title { color: #93c5fd; }
+
+.b_applied {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.05);
+}
+.b_applied .dot   { background: #34d399; color: #34d399; }
+.b_applied .title { color: #6ee7b7; }
+
+.b_rejected,
+.b_cancelled {
+  border-color: rgba(148, 163, 184, 0.30);
+  background: rgba(148, 163, 184, 0.04);
+  opacity: 0.85;
+}
+.b_rejected .dot,
+.b_cancelled .dot   { background: rgba(148, 163, 184, 0.7); color: rgba(148, 163, 184, 0.9); }
+.b_rejected .title,
+.b_cancelled .title { color: rgba(203, 213, 245, 0.7); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT THEME OVERRIDES
+   ══════════════════════════════════════════════════════════════════════ */
+
+:global([data-theme='light']) .banner {
+  background: #FFFFFF;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.04);
+}
+:global([data-theme='light']) .numLink { color: #4F46E5; }
+:global([data-theme='light']) .line2   { color: #6366F1; }
+:global([data-theme='light']) .errorLine { color: #DC2626; }
+
+:global([data-theme='light']) .btn {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.40);
+  color: #4F46E5;
+}
+:global([data-theme='light']) .btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.55);
+}
+:global([data-theme='light']) .btnGhost {
+  background: transparent;
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
+}
+:global([data-theme='light']) .btnGhost:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #DC2626;
+}
+
+:global([data-theme='light']) .b_open {
+  border-color: rgba(99, 102, 241, 0.30);
+  background: rgba(99, 102, 241, 0.04);
+}
+:global([data-theme='light']) .b_open .dot   { background: #6366F1; color: #6366F1; }
+:global([data-theme='light']) .b_open .title { color: #4F46E5; }
+
+:global([data-theme='light']) .b_applied {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.05);
+}
+:global([data-theme='light']) .b_applied .dot   { background: #22C55E; color: #22C55E; }
+:global([data-theme='light']) .b_applied .title { color: #16A34A; }
+
+:global([data-theme='light']) .b_rejected,
+:global([data-theme='light']) .b_cancelled {
+  border-color: rgba(148, 163, 184, 0.30);
+  background: rgba(148, 163, 184, 0.04);
+}
+:global([data-theme='light']) .b_rejected .dot,
+:global([data-theme='light']) .b_cancelled .dot { background: #6B7280; color: #6B7280; }
+:global([data-theme='light']) .b_rejected .title,
+:global([data-theme='light']) .b_cancelled .title { color: #6B7280; }

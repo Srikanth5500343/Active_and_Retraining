@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010009",
+  "sys_id": "89b2384883e40310319f5cc0deaad3ef",
+  "state": "New",
+  "priority": "4 - Low",
+  "urgency": "2 - Medium",
+  "category": "Network",
+  "opened_at": "2026-04-24 06:25:13",
+  "opened_by": "System Administrator",
+  "short_description": "Port 22 on SW-U10 PoE over-budget - IP camera power cycling",
+  "description": "SW-U10 port 22 (Gi1/0/22) reports PoE over-budget events; connected IP camera is rebooting every ~8 minutes. Class-4 device drawing >25W on a Class-3 config. Either reduce PoE priority on another port or re-class the interface. Link itself is up and data passes between reboots.",
+  "target": {
+    "device": "SW-U10",
+    "port": 22,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.10",
+    "mac": "AA:BB:CC:10:10:10",
+    "model": "Catalyst 9300-48P",
+    "serial": "FCW2501A100",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U10:Gi1/0/22",
+    "interface_alias": "Gi1/0/22",
+    "port_short_description": "admin=up oper=up speed=1G duplex=full vlan=10 mode=access stp=forwarding",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 10
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=89b2384883e40310319f5cc0deaad3ef",
+  "polled_at": "2026-04-24T13:34:19Z"
+}

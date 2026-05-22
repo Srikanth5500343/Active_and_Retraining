@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010013",
+  "sys_id": "1cc2b84883e40310319f5cc0deaad3ff",
+  "state": "New",
+  "priority": "4 - Low",
+  "urgency": "2 - Medium",
+  "category": "Network",
+  "opened_at": "2026-04-24 06:25:27",
+  "opened_by": "System Administrator",
+  "short_description": "Port 2 on SW-U02 link flapping - up/down every 30-60 seconds",
+  "description": "SW-U02 port 2 (Gi0/2) has flapped 47 times in the last hour. STP is reconverging each time and costing a few seconds of traffic. Typical signature of a bad patch cable, loose RJ45, or a dying NIC at the far end. Reseat or replace cable, then observe for 15 minutes.",
+  "target": {
+    "device": "SW-U02",
+    "port": 2,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.2",
+    "mac": "AA:BB:CC:10:10:02",
+    "model": "Catalyst 2960X-48",
+    "serial": "FCW2501A002",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U02:Gi0/2",
+    "interface_alias": "Gi0/2",
+    "port_short_description": "admin=up oper=up speed=1G duplex=full vlan=10 mode=access stp=forwarding",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 2
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=1cc2b84883e40310319f5cc0deaad3ff",
+  "polled_at": "2026-04-24T13:33:40Z"
+}

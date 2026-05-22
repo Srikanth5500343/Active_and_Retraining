@@ -1,0 +1,35 @@
+{
+  "incident_number": "INC0010005",
+  "sys_id": "6e6be8c883a40310319f5cc0deaad32c",
+  "state": "New",
+  "priority": "4 - Low",
+  "urgency": "2 - Medium",
+  "category": "Network",
+  "opened_at": "2026-04-24 05:53:22",
+  "opened_by": "System Administrator",
+  "short_description": "Port 7 on SW-U14 link down - access switch unreachable",
+  "description": "Monitoring reports SW-U14 port 7 (Gi0/7) down for 45 minutes. No users affected yet but need physical verification.",
+  "target": {
+    "device": "SW-U14",
+    "port": 7,
+    "device_source": "cmdb_ci",
+    "port_source": "parsed_text"
+  },
+  "cmdb": {
+    "mgmt_ip": "10.10.4.14",
+    "mac": "AA:BB:CC:10:10:14",
+    "model": "Catalyst 2960X-48",
+    "serial": "FCW2501A014",
+    "os_version": null,
+    "vendor": "cisco-ios",
+    "sys_class_name": "cmdb_ci_ip_switch",
+    "interface_name": "SW-U14:Gi0/7",
+    "interface_alias": "Gi0/7",
+    "port_short_description": "admin=up oper=DOWN speed=1G duplex=full vlan=10 mode=access",
+    "rack_name": "RACK-DARK-01",
+    "rack_scan_id": "RK-00A187E2",
+    "u_position": 14
+  },
+  "instance_url": "https://dev266363.service-now.com/incident.do?sys_id=6e6be8c883a40310319f5cc0deaad32c",
+  "polled_at": "2026-04-24T13:34:06Z"
+}

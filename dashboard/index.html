@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RackTrack · Owner Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Surfaces */
+    --bg:        #F7F8FA;
+    --surface:   #FFFFFF;
+    --surface-2: #FBFCFD;
+    --surface-3: #F3F5F8;
+
+    /* Borders */
+    --border:    #E5E7EB;
+    --border-2:  #EEF0F3;
+    --divider:   #F3F4F6;
+
+    /* Text */
+    --t1:  #111827;   /* primary */
+    --t2:  #4B5563;   /* secondary */
+    --t3:  #6B7280;   /* tertiary / metadata */
+    --t4:  #9CA3AF;   /* placeholders */
+
+    /* Brand + semantic */
+    --accent:        #4F46E5;
+    --accent-hover:  #4338CA;
+    --accent-soft:   #EEF2FF;
+    --success:       #059669;
+    --success-soft:  #ECFDF5;
+    --danger:        #DC2626;
+    --danger-soft:   #FEF2F2;
+    --warning:       #D97706;
+    --warning-soft:  #FFFBEB;
+    --indigo-soft:   #EEF2FF;
+    --purple-soft:   #F5F3FF;
+    --blue-soft:     #EFF6FF;
+
+    /* Type */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+
+    /* Shadow */
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.04);
+    --shadow:    0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
+    --shadow-lg: 0 12px 32px rgba(16,24,40,.08), 0 2px 6px rgba(16,24,40,.04);
+
+    --radius:    8px;
+    --radius-lg: 10px;
+  }
+
+  *,*::before,*::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--t1);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Top bar ───────────────────────────────────────────────── */
+  .topbar {
+    height: 60px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 16px;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .topbar .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 15px; color: var(--t1);
+    letter-spacing: -0.01em;
+  }
+  .topbar .brand .mark {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), #7C3AED);
+    display: grid; place-items: center;
+    color: #fff; font-weight: 700; font-size: 12px;
+    box-shadow: 0 2px 6px rgba(79,70,229,.25);
+  }
+  .topbar .crumb { color: var(--t3); font-size: 13px; font-weight: 500; }
+  .topbar .crumb::before { content: '/'; margin: 0 10px; color: var(--t4); }
+  .topbar .spacer { flex: 1; }
+  .topbar .pill {
+    background: var(--surface-3); color: var(--t2);
+    font-size: 11px; font-weight: 500;
+    padding: 4px 9px; border-radius: 999px;
+    border: 1px solid var(--border-2);
+  }
+  .topbar .health {
+    display: flex; align-items: center; gap: 14px;
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--t3);
+  }
+  .topbar .health .item { display: inline-flex; align-items: center; gap: 5px; }
+  .topbar .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block;
+  }
+  .topbar .dot.ok   { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+  .topbar .dot.bad  { background: var(--danger);  box-shadow: 0 0 0 3px var(--danger-soft); }
+  .topbar .live {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--t3);
+  }
+  .topbar .live .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--success);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%     { opacity: .35; transform: scale(.9); }
+  }
+
+  /* ── Page container ────────────────────────────────────────── */
+  .page { padding: 24px 28px 64px; max-width: 1600px; margin: 0 auto; }
+  .section { margin-bottom: 28px; }
+  .section-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .section-head h2 {
+    margin: 0; font-size: 14px; font-weight: 600;
+    color: var(--t1); letter-spacing: -0.01em;
+  }
+  .section-head .desc { color: var(--t3); font-size: 12.5px; }
+  .section-head .right { margin-left: auto; color: var(--t3); font-size: 12px; font-family: var(--font-mono); }
+
+  /* ── Filter bar ────────────────────────────────────────────── */
+  .filterbar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label {
+    font-size: 11px; font-weight: 500;
+    color: var(--t3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--surface);
+    color: var(--t1);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .field input::placeholder { color: var(--t4); }
+
+  .filter-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--divider);
+  }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13px; font-weight: 500;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background-color .12s, border-color .12s;
+  }
+  .btn:hover  { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn.ghost  { background: var(--surface); color: var(--t2); border-color: var(--border); }
+  .btn.ghost:hover { background: var(--surface-3); color: var(--t1); }
+
+  /* ── KPI cards ─────────────────────────────────────────────── */
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .kpi .label {
+    font-size: 11px; font-weight: 500;
+    color: var(--t3); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .kpi .value {
+    margin-top: 6px;
+    font-family: var(--font-mono); font-weight: 600;
+    font-size: 22px; color: var(--t1); letter-spacing: -0.02em;
+  }
+  .kpi .value.ok    { color: var(--success); }
+  .kpi .value.err   { color: var(--danger); }
+  .kpi .value.warn  { color: var(--warning); }
+  .kpi .sub { margin-top: 4px; color: var(--t4); font-size: 11.5px; }
+
+  /* ── Layout grid ───────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  .stack { display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Cards ────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .card-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--divider);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-head h3 {
+    margin: 0; font-size: 13.5px; font-weight: 600;
+    color: var(--t1); letter-spacing: -0.005em;
+  }
+  .card-head .meta {
+    margin-left: auto;
+    color: var(--t3); font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  .card-body { padding: 0; }
+  .card-body.padded { padding: 16px 18px; }
+  .card .footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--divider);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--t3);
+  }
+
+  /* ── Tables ───────────────────────────────────────────────── */
+  .scroll { max-height: 560px; overflow: auto; }
+  .scroll.tall { max-height: 680px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface-2);
+    text-align: left;
+    padding: 9px 14px;
+    font-weight: 500; font-size: 11px;
+    color: var(--t3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--divider);
+    color: var(--t1);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr { transition: background-color .08s; }
+  tbody tr:hover { background: var(--surface-2); cursor: pointer; }
+  td.dim { color: var(--t3); }
+  td.mono { font-family: var(--font-mono); font-size: 12.5px; }
+  td.num  { text-align: right; font-family: var(--font-mono); }
+
+  /* ── Pills ────────────────────────────────────────────────── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    line-height: 1.5;
+    border: 1px solid transparent;
+  }
+  .pill.ok      { background: var(--success-soft); color: var(--success); border-color: #D1FAE5; }
+  .pill.fail    { background: var(--danger-soft);  color: var(--danger);  border-color: #FECACA; }
+  .pill.tenant  { background: var(--purple-soft);  color: #6D28D9;        border-color: #DDD6FE; }
+  .pill.action  { background: var(--blue-soft);    color: #1D4ED8;        border-color: #BFDBFE; }
+  .pill.neutral { background: var(--surface-3);    color: var(--t2);      border-color: var(--border-2); }
+
+  /* ── Bars ─────────────────────────────────────────────────── */
+  .bars { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .bar { display: grid; grid-template-columns: 140px 1fr 60px; align-items: center; gap: 12px; font-size: 12.5px; }
+  .bar .lbl {
+    color: var(--t2); font-family: var(--font-mono); font-size: 12px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bar .track {
+    background: var(--surface-3); height: 6px;
+    border-radius: 3px; overflow: hidden;
+  }
+  .bar .fill {
+    background: linear-gradient(90deg, var(--accent), #7C3AED);
+    height: 100%; border-radius: 3px;
+  }
+  .bar .num {
+    text-align: right; color: var(--t1);
+    font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+  }
+
+  /* ── Sparkline ────────────────────────────────────────────── */
+  .spark {
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 60px; padding: 16px 18px 12px;
+  }
+  .spark .b {
+    flex: 1;
+    background: var(--accent);
+    opacity: .85;
+    min-height: 2px;
+    border-radius: 2px 2px 0 0;
+    transition: opacity .12s;
+  }
+  .spark .b:hover { opacity: 1; }
+  .spark-axis {
+    display: flex; justify-content: space-between;
+    padding: 0 18px 12px;
+    font-size: 10.5px; color: var(--t4);
+    font-family: var(--font-mono);
+  }
+
+  /* ── Feedback list ────────────────────────────────────────── */
+  .feed { display: flex; flex-direction: column; }
+  .feed .row {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--divider);
+    align-items: center;
+  }
+  .feed .row:last-child { border-bottom: 0; }
+  .feed img {
+    width: 64px; height: 40px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--surface-3);
+  }
+  .feed .name {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--t1);
+    word-break: break-all; line-height: 1.35;
+  }
+  .feed .meta {
+    color: var(--t3); font-size: 11.5px;
+    margin-top: 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .feed-jsonl {
+    padding: 12px 18px; border-top: 1px solid var(--divider);
+    background: var(--surface-2);
+  }
+  .feed-jsonl-row {
+    font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--t2);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--divider);
+    word-break: break-word;
+  }
+  .feed-jsonl-row:last-child { border-bottom: 0; }
+
+  /* ── Empty / pager ────────────────────────────────────────── */
+  .empty {
+    padding: 36px 16px;
+    color: var(--t4); font-size: 13px;
+    text-align: center;
+  }
+  .pager {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--divider);
+    background: var(--surface-2);
+    font-size: 12px; color: var(--t3);
+  }
+  .pager .info { font-family: var(--font-mono); }
+  .pager .spacer { flex: 1; }
+  .pager button {
+    background: var(--surface);
+    color: var(--t2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px; cursor: pointer;
+    transition: background-color .1s, color .1s;
+  }
+  .pager button:hover:not(:disabled) { background: var(--surface-3); color: var(--t1); }
+  .pager button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── Drawer ───────────────────────────────────────────────── */
+  .drawer {
+    position: fixed; inset: 0;
+    background: rgba(17,24,39,.35);
+    display: none;
+    align-items: stretch; justify-content: flex-end;
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+  .drawer.open { display: flex; }
+  .drawer .pane {
+    width: min(760px, 100%);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow: auto;
+    box-shadow: var(--shadow-lg);
+  }
+  .drawer .head {
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    position: sticky; top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+  .drawer .head h3 {
+    margin: 0; font-size: 14.5px; font-weight: 600;
+    color: var(--t1); letter-spacing: -0.005em;
+  }
+  .drawer .head .x {
+    margin-left: auto;
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    display: grid; place-items: center;
+    cursor: pointer; color: var(--t3);
+    font-size: 18px;
+    transition: background-color .1s, color .1s;
+  }
+  .drawer .head .x:hover { background: var(--surface-3); color: var(--t1); }
+  .drawer .section-card {
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .drawer .section-card h4 {
+    margin: 0 0 10px;
+    font-size: 11px; font-weight: 600;
+    color: var(--t3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .drawer .kv {
+    display: grid; grid-template-columns: 100px 1fr;
+    gap: 6px 12px;
+    font-size: 13px;
+  }
+  .drawer .kv .k {
+    color: var(--t3); font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .drawer .kv .v {
+    color: var(--t1); font-family: var(--font-mono); font-size: 12.5px;
+    word-break: break-all;
+  }
+  .drawer pre {
+    margin: 0;
+    padding: 12px 14px;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--t1);
+    background: var(--surface-3);
+    border: 1px solid var(--border-2);
+    border-radius: 6px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 360px; overflow: auto;
+  }
+  .drawer .file-row {
+    font-family: var(--font-mono); font-size: 12px;
+    padding: 5px 0;
+    color: var(--t1);
+    display: flex; gap: 10px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .drawer .file-row:last-child { border: 0; }
+  .drawer .file-row .ts { color: var(--t3); flex-shrink: 0; }
+  .drawer .file-row .sz { color: var(--t4); margin-left: auto; flex-shrink: 0; }
+
+  /* ── Responsive ───────────────────────────────────────────── */
+  @media (max-width: 1280px) {
+    .filter-grid { grid-template-columns: repeat(4, 1fr); }
+    .kpis        { grid-template-columns: repeat(3, 1fr); }
+    .grid        { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    .filter-grid { grid-template-columns: repeat(2, 1fr); }
+    .kpis        { grid-template-columns: repeat(2, 1fr); }
+    .topbar      { padding: 0 16px; }
+    .page        { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="mark">RT</div>
+    <span>RackTrack</span>
+  </div>
+  <span class="crumb">Owner Console</span>
+  <div class="spacer"></div>
+  <span class="pill">loopback only</span>
+  <span class="pill">read-only</span>
+  <div class="health" id="health">connecting…</div>
+  <div class="live"><span class="pulse"></span><span id="live-ts">live</span></div>
+</header>
+
+<main class="page">
+
+  <!-- Filters ─────────────────────────────────────────────────── -->
+  <div class="filterbar">
+    <div class="filter-grid">
+      <div class="field"><label>Organization</label>
+        <select id="f-tenant"><option value="">All organizations</option></select>
+      </div>
+      <div class="field"><label>User</label>
+        <select id="f-user"><option value="">All users</option></select>
+      </div>
+      <div class="field"><label>Action</label>
+        <select id="f-action"><option value="">All actions</option></select>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="f-status"><option value="">All</option></select>
+      </div>
+      <div class="field"><label>Rack ID</label>
+        <input id="f-target" placeholder="RK-…">
+      </div>
+      <div class="field"><label>Search payload</label>
+        <input id="f-q" placeholder="text in payload, error, target…">
+      </div>
+      <div class="field"><label>Time window</label>
+        <select id="f-window">
+          <option value="1h">Last hour</option>
+          <option value="24h" selected>Last 24 hours</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button class="btn ghost" id="btn-clear">Clear filters</button>
+      <button class="btn ghost" id="btn-refresh">Refresh</button>
+      <button class="btn"       id="btn-apply">Apply</button>
+    </div>
+  </div>
+
+  <!-- Overview ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <h2>Overview</h2>
+      <span class="desc">Roll-ups for the current filter selection</span>
+      <span class="right" id="overview-window"></span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <!-- Activity ────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="card">
+      <div class="card-head">
+        <h3>Hourly activity</h3>
+        <span class="meta">last 48 hours · audit events</span>
+      </div>
+      <div class="spark" id="spark"></div>
+      <div class="spark-axis"><span>48h ago</span><span>now</span></div>
+    </div>
+  </section>
+
+  <!-- Main grid: Audit log + side panels ───────────────────────── -->
+  <section class="section">
+    <div class="grid">
+      <!-- Left: Audit log -->
+      <div class="card">
+        <div class="card-head">
+          <h3>Audit log</h3>
+          <span class="meta" id="audit-meta">—</span>
+        </div>
+        <div class="scroll tall">
+          <table id="audit-table">
+            <thead>
+              <tr>
+                <th style="width:160px">Time</th>
+                <th style="width:140px">Organization</th>
+                <th style="width:130px">User</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th style="width:80px">Status</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span class="info" id="pager-info">—</span>
+          <span class="spacer"></span>
+          <button id="prev">‹ Previous</button>
+          <button id="next">Next ›</button>
+        </div>
+      </div>
+
+      <!-- Right: Tenant + Action breakdowns -->
+      <div class="stack">
+        <div class="card">
+          <div class="card-head">
+            <h3>By organization</h3>
+            <span class="meta">filtered window</span>
+          </div>
+          <div class="bars" id="by-tenant"></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>Top actions</h3>
+            <span class="meta">filtered window</span>
+          </div>
+          <div class="bars" id="by-action"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scans + Feedback ─────────────────────────────────────────── -->
+  <section class="section">
+    <div class="grid">
+      <div class="card">
+        <div class="card-head">
+          <h3>Recent scans</h3>
+          <span class="meta" id="scan-meta">—</span>
+        </div>
+        <div class="scroll">
+          <table id="scans-table">
+            <thead>
+              <tr>
+                <th style="width:170px">Time</th>
+                <th>Rack</th>
+                <th style="width:160px">Organization</th>
+                <th style="width:130px">User</th>
+                <th style="width:70px" class="num">Devs</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Active-learning feedback</h3>
+          <span class="meta" id="fb-meta">—</span>
+        </div>
+        <div class="feed" id="feed-images"></div>
+        <div class="feed-jsonl" id="feed-jsonl"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Drawer -->
+<div class="drawer" id="drawer">
+  <div class="pane">
+    <div class="head">
+      <h3 id="drawer-title">Detail</h3>
+      <div class="x" id="drawer-x">×</div>
+    </div>
+    <div id="drawer-body"></div>
+  </div>
+</div>
+
+<script>
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const fmt = (s) => s ? new Date(s.includes('T') ? s : s.replace(' ','T') + 'Z').toLocaleString() : '';
+const fmtShort = (s) => {
+  if (!s) return '';
+  const d = new Date(s.includes('T') ? s : s.replace(' ','T') + 'Z');
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const opts = sameDay
+    ? { hour: '2-digit', minute: '2-digit', second: '2-digit' }
+    : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  return d.toLocaleString(undefined, opts);
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (n) => (n ?? 0).toLocaleString();
+// Pick the best human label for an organization. Prefers the table name,
+// falls back to slug, then to a numeric placeholder so legacy rows still
+// render something instead of "—".
+function orgLabel(r) {
+  if (!r) return null;
+  return r.tenant_name || r.tenant_slug || (r.tenant_id != null ? `Org #${r.tenant_id}` : null);
+}
+
+let state = { offset: 0, limit: 200, lastTotal: 0 };
+
+function windowSince(v) {
+  const now = new Date();
+  if (v === '1h')  return new Date(now.getTime() - 1*3600e3).toISOString();
+  if (v === '24h') return new Date(now.getTime() - 24*3600e3).toISOString();
+  if (v === '7d')  return new Date(now.getTime() - 7*86400e3).toISOString();
+  if (v === '30d') return new Date(now.getTime() - 30*86400e3).toISOString();
+  return null;
+}
+function windowLabel(v) {
+  return ({'1h':'Last hour','24h':'Last 24 hours','7d':'Last 7 days','30d':'Last 30 days','all':'All time'})[v] || v;
+}
+function readFilters() {
+  const since = windowSince($('#f-window').value);
+  const f = {
+    tenant: $('#f-tenant').value || undefined,
+    user:   $('#f-user').value   || undefined,
+    action: $('#f-action').value || undefined,
+    status: $('#f-status').value || undefined,
+    target: $('#f-target').value.trim() || undefined,
+    q:      $('#f-q').value.trim() || undefined,
+  };
+  if (since) f.since = since.replace('T',' ').slice(0,19);
+  return f;
+}
+function qs(obj) {
+  return Object.entries(obj).filter(([,v])=>v!=null&&v!=='')
+    .map(([k,v]) => encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+}
+
+async function loadHealth() {
+  try {
+    const h = await fetch('/api/health').then(r=>r.json());
+    $('#health').innerHTML = [
+      `<span class="item"><span class="dot ${h.db?'ok':'bad'}"></span>db</span>`,
+      `<span class="item"><span class="dot ${h.hasTenantCol?'ok':'bad'}"></span>org col</span>`,
+      `<span class="item"><span class="dot ${h.paths.outputs?'ok':'bad'}"></span>outputs</span>`,
+      `<span class="item"><span class="dot ${h.paths.feedback?'ok':'bad'}"></span>feedback</span>`,
+    ].join('');
+  } catch { $('#health').textContent = 'health check failed'; }
+}
+
+async function loadFacets() {
+  const f = await fetch('/api/audit/facets').then(r=>r.json());
+  // tenants now arrives as [{id, slug, name}] — value is the id (what the
+  // server filters on), label is the human name with slug as a hint.
+  fillSelect('#f-tenant',
+    f.tenants.map(t => ({ v: t.id, label: t.slug ? `${t.name}  ·  ${t.slug}` : t.name })),
+    'All organizations');
+  fillSelect('#f-user',   f.users.map(v => ({v, label:v})), 'All users');
+  fillSelect('#f-action', f.actions.map(a => ({v:a.v, label:`${a.v}  ·  ${a.n}`})), 'All actions');
+  fillSelect('#f-status', f.statuses.map(v => ({v, label:v})), 'All');
+}
+function fillSelect(sel, items, allLabel) {
+  const el = $(sel); const cur = el.value;
+  el.innerHTML = `<option value="">${allLabel}</option>` + items.map(i => `<option value="${esc(i.v)}">${esc(i.label)}</option>`).join('');
+  if (items.find(i => String(i.v) === cur)) el.value = cur;
+}
+
+async function loadAll() {
+  $('#overview-window').textContent = windowLabel($('#f-window').value);
+  $('#live-ts').textContent = 'updated ' + new Date().toLocaleTimeString();
+  const f = readFilters();
+  await Promise.all([
+    loadAudit(f),
+    loadSummary(f),
+    loadScans({ tenant: f.tenant, user: f.user }),
+    loadFeedback(),
+  ]);
+}
+
+async function loadAudit(f) {
+  const url = `/api/audit?${qs({ ...f, limit: state.limit, offset: state.offset })}`;
+  const data = await fetch(url).then(r=>r.json());
+  state.lastTotal = data.total;
+  $('#audit-meta').textContent = `${num(data.total)} events`;
+  const tb = $('#audit-table tbody');
+  tb.innerHTML = data.rows.map(r => {
+    const org = orgLabel(r);
+    return `
+    <tr data-id="${r.id}">
+      <td class="dim mono" title="${esc(fmt(r.ts))}">${esc(fmtShort(r.ts))}</td>
+      <td>${org ? `<span class="pill tenant" title="${esc(r.tenant_slug || '')}">${esc(org)}</span>` : '<span class="pill neutral">—</span>'}</td>
+      <td class="mono">${esc(r.username || (r.user_id ? `#${r.user_id}` : '—'))}</td>
+      <td><span class="pill action">${esc(r.action)}</span></td>
+      <td class="dim mono">${esc(r.target_id || '—')}</td>
+      <td><span class="pill ${r.status==='ok'?'ok':'fail'}">${esc(r.status)}</span></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" class="empty">No audit events match these filters.</td></tr>`;
+  $$('#audit-table tbody tr').forEach(tr => tr.onclick = () => openAudit(parseInt(tr.dataset.id, 10), data.rows));
+  $('#pager-info').textContent = data.total
+    ? `Showing ${num(state.offset+1)}–${num(Math.min(state.offset+state.limit, data.total))} of ${num(data.total)}`
+    : 'No results';
+  $('#prev').disabled = state.offset <= 0;
+  $('#next').disabled = (state.offset + state.limit) >= data.total;
+}
+
+function openAudit(id, rows) {
+  const r = rows.find(x => x.id === id);
+  if (!r) return;
+  $('#drawer-title').textContent = `Event #${r.id}`;
+  let payload = '';
+  try { payload = r.payload ? JSON.stringify(JSON.parse(r.payload), null, 2) : ''; }
+  catch { payload = r.payload || ''; }
+  $('#drawer-body').innerHTML = `
+    <div class="section-card">
+      <h4>Summary</h4>
+      <div class="kv">
+        <div class="k">Time</div>     <div class="v">${esc(fmt(r.ts))}</div>
+        <div class="k">Status</div>   <div class="v"><span class="pill ${r.status==='ok'?'ok':'fail'}">${esc(r.status)}</span></div>
+        <div class="k">Action</div>   <div class="v">${esc(r.action)}</div>
+        ${orgLabel(r) ? `<div class="k">Organization</div>  <div class="v">${esc(orgLabel(r))}${r.tenant_slug ? `  <span style="color:var(--t4)">· ${esc(r.tenant_slug)}</span>` : ''}</div>` : ''}
+        <div class="k">User</div>     <div class="v">${esc(r.username || (r.user_id ? `#${r.user_id}` : '—'))}</div>
+        <div class="k">Target</div>   <div class="v">${esc(r.target_type||'')} / ${esc(r.target_id||'—')}</div>
+        <div class="k">IP</div>       <div class="v">${esc(r.ip||'—')}</div>
+      </div>
+    </div>
+    ${payload ? `<div class="section-card"><h4>Payload</h4><pre>${esc(payload)}</pre></div>` : ''}
+    ${r.error  ? `<div class="section-card"><h4>Error</h4><pre>${esc(r.error)}</pre></div>` : ''}
+    ${r.target_id ? `<div class="section-card"><h4>Related</h4><a href="#" onclick="openScan('${esc(r.target_id)}');return false">→ View scan ${esc(r.target_id)}</a></div>` : ''}
+  `;
+  $('#drawer').classList.add('open');
+}
+
+async function openScan(rackId) {
+  $('#drawer-title').textContent = `Scan ${rackId}`;
+  $('#drawer-body').innerHTML = '<div class="section-card">Loading…</div>';
+  $('#drawer').classList.add('open');
+  try {
+    const d = await fetch(`/api/scans/${encodeURIComponent(rackId)}`).then(r=>r.json());
+    if (d.error) throw new Error(d.error);
+    const own = d.ownership || {};
+    const ownerLine = (own.tenant_name || own.username) ? `
+      <div class="section-card">
+        <h4>Ownership</h4>
+        <div class="kv">
+          ${own.tenant_name || own.tenant_slug ? `<div class="k">Organization</div><div class="v">${esc(own.tenant_name || own.tenant_slug)}${own.tenant_slug && own.tenant_name ? `  <span style="color:var(--t4)">· ${esc(own.tenant_slug)}</span>` : ''}</div>` : ''}
+          ${own.username ? `<div class="k">User</div><div class="v">${esc(own.username)}${own.user_id ? `  <span style="color:var(--t4)">· #${esc(own.user_id)}</span>` : ''}</div>` : ''}
+          ${own.created_at ? `<div class="k">Created</div><div class="v">${esc(own.created_at)}</div>` : ''}
+          <div class="k">Source</div><div class="v">${own.ownedInDb ? 'rack_owners table' : 'scan JSON only'}</div>
+        </div>
+      </div>` : '';
+    const filesHtml = d.files.map(f => `
+      <div class="file-row">
+        <span class="ts">${esc(fmtShort(f.mtime))}</span>
+        <span>${esc(f.name)}</span>
+        <span class="sz">${(f.size/1024).toFixed(1)} KB</span>
+      </div>`).join('') || '<div class="empty">No files in this rack directory.</div>';
+    const auditHtml = d.audit.map(a => `
+      <div class="file-row">
+        <span class="ts">${esc(fmtShort(a.ts))}</span>
+        <span class="pill ${a.status==='ok'?'ok':'fail'}" style="margin-right:6px">${esc(a.status)}</span>
+        <span class="pill action">${esc(a.action)}</span>
+        ${a.username ? `<span class="sz">${esc(a.username)}</span>` : ''}
+      </div>`).join('') || '<div class="empty">No audit events for this rack.</div>';
+    const meta = d['scan_meta.json']  ? `<pre>${esc(JSON.stringify(d['scan_meta.json'], null, 2))}</pre>` : '<div class="empty">No scan_meta.json on disk.</div>';
+    const res  = d['scan_result.json'] ? `<pre>${esc(JSON.stringify(d['scan_result.json'], null, 2).slice(0, 8000))}</pre>` : '<div class="empty">No scan_result.json on disk.</div>';
+    $('#drawer-body').innerHTML = `
+      ${ownerLine}
+      <div class="section-card"><h4>Files (${d.files.length})</h4>${filesHtml}</div>
+      <div class="section-card"><h4>Audit trail</h4>${auditHtml}</div>
+      <div class="section-card"><h4>scan_meta.json</h4>${meta}</div>
+      <div class="section-card"><h4>scan_result.json (truncated to 8 KB)</h4>${res}</div>
+    `;
+  } catch (e) {
+    $('#drawer-body').innerHTML = `<div class="section-card">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+async function loadSummary(f) {
+  const data = await fetch(`/api/audit/summary?${qs(f)}`).then(r=>r.json());
+  const ok    = (data.byStatus.find(s => s.status === 'ok')?.n)   || 0;
+  const fail  = (data.byStatus.find(s => s.status === 'fail')?.n) || 0;
+  const peak  = data.series.reduce((m, s) => Math.max(m, s.n), 0);
+  const errRate = data.total ? ((fail / data.total) * 100).toFixed(1) + '%' : '—';
+  $('#kpis').innerHTML = `
+    ${kpi('Events',          num(data.total))}
+    ${kpi('Successful',      num(ok),       'ok')}
+    ${kpi('Failures',        num(fail),     fail > 0 ? 'err' : '')}
+    ${kpi('Error rate',      errRate,       fail > 0 ? 'warn' : '')}
+    ${kpi('Organizations active',  num(data.byTenant.length))}
+    ${kpi('Peak hour',       num(peak), '', 'highest hourly count')}
+  `;
+  $('#by-tenant').innerHTML = renderBars(data.byTenant.map(r => ({
+    label: orgLabel(r) || (r.tenant_id == null ? '(unassigned)' : `Org #${r.tenant_id}`),
+    n: r.n,
+  })));
+  $('#by-action').innerHTML = renderBars(data.byAction.map(r => ({ label: r.action, n: r.n })));
+  const max = Math.max(1, peak);
+  $('#spark').innerHTML = data.series.length
+    ? data.series.map(s => {
+        const h = Math.max(2, Math.round((s.n/max)*54));
+        return `<div class="b" style="height:${h}px" title="${s.hour} · ${s.n} events"></div>`;
+      }).join('')
+    : '<div class="empty" style="width:100%">No activity in this window.</div>';
+}
+function kpi(label, value, cls='', sub='') {
+  return `<div class="kpi"><div class="label">${esc(label)}</div><div class="value ${cls}">${esc(value)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div>`;
+}
+function renderBars(rows) {
+  if (!rows.length) return '<div class="empty">No data.</div>';
+  const max = Math.max(...rows.map(r => r.n));
+  return rows.slice(0, 12).map(r => `
+    <div class="bar">
+      <div class="lbl" title="${esc(r.label)}">${esc(r.label)}</div>
+      <div class="track"><div class="fill" style="width:${(r.n/max)*100}%"></div></div>
+      <div class="num">${num(r.n)}</div>
+    </div>
+  `).join('');
+}
+
+async function loadScans(f) {
+  const data = await fetch(`/api/scans?${qs({ ...f, limit: 100 })}`).then(r=>r.json());
+  $('#scan-meta').textContent = `${data.total} on disk`;
+  const tb = $('#scans-table tbody');
+  tb.innerHTML = data.rows.map(r => {
+    const org = orgLabel(r);
+    return `
+    <tr data-rack="${esc(r.rackId)}">
+      <td class="dim mono" title="${esc(fmt(r.mtime))}">${esc(fmtShort(r.mtime))}</td>
+      <td class="mono">${esc(r.rackId)}</td>
+      <td>${org ? `<span class="pill tenant" title="${esc(r.tenant_slug || '')}">${esc(org)}</span>` : '<span class="pill neutral">unassigned</span>'}</td>
+      <td class="mono dim">${esc(r.user || (r.user_id ? `#${r.user_id}` : '—'))}</td>
+      <td class="num">${r.deviceCount ?? '—'}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="5" class="empty">No scans found in <code>outputs/</code>.</td></tr>`;
+  $$('#scans-table tbody tr').forEach(tr => tr.onclick = () => openScan(tr.dataset.rack));
+}
+
+async function loadFeedback() {
+  const d = await fetch('/api/feedback?limit=20').then(r=>r.json());
+  $('#fb-meta').textContent = `${d.jsonl.length} events · ${d.wrongImages.length} samples`;
+  $('#feed-images').innerHTML = d.wrongImages.slice(0, 6).map(w => `
+    <div class="row">
+      <img src="/api/feedback/wrong/${encodeURIComponent(w.name)}" alt="">
+      <div>
+        <div class="name">${esc(w.name)}</div>
+        <div class="meta"><span>${esc(fmtShort(w.mtime))}</span><span>·</span><span>${(w.size/1024).toFixed(1)} KB</span></div>
+      </div>
+    </div>
+  `).join('') || '<div class="empty">No correction images yet.</div>';
+  $('#feed-jsonl').innerHTML = '<h4 style="margin:0 0 8px;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Recent JSONL events</h4>'
+    + (d.jsonl.slice(0, 4).map(j => `<div class="feed-jsonl-row">${esc(JSON.stringify({
+        scanId: j.scanId, type: j.feedback_type, device_index: j.device_index, device_class: j.device_class,
+        is_correct: j.is_correct, predicted_port: j.predicted_port, actual_port: j.actual_port,
+        predicted_port_count: j.predicted_port_count, actual_port_count: j.actual_port_count,
+      }))}</div>`).join('') || '<div class="empty">No feedback events yet.</div>');
+}
+
+// ── Wire up ─────────────────────────────────────────────────────
+$('#btn-apply').onclick   = () => { state.offset = 0; loadAll(); };
+$('#btn-clear').onclick   = () => {
+  $$('#f-tenant,#f-user,#f-action,#f-status,#f-target,#f-q').forEach(el => el.value = '');
+  $('#f-window').value = '24h';
+  state.offset = 0;
+  loadAll();
+};
+$('#btn-refresh').onclick = () => loadAll();
+$('#prev').onclick = () => { state.offset = Math.max(0, state.offset - state.limit); loadAudit(readFilters()); };
+$('#next').onclick = () => { state.offset += state.limit; loadAudit(readFilters()); };
+$('#drawer-x').onclick = () => $('#drawer').classList.remove('open');
+$('#drawer').onclick = (e) => { if (e.target === $('#drawer')) $('#drawer').classList.remove('open'); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#drawer').classList.remove('open'); });
+['f-tenant','f-user','f-action','f-status','f-window'].forEach(id => $(`#${id}`).onchange = () => { state.offset=0; loadAll(); });
+['f-target','f-q'].forEach(id => $(`#${id}`).onkeydown = (e) => { if (e.key === 'Enter') { state.offset=0; loadAll(); } });
+
+// Auto-refresh every 30s.
+setInterval(loadAll, 30000);
+
+(async () => {
+  await loadHealth();
+  await loadFacets();
+  await loadAll();
+})();
+</script>
+</body>
+</html>

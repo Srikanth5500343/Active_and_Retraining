@@ -1,0 +1,93 @@
+﻿# Netdisco compose file (patched: postgres port 5432 exposed)
+x-common-environment: &common-environment
+  NETDISCO_DOMAIN: '${NETDISCO_DOMAIN:-discover}'
+  NETDISCO_DB_TENANT:
+  NETDISCO_DB_NAME:
+  NETDISCO_DB_HOST: '${NETDISCO_DB_HOST:-netdisco-postgresql}'
+  NETDISCO_DB_PORT:
+  NETDISCO_DB_USER:
+  NETDISCO_DB_PASS:
+  NETDISCO_RO_COMMUNITY:
+  PGDATABASE:
+  PGHOST:
+  PGPORT:
+  PGUSER:
+  PGPASSWORD:
+  NETDISCO_CURRENT_PG_VERSION: '${NETDISCO_CURRENT_PG_VERSION:-18}'
+services:
+  netdisco-postgresql:
+    container_name: netdisco-postgresql
+    image: netdisco/netdisco:latest-postgresql
+    restart: unless-stopped
+    shm_size: 128mb
+    hostname: netdisco-postgresql
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./netdisco/postgresql:/var/lib/postgresql"
+    environment:
+      <<: *common-environment
+      NETDISCO_DB_SUPERUSER:
+  netdisco-postgresql-13:
+    container_name: netdisco-postgresql-13
+    image: netdisco/netdisco:latest-postgresql-13
+    shm_size: 128mb
+    hostname: netdisco-postgresql-13
+    volumes:
+      - "./netdisco/pgdata:/var/lib/postgresql/data"
+    environment:
+      <<: *common-environment
+      NETDISCO_DB_SUPERUSER:
+    profiles:
+      - with-pg-upgrade
+  netdisco-db-init:
+    container_name: netdisco-db-init
+    image: netdisco/netdisco:latest-backend
+    entrypoint: ''
+    command: "/home/netdisco/bin/netdisco-env /home/netdisco/bin/netdisco-updatedb.sh"
+    user: postgres
+    depends_on:
+      netdisco-postgresql:
+        condition: service_healthy
+    volumes:
+      - "./netdisco/pgdata:/var/lib/pgversions/pg13"
+      - "./netdisco/postgresql:/var/lib/pgversions/new"
+      - "./netdisco/config:/home/netdisco/environments"
+    environment:
+      <<: *common-environment
+      DEPLOY_ADMIN_USER: '${DEPLOY_ADMIN_USER:-YES}'
+      NETDISCO_ADMIN_USER:
+  netdisco-backend:
+    container_name: netdisco-backend
+    image: netdisco/netdisco:latest-backend
+    restart: unless-stopped
+    hostname: netdisco-backend
+    depends_on:
+      netdisco-db-init:
+        condition: service_completed_successfully
+    init: true
+    volumes:
+      - "./netdisco/nd-site-local:/home/netdisco/nd-site-local"
+      - "./netdisco/config:/home/netdisco/environments"
+      - "./netdisco/logs:/home/netdisco/logs"
+    environment:
+      <<: *common-environment
+  netdisco-web:
+    container_name: netdisco-web
+    image: netdisco/netdisco:latest-web
+    restart: unless-stopped
+    hostname: netdisco-web
+    depends_on:
+      netdisco-db-init:
+        condition: service_completed_successfully
+    init: true
+    volumes:
+      - "./netdisco/nd-site-local:/home/netdisco/nd-site-local"
+      - "./netdisco/config:/home/netdisco/environments"
+      - "./netdisco/logs:/home/netdisco/logs"
+    environment:
+      <<: *common-environment
+      IPV: '${IPV:-4}'
+      PORT:
+    ports:
+      - "5000:5000"

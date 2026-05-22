@@ -1,0 +1,472 @@
+/* ─── Page shell ────────────────────────────────────────────────────── */
+.page {
+  height: 100vh; height: 100dvh;
+  background: linear-gradient(180deg, #f4f6fb 0%, #e9edf6 100%);
+  color: #1f2937;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+:global([data-theme="dark"]) .page {
+  background: linear-gradient(180deg, #0e1830 0%, #0a1228 100%);
+  color: #e6edf6;
+}
+
+/* ─── Inline banner (CMDB fallback notice) ─────────────────────────── */
+.banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+  border-bottom: 1px solid rgba(245, 158, 11, 0.30);
+  font-size: 12px;
+  color: #92400e;
+  flex-shrink: 0;
+}
+:global([data-theme="dark"]) .banner {
+  background: linear-gradient(90deg, rgba(252, 211, 77, 0.10), rgba(252, 211, 77, 0.02));
+  color: #fcd34d;
+  border-bottom-color: rgba(252, 211, 77, 0.25);
+}
+.banner > span:nth-child(2) { flex: 1; }
+.bannerClose {
+  background: transparent; border: 0; color: inherit;
+  cursor: pointer; font-size: 18px; line-height: 1;
+  padding: 0 6px; opacity: 0.6;
+}
+.bannerClose:hover { opacity: 1; }
+
+/* ─── Header ───────────────────────────────────────────────────────── */
+.header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(60, 40, 110, 0.10);
+  flex-shrink: 0;
+}
+:global([data-theme="dark"]) .header { border-bottom-color: rgba(255,255,255,0.06); }
+.header h2 {
+  margin: 0; font-size: 15px; font-weight: 700;
+  background: linear-gradient(135deg, #0e7490 0%, #7c3aed 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+:global([data-theme="dark"]) .header h2 {
+  background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+.crumb { font-weight: 500; font-size: 12px; opacity: 0.7; -webkit-text-fill-color: currentColor; }
+
+.back, .treeToggleBtn {
+  width: 32px; height: 32px; border-radius: 7px;
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.20);
+  color: #4c1d95;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; cursor: pointer; flex-shrink: 0;
+}
+:global([data-theme="dark"]) .back, :global([data-theme="dark"]) .treeToggleBtn {
+  background: rgba(167, 139, 250, 0.10);
+  border-color: rgba(167, 139, 250, 0.30);
+  color: #c4b5fd;
+}
+
+/* Source toggle */
+.srcToggle {
+  display: inline-flex; border-radius: 7px; overflow: hidden;
+  border: 1px solid rgba(124, 58, 237, 0.22); flex-shrink: 0;
+}
+.srcBtn {
+  background: transparent; color: inherit; border: none;
+  padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.srcBtn:not(:last-child) { border-right: 1px solid rgba(124, 58, 237, 0.22); }
+.srcBtnActive { background: rgba(124, 58, 237, 0.15); color: #4c1d95; }
+:global([data-theme="dark"]) .srcBtnActive {
+  background: rgba(167, 139, 250, 0.20); color: #c4b5fd;
+}
+
+/* Summary pill */
+.summary { display: flex; gap: 5px; flex-shrink: 0; }
+.sm {
+  font-size: 11px; padding: 4px 8px; border-radius: 999px;
+  background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06);
+  white-space: nowrap;
+}
+:global([data-theme="dark"]) .sm {
+  background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08);
+}
+.sm b { font-weight: 700; margin-right: 3px; }
+.smOk { color: #047857; }  .smWarn { color: #b45309; }
+.smMute { color: #475569; } .smErr  { color: #b91c1c; }
+:global([data-theme="dark"]) .smOk { color: #6ee7b7; }
+:global([data-theme="dark"]) .smWarn { color: #fcd34d; }
+:global([data-theme="dark"]) .smMute { color: #cbd5e1; }
+:global([data-theme="dark"]) .smErr  { color: #fca5a5; }
+
+/* ─── Body 3-column layout ─────────────────────────────────────────── */
+.body {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: 220px 1fr auto;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ─── Tree explorer ────────────────────────────────────────────────── */
+.tree {
+  border-right: 1px solid rgba(0,0,0,0.07);
+  background: rgba(255,255,255,0.45);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+:global([data-theme="dark"]) .tree {
+  border-right-color: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+}
+.treeHead {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; opacity: 0.55;
+  padding: 12px 14px 6px;
+}
+.treeBody { padding: 4px 0 14px; font-size: 13px; }
+.treeRow {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px 6px 6px;
+  cursor: pointer;
+  border-radius: 6px; margin: 1px 6px;
+  user-select: none;
+}
+.treeRow:hover { background: rgba(124, 58, 237, 0.07); }
+.treeRowSel {
+  background: rgba(124, 58, 237, 0.14);
+  color: #4c1d95; font-weight: 600;
+}
+:global([data-theme="dark"]) .treeRowSel {
+  background: rgba(167, 139, 250, 0.16); color: #c4b5fd;
+}
+.treeCaret {
+  background: transparent; border: 0; color: inherit;
+  width: 16px; height: 16px; cursor: pointer; font-size: 10px;
+  padding: 0; opacity: 0.65;
+}
+.treeCaretBlank { display: inline-block; width: 16px; height: 16px; }
+.treeIcon {
+  display: inline-block; width: 16px; text-align: center;
+  opacity: 0.55; font-size: 11px;
+}
+.treeIcon[data-type="rack"] { color: #7c3aed; opacity: 0.9; }
+.treeLabel {
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.treeCount { font-size: 11px; opacity: 0.5; }
+
+/* ─── Canvas wrapper ───────────────────────────────────────────────── */
+.canvasWrap {
+  position: relative;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.canvas {
+  flex: 1; overflow: auto;
+  padding: 10px 12px 14px;
+  background: rgba(255,255,255,0.2);
+  min-width: 0;
+}
+:global([data-theme="dark"]) .canvas {
+  background: rgba(255,255,255,0.015);
+}
+
+/* ─── View mode bar (horizontal tabs at top of canvas) ────────────── */
+.modeBarWrap {
+  padding: 14px 14px 0;
+  display: flex; flex-direction: column; gap: 6px;
+  flex-shrink: 0;
+}
+.modeBar {
+  display: inline-flex; align-self: flex-start; gap: 4px;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  padding: 4px;
+}
+:global([data-theme="dark"]) .modeBar {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.06);
+}
+.modeBtn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  border: 0;
+  cursor: pointer;
+  font-size: 13px; font-weight: 600;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+.modeBtn:hover { opacity: 1; background: rgba(124, 58, 237, 0.08); }
+.modeBtnActive {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff !important;
+  opacity: 1;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.30);
+}
+.modeBtnActive:hover { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.modeBarHelp {
+  font-size: 12px;
+  opacity: 0.6;
+  padding: 0 4px;
+  font-style: italic;
+}
+
+/* ─── Map view ─────────────────────────────────────────────────────── */
+.mapStack {
+  display: flex; flex-direction: column; gap: 20px;
+}
+.floorBlock {
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 12px;
+  padding: 12px;
+}
+:global([data-theme="dark"]) .floorBlock {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.06);
+}
+.floorBlockHead {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; margin-bottom: 8px;
+}
+.floorBlockHead span:not(.floorBlockMeta) { opacity: 0.4; }
+.floorBlockMeta {
+  margin-left: auto; font-size: 11px; opacity: 0.55;
+  background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 999px;
+}
+:global([data-theme="dark"]) .floorBlockMeta { background: rgba(255,255,255,0.05); }
+
+.mat {
+  width: 100%; height: auto; max-height: 360px;
+  display: block;
+}
+.floorRect {
+  fill: rgba(255,255,255,0.5);
+  stroke: rgba(0,0,0,0.15); stroke-width: 0.04;
+}
+:global([data-theme="dark"]) .floorRect {
+  fill: rgba(255,255,255,0.03); stroke: rgba(255,255,255,0.10);
+}
+.gridLine { stroke: rgba(0,0,0,0.05); stroke-width: 0.01; }
+:global([data-theme="dark"]) .gridLine { stroke: rgba(255,255,255,0.04); }
+.rowLabel {
+  font-size: 0.35px; font-weight: 600;
+  fill: rgba(0,0,0,0.4); font-family: system-ui, sans-serif;
+}
+:global([data-theme="dark"]) .rowLabel { fill: rgba(255,255,255,0.45); }
+.rackG { cursor: pointer; }
+.rackG:hover rect { stroke-width: 0.10; }
+.rackLbl {
+  font-size: 0.16px; font-weight: 700; fill: #fff;
+  pointer-events: none;
+}
+
+/* ─── Tree view (hierarchical graph) ───────────────────────────────── */
+.treeView {
+  width: 100%; height: 100%;
+  display: flex; align-items: stretch; justify-content: stretch;
+}
+.treeSvg {
+  width: 100%; height: 100%;
+}
+.treeNodeG { cursor: pointer; }
+.treeNodeRect {
+  fill: rgba(255,255,255,0.92);
+  stroke: rgba(99, 102, 241, 0.45);
+  stroke-width: 1;
+  transition: fill 0.15s, stroke 0.15s;
+}
+:global([data-theme="dark"]) .treeNodeRect {
+  fill: rgba(30, 41, 59, 0.94);
+  stroke: rgba(167, 139, 250, 0.40);
+}
+.treeNodeG:hover .treeNodeRect {
+  fill: rgba(255,255,255,1);
+  stroke: rgba(99, 102, 241, 0.75);
+}
+:global([data-theme="dark"]) .treeNodeG:hover .treeNodeRect {
+  fill: rgba(51, 65, 85, 1);
+  stroke: rgba(167, 139, 250, 0.70);
+}
+.treeNodeSel {
+  fill: rgba(124, 58, 237, 0.14);
+  stroke: #7c3aed;
+  stroke-width: 1.5;
+}
+:global([data-theme="dark"]) .treeNodeSel {
+  fill: rgba(167, 139, 250, 0.20);
+  stroke: #c4b5fd;
+}
+.treeNodeText {
+  font-size: 11px; font-weight: 600;
+  fill: currentColor;
+  pointer-events: none;
+}
+.treeNodeCount {
+  font-size: 9px; opacity: 0.6; fill: currentColor;
+  pointer-events: none;
+}
+.treeEdge {
+  fill: none;
+  stroke: rgba(99, 102, 241, 0.30);
+  stroke-width: 1.2;
+}
+:global([data-theme="dark"]) .treeEdge { stroke: rgba(167, 139, 250, 0.30); }
+
+/* ─── Table view ───────────────────────────────────────────────────── */
+.tableWrap {
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 12px;
+  overflow: auto;
+}
+:global([data-theme="dark"]) .tableWrap {
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.06);
+}
+.table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  opacity: 0.6;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.025);
+  cursor: pointer;
+  position: sticky; top: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+:global([data-theme="dark"]) .table th {
+  background: rgba(255,255,255,0.03);
+  border-bottom-color: rgba(255,255,255,0.06);
+}
+.table th:hover { opacity: 1; }
+.table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+:global([data-theme="dark"]) .table td { border-bottom-color: rgba(255,255,255,0.04); }
+.table tbody tr { cursor: pointer; transition: background 0.1s; }
+.table tbody tr:hover { background: rgba(124, 58, 237, 0.06); }
+:global([data-theme="dark"]) .table tbody tr:hover { background: rgba(167, 139, 250, 0.06); }
+.tableStatus {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 6px; vertical-align: middle;
+}
+
+/* ─── Rack 3D view (hosts TopologyScene3D) ─────────────────────────── */
+.r3dWrap {
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  position: relative;
+  display: flex; flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0a0a14;
+}
+/* TopologyScene3D mounts its own <Canvas> — give it room to fill. */
+.r3dWrap > :global(div) { flex: 1; }
+.r3dCaption {
+  position: absolute;
+  bottom: 14px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 8px 18px;
+  display: inline-flex; align-items: center; gap: 12px;
+  font-size: 12px;
+  backdrop-filter: blur(8px);
+  z-index: 2;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.r3dCaptionLabel { font-weight: 700; color: #fff; }
+.r3dCaptionMeta { opacity: 0.65; }
+
+/* ─── Detail panel ─────────────────────────────────────────────────── */
+.panel {
+  width: 320px;
+  background: rgba(255,255,255,0.98);
+  border-left: 1px solid rgba(0,0,0,0.08);
+  padding: 18px;
+  overflow-y: auto;
+  position: relative;
+  flex-shrink: 0;
+}
+:global([data-theme="dark"]) .panel {
+  background: rgba(20, 30, 55, 0.98);
+  border-left-color: rgba(255,255,255,0.08);
+}
+.panelClose {
+  position: absolute; top: 10px; right: 10px;
+  width: 28px; height: 28px; border-radius: 7px;
+  background: rgba(0,0,0,0.05); border: 0;
+  cursor: pointer; font-size: 18px; color: inherit;
+}
+:global([data-theme="dark"]) .panelClose { background: rgba(255,255,255,0.06); }
+.panelHead { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.panelDot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.panelTitle { font-weight: 700; font-size: 15px; }
+.panelSub { font-size: 10px; opacity: 0.55; font-family: ui-monospace, monospace; word-break: break-all; }
+.kv {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 7px 0; font-size: 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+:global([data-theme="dark"]) .kv { border-bottom-color: rgba(255,255,255,0.05); }
+.kv span { opacity: 0.55; }
+.kv b { font-weight: 600; text-align: right; }
+.notes {
+  margin-top: 12px; padding: 10px; border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.20);
+}
+:global([data-theme="dark"]) .notes {
+  background: rgba(252, 211, 77, 0.06);
+  border-color: rgba(252, 211, 77, 0.18);
+}
+.notesTitle {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; opacity: 0.7; margin-bottom: 6px;
+}
+.notes ul { margin: 0; padding-left: 16px; font-size: 11px; line-height: 1.5; }
+
+/* ─── Footer legend ────────────────────────────────────────────────── */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  padding: 8px 16px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  font-size: 11px;
+  background: rgba(255,255,255,0.5);
+  flex-shrink: 0;
+}
+:global([data-theme="dark"]) .legend {
+  border-top-color: rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.20);
+}
+.legendItem { display: inline-flex; align-items: center; gap: 6px; opacity: 0.75; }
+.legendDot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.empty {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; opacity: 0.55;
+  padding: 40px;
+}
+

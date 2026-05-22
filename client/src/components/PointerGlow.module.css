@@ -1,0 +1,25 @@
+/* Small, subtle pointer light — overlays every page. Decreased radius
+   and low alpha so it reads as a gentle follow-light, never washes
+   content or blocks taps. z-index sits above page backgrounds but
+   below the bottom nav / modals (200). */
+.glow {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: radial-gradient(
+    170px circle at var(--px, 50%) var(--py, 40%),
+    rgba(110,151,245,0.10) 0%,
+    rgba(110,151,245,0.045) 36%,
+    transparent 70%
+  );
+}
+
+:global([data-theme='light']) .glow {
+  background: radial-gradient(
+    160px circle at var(--px, 50%) var(--py, 40%),
+    rgba(124,108,246,0.12) 0%,
+    rgba(124,108,246,0.05) 38%,
+    transparent 70%
+  );
+}

@@ -1,0 +1,99 @@
+{
+  "_comment": "Two sections per vendor: `auto_commands` (used by older code paths) and `intents` (the user-facing dropdown shown when the console sheet opens). Use {iface} as a placeholder for the interface (Gi1/0/6, 1/0/6, etc).",
+  "_intents_schema": "vendors.<vendor>.intents is a list of {id, label, cmd}. The label is what the user sees in the dropdown (plain English, no shell syntax). The cmd is the shell command to run when the user picks that option.",
+
+  "vendors": {
+    "cisco-ios": {
+      "intents": [
+        { "id": "find_other_end",  "label": "Find what's on the other end of this cable",  "cmd": "show lldp neighbors {iface} detail" },
+        { "id": "find_mac",        "label": "Find MAC address on this port",                "cmd": "show mac address-table interface {iface}" },
+        { "id": "port_status",     "label": "Port status (up/down, speed, duplex)",         "cmd": "show interfaces {iface} status" },
+        { "id": "port_config",     "label": "Port configuration",                            "cmd": "show running-config interface {iface}" },
+        { "id": "port_errors",     "label": "Port error counters",                           "cmd": "show interfaces {iface} counters errors" },
+        { "id": "vlan_info",       "label": "VLAN this port belongs to",                     "cmd": "show interfaces {iface} switchport" },
+        { "id": "vlan_brief",      "label": "All VLANs on the switch",                       "cmd": "show vlan brief" },
+        { "id": "poe_status",      "label": "PoE status for this port",                      "cmd": "show power inline {iface}" },
+        { "id": "spanning_tree",   "label": "Spanning Tree state",                           "cmd": "show spanning-tree interface {iface} detail" },
+        { "id": "switch_info",     "label": "Switch system information",                     "cmd": "show version" }
+      ],
+      "auto_commands": [
+        { "name": "Interface Status",      "cmd": "show interfaces {iface} status" },
+        { "name": "Interface Config",      "cmd": "show running-config interface {iface}" },
+        { "name": "Counters",              "cmd": "show interfaces {iface} counters" },
+        { "name": "Error Counters",        "cmd": "show interfaces {iface} counters errors" },
+        { "name": "LLDP Neighbor",         "cmd": "show lldp neighbors {iface} detail" },
+        { "name": "CDP Neighbor",          "cmd": "show cdp neighbors {iface} detail" },
+        { "name": "MAC Address Table",     "cmd": "show mac address-table interface {iface}" },
+        { "name": "ARP Table",             "cmd": "show ip arp" },
+        { "name": "Spanning Tree",         "cmd": "show spanning-tree interface {iface} detail" },
+        { "name": "Switchport",            "cmd": "show interfaces {iface} switchport" },
+        { "name": "PoE Status",            "cmd": "show power inline {iface}" },
+        { "name": "VLAN",                  "cmd": "show vlan brief" }
+      ]
+    },
+
+    "tplink": {
+      "_note": "TP-Link JetStream — `show interface description` is intentionally omitted (firmware rejects it as Invalid parameter). Per-port filtered variants are only used where confirmed working.",
+      "intents": [
+        { "id": "find_other_end",  "label": "Find what's on the other end of this cable",  "cmd": "show lldp neighbor-information interface gigabitEthernet {iface}" },
+        { "id": "find_mac",        "label": "Find MAC address on this port",                "cmd": "show mac address-table interface gigabitEthernet {iface}" },
+        { "id": "port_status",     "label": "Port status (up/down, speed, duplex)",         "cmd": "show interface status" },
+        { "id": "port_config",     "label": "Port configuration",                            "cmd": "show interface configuration" },
+        { "id": "port_errors",     "label": "Port error counters",                           "cmd": "show interface counters error" },
+        { "id": "vlan_info",       "label": "VLAN this port belongs to",                     "cmd": "show interface switchport" },
+        { "id": "vlan_brief",      "label": "All VLANs on the switch",                       "cmd": "show vlan" },
+        { "id": "poe_status",      "label": "PoE status",                                    "cmd": "show power inline" },
+        { "id": "spanning_tree",   "label": "Spanning Tree state",                           "cmd": "show spanning-tree interface gigabitEthernet {iface}" },
+        { "id": "cable_diag",      "label": "Cable diagnostics (length / fault)",            "cmd": "show cable-diagnostics interface gigabitEthernet {iface}" },
+        { "id": "switch_info",     "label": "Switch system information",                     "cmd": "show system-info" }
+      ],
+      "auto_commands": [
+        { "name": "System Info",              "cmd": "show system-info" },
+        { "name": "Interface Status",         "cmd": "show interface status" },
+        { "name": "Interface Configuration",  "cmd": "show interface configuration" },
+        { "name": "Traffic Counters",         "cmd": "show interface counters" },
+        { "name": "Error Counters",           "cmd": "show interface counters error" },
+        { "name": "LLDP Neighbor (port)",     "cmd": "show lldp neighbor-information interface gigabitEthernet {iface}" },
+        { "name": "LLDP All Neighbors",       "cmd": "show lldp neighbor-information" },
+        { "name": "MAC on this port",         "cmd": "show mac address-table interface gigabitEthernet {iface}" },
+        { "name": "MAC Table (full)",         "cmd": "show mac address-table" },
+        { "name": "ARP Table",                "cmd": "show arp" },
+        { "name": "Spanning Tree (port)",     "cmd": "show spanning-tree interface gigabitEthernet {iface}" },
+        { "name": "Spanning Tree (global)",   "cmd": "show spanning-tree" },
+        { "name": "Cable Diagnostics",        "cmd": "show cable-diagnostics interface gigabitEthernet {iface}" },
+        { "name": "VLAN Database",            "cmd": "show vlan" },
+        { "name": "Switchport",               "cmd": "show interface switchport" },
+        { "name": "PoE Status",               "cmd": "show power inline" }
+      ]
+    },
+
+    "dlink": {
+      "intents": [
+        { "id": "find_other_end",  "label": "Find what's on the other end of this cable",  "cmd": "show lldp remote_ports {iface}" },
+        { "id": "find_mac",        "label": "Find MAC address on this port",                "cmd": "show fdb port {iface}" },
+        { "id": "port_status",     "label": "Port status (up/down, speed, duplex)",         "cmd": "show ports {iface}" },
+        { "id": "port_config",     "label": "Port description / config",                    "cmd": "show ports {iface} description" },
+        { "id": "vlan_brief",      "label": "All VLANs on the switch",                       "cmd": "show vlan" },
+        { "id": "spanning_tree",   "label": "Spanning Tree state",                           "cmd": "show stp ports {iface}" }
+      ],
+      "auto_commands": [
+        { "name": "Port Status",            "cmd": "show ports {iface}" },
+        { "name": "Port Description",       "cmd": "show ports {iface} description" },
+        { "name": "LLDP Remote Ports",      "cmd": "show lldp remote_ports {iface}" },
+        { "name": "FDB (MAC table)",        "cmd": "show fdb port {iface}" },
+        { "name": "ARP Table",              "cmd": "show arpentry" },
+        { "name": "VLAN",                   "cmd": "show vlan" },
+        { "name": "Spanning Tree",          "cmd": "show stp ports {iface}" }
+      ]
+    }
+  },
+
+  "auto_commands": [
+    { "name": "Interface Status",      "cmd": "show interfaces {iface} status" },
+    { "name": "Interface Description", "cmd": "show interfaces {iface} description" },
+    { "name": "LLDP Neighbor",         "cmd": "show lldp neighbors {iface} detail" },
+    { "name": "CDP Neighbor",          "cmd": "show cdp neighbors {iface} detail" },
+    { "name": "MAC Address Table",     "cmd": "show mac address-table interface {iface}" },
+    { "name": "Spanning Tree",         "cmd": "show spanning-tree interface {iface}" }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-05-21T11:04:22.027659+00:00",
+  "lookback_days": 90,
+  "summary": {
+    "by_category": {
+      "Network": 30
+    },
+    "by_priority": {
+      "2 - High": 8,
+      "3 - Moderate": 14,
+      "4 - Low": 8
+    },
+    "total_incidents": 30
+  },
+  "time_patterns": [
+    {
+      "type": "time_cluster",
+      "severity": "warning",
+      "title": "All your 04:00 Wednesday alerts may share a root cause",
+      "detail": "30 alerts (100.0% of total) occur at 04:00 on Wednesdays.",
+      "hour": 4,
+      "day": "Wednesday",
+      "count": 30,
+      "pct_of_total": 100.0,
+      "common_phrase": null
+    }
+  ],
+  "firmware_clusters": [],
+  "site_accuracy": [
+    {
+      "type": "site_accuracy",
+      "severity": "warning",
+      "title": "4492 Camino De La Plaza, San Ysidro,CA's records are 83.3% accurate, 322 West 52nd Street, New York,NY's are 66.7%",
+      "detail": "4492 Camino De La Plaza, San Ysidro,CA: 83.3% (1 records) | 3191 Grand Avenue, Coconut Grove,FL: 83.3% (1 records) | 147 Quigley Boulevard, New Castle,DE: 83.3% (1 records) | 450 Lexington Avenue, New York,NY: 83.3% (1 records) | 9201 University City Boulevard, Charlotte,NC: 83.3% (1 records) | Unknown: 75.8% (22 records) | 4193 University Avenue, San Diego,CA: 68.2% (11 records) | 5052 Clairemont Drive, San Diego,CA: 66.7% (10 records) | Via Nomentana 56, Rome: 66.7% (8 records) | Bockenheimer Landstra\u00dfe 123, Frankfurt: 66.7% (7 records) | 322 West 52nd Street, New York,NY: 66.7% (4 records)",
+      "sites": {
+        "4492 Camino De La Plaza, San Ysidro,CA": {
+          "accuracy_pct": 83.3,
+          "record_count": 1,
+          "filled": 5,
+          "total": 6
+        },
+        "3191 Grand Avenue, Coconut Grove,FL": {
+          "accuracy_pct": 83.3,
+          "record_count": 1,
+          "filled": 5,
+          "total": 6
+        },
+        "147 Quigley Boulevard, New Castle,DE": {
+          "accuracy_pct": 83.3,
+          "record_count": 1,
+          "filled": 5,
+          "total": 6
+        },
+        "450 Lexington Avenue, New York,NY": {
+          "accuracy_pct": 83.3,
+          "record_count": 1,
+          "filled": 5,
+          "total": 6
+        },
+        "9201 University City Boulevard, Charlotte,NC": {
+          "accuracy_pct": 83.3,
+          "record_count": 1,
+          "filled": 5,
+          "total": 6
+        },
+        "Unknown": {
+          "accuracy_pct": 75.8,
+          "record_count": 22,
+          "filled": 100,
+          "total": 132
+        },
+        "4193 University Avenue, San Diego,CA": {
+          "accuracy_pct": 68.2,
+          "record_count": 11,
+          "filled": 45,
+          "total": 66
+        },
+        "5052 Clairemont Drive, San Diego,CA": {
+          "accuracy_pct": 66.7,
+          "record_count": 10,
+          "filled": 40,
+          "total": 60
+        },
+        "Via Nomentana 56, Rome": {
+          "accuracy_pct": 66.7,
+          "record_count": 8,
+          "filled": 32,
+          "total": 48
+        },
+        "Bockenheimer Landstra\u00dfe 123, Frankfurt": {
+          "accuracy_pct": 66.7,
+          "record_count": 7,
+          "filled": 28,
+          "total": 42
+        },
+        "322 West 52nd Street, New York,NY": {
+          "accuracy_pct": 66.7,
+          "record_count": 4,
+          "filled": 16,
+          "total": 24
+        }
+      }
+    }
+  ]
+}

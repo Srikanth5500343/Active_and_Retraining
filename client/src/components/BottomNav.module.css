@@ -1,0 +1,301 @@
+﻿/* ══════════════════════════════════════════════════════════════════════
+   Slim floating bottom navigation with a true scoop notch
+   – Bar's painted background lives on a ::before pseudo so mask doesn't
+     clip the floating icon circle.
+   – Notch position follows active tab via :has() and a CSS variable.
+   – Items are width:33.333% (not flex:1) so positions are mathematically
+     exact: centers at 16.667%, 50%, 83.333%.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Register --notch-x so it can transition smoothly between active tabs */
+@property --notch-x {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 50%;
+}
+
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 540px;
+  z-index: 200;
+  padding: 0 14px 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+/* Bar is JUST the flex container — no painting, no clipping */
+.bar {
+  --notch-x: 50%;
+  --notch-r: 32px;
+
+  display: flex;
+  align-items: center;
+  /* No justify-content / no padding-x — items each take exactly 33.333% */
+  padding: 8px 0 10px;
+  position: relative;
+  background: transparent;
+  pointer-events: auto;
+  overflow: visible;
+  /* Smoothly slide the notch when switching tabs */
+  transition: --notch-x 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Painted background lives on the pseudo so its mask doesn't clip children */
+.bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  background: rgba(8, 14, 30, 0.85);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  /* Carve a circular bite out of the top edge */
+  mask-image: radial-gradient(
+    circle var(--notch-r) at var(--notch-x) 0,
+    transparent calc(var(--notch-r) - 1px),
+    #000 var(--notch-r)
+  );
+  -webkit-mask-image: radial-gradient(
+    circle var(--notch-r) at var(--notch-x) 0,
+    transparent calc(var(--notch-r) - 1px),
+    #000 var(--notch-r)
+  );
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  /* drop-shadow follows the masked silhouette (notch and all) */
+  filter:
+    drop-shadow(0 12px 28px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 4px 10px rgba(0, 0, 0, 0.22));
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.25s ease;
+}
+
+/* Move the notch under whichever tab is active.
+   3 tabs → centers at 16.67%, 50%, 83.33% of the bar width. */
+.bar:has(.item:nth-child(1).active) { --notch-x: 16.667%; }
+.bar:has(.item:nth-child(2).active) { --notch-x: 50%; }
+.bar:has(.item:nth-child(3).active) { --notch-x: 83.333%; }
+/* Shutter (camera live) sits in the middle */
+.bar:has(.shutterItem) { --notch-x: 50%; }
+
+/* Each nav item — sits ABOVE the masked background pseudo.
+   Explicit width (not flex:1) guarantees exact 1/3-bar centers. */
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 33.333%;
+  flex: 0 0 33.333%;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  padding: 6px 0 4px;
+  z-index: 1;
+}
+
+/* Default icon container — flat, compact */
+.iconWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  transition:
+    transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.22s ease,
+    color 0.22s ease,
+    box-shadow 0.34s ease,
+    width 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-radius 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Label */
+.label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.22s, transform 0.22s;
+  position: relative;
+}
+
+/* Active label: small underline accent */
+.label::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%) scaleX(0);
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Active icon — nestles into the scoop, mostly above the bar ── */
+.active .iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%);
+  color: #fff;
+  /* Lift so ~70% sits above the bar top edge, ~30% nestles into the scoop */
+  transform: translateY(-32px);
+  box-shadow:
+    0 10px 24px rgba(59, 130, 246, 0.45),
+    0 4px 10px rgba(124, 58, 237, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  z-index: 5;
+}
+
+/* Subtle breathing halo behind the active circle */
+.active .iconWrap::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72px;
+  height: 72px;
+  margin-top: -36px;
+  margin-left: -36px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.32) 0%, rgba(59, 130, 246, 0.12) 50%, transparent 72%);
+  z-index: -1;
+  pointer-events: none;
+  animation: navHaloBreathe 3s ease-in-out infinite;
+}
+
+.active .label {
+  color: #fff;
+  transform: translateY(-4px);
+}
+.active .label::after {
+  transform: translateX(-50%) scaleX(1);
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+}
+
+@keyframes navHaloBreathe {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%      { opacity: 0.95; transform: scale(1.08); }
+}
+
+/* Hover for non-active */
+.item:not(.active):hover .iconWrap {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateY(-2px);
+}
+.item:not(.active):hover .label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Tap feedback */
+.active .iconWrap:active {
+  transform: translateY(-32px) scale(0.92);
+}
+.item:not(.active):active .iconWrap {
+  transform: translateY(-1px) scale(0.94);
+}
+
+/* ── Shutter mode for middle button (when camera is live) ── */
+.shutterItem {
+  background: none;
+  border: none;
+  padding: 6px 0 4px;
+  width: 33.333%;
+  flex: 0 0 33.333%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
+}
+.shutterItem[disabled] { cursor: not-allowed; }
+
+.shutterItem .iconWrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  transform: translateY(-34px);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.shutterItem .shutterDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transition: background 0.22s, transform 0.22s, box-shadow 0.22s;
+}
+.shutterItem .label {
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 2px;
+  transform: translateY(-4px);
+}
+
+.shutterItem.shutterReady .iconWrap {
+  background: #fff;
+  border-color: #21e07a;
+  box-shadow:
+    0 0 24px rgba(33, 224, 122, 0.55),
+    0 10px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.shutterItem.shutterReady .shutterDot {
+  background: #21e07a;
+  box-shadow: 0 0 10px rgba(33, 224, 122, 0.6);
+  animation: navShutterPulse 1.2s ease-in-out infinite;
+}
+.shutterItem:not([disabled]):active .iconWrap {
+  transform: translateY(-34px) scale(0.92);
+}
+@keyframes navShutterPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT THEME — bar stays DARK navy in both themes (matches the Profile
+   hero band aesthetic). Only the outer drop-shadow swaps to an indigo
+   glow so the dark nav frames nicely against light page content. All
+   other elements (icons, labels, active state, shutter) keep their
+   dark-theme styling unchanged.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:global([data-theme='light']) .bar::before {
+  /* Solid dark navy in light theme so the page's cream bg doesn't bleed
+     through the 85% opaque fill and wash the bar out to grey-blue.
+     Use the same gradient as the Profile hero band so they read as one
+     family. */
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(99,102,241,0.30) 0%, transparent 65%),
+    linear-gradient(160deg, #0a1230 0%, #131641 45%, #0c1535 100%);
+  filter:
+    drop-shadow(0 12px 28px rgba(99, 102, 241, 0.30))
+    drop-shadow(0 4px 12px rgba(99, 102, 241, 0.14));
+}

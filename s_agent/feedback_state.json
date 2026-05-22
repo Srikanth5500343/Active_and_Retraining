@@ -1,0 +1,49 @@
+{
+  "predictions": {
+    "INC0010042": {
+      "failure_mode": "crc_errors",
+      "confidence": 1.0,
+      "signals_used": [
+        "keyword:crc error",
+        "keyword:crc errors",
+        "keyword:crc",
+        "regex:device_pattern",
+        "regex:port_num",
+        "keyword:mgmt"
+      ],
+      "affected_device": "SW-U14",
+      "affected_port": 2,
+      "predicted_at": "2026-05-21T11:03:28.984926+00:00"
+    },
+    "INC0000001": {
+      "failure_mode": "other",
+      "confidence": 0.113,
+      "signals_used": [
+        "default:other",
+        "keyword:access"
+      ],
+      "affected_device": null,
+      "affected_port": null,
+      "predicted_at": "2026-05-21T11:03:44.589781+00:00"
+    },
+    "INC0010040": {
+      "failure_mode": "flapping",
+      "confidence": 1.0,
+      "signals_used": [
+        "keyword:flapping",
+        "keyword:flap",
+        "regex:device_pattern",
+        "regex:port_num",
+        "keyword:mgmt"
+      ],
+      "affected_device": "SW-U14",
+      "affected_port": 5,
+      "predicted_at": "2026-05-21T11:46:18.153936+00:00"
+    }
+  },
+  "outcomes": {},
+  "pattern_stats": {},
+  "signal_stats": {},
+  "monthly_stats": {},
+  "calibration": {}
+}
