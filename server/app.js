@@ -5125,11 +5125,22 @@ app.get('/api/specs/vendors', async (req, res) => {
 app.post('/api/specs', async (req, res) => {
   const vendor = String(req.body?.vendor || '').trim();
   const model  = String(req.body?.model  || '').trim();
+  // fromOcr === true: data came from the OCR pipeline; run the 2-stage
+  // OCR-correction probe (DB-only → suggestion retry → live fallback) so
+  // garbled models like "C9300-46P" auto-correct to "C9300-48P". For
+  // CMDB / manually-entered data we trust the input and skip the probe,
+  // saving the extra Python spawn (~1-2s per request).
+  const fromOcr = req.body?.fromOcr === true;
   if (!vendor || !model) {
     return res.status(400).json({ ok: false, error: 'vendor and model are required' });
   }
-  const { agentRes, matchedFrom, matchedTo } =
-    await resolveAgentWithOcrCorrection(vendor, model);
+  let agentRes, matchedFrom = null, matchedTo = null;
+  if (fromOcr) {
+    ({ agentRes, matchedFrom, matchedTo } =
+      await resolveAgentWithOcrCorrection(vendor, model));
+  } else {
+    agentRes = await runAgentCli([`${vendor} ${model}`]);
+  }
   const payload = specPayloadFromAgent(agentRes, vendor, model);
   if (matchedFrom) {
     payload.matchedFrom = matchedFrom;
@@ -5277,6 +5288,11 @@ app.post('/api/firmware', async (req, res) => {
   const vendor         = String(req.body?.vendor || '').trim();
   const model          = String(req.body?.model  || '').trim();
   const currentVersion = String(req.body?.currentVersion || '').trim();
+  // See /api/specs above for the fromOcr semantics. For manually-entered
+  // or CMDB-sourced data we skip the OCR-correction probe — the agent's
+  // --firmware mode already does its own internal spec lookup, so the
+  // probe is duplicate work costing an extra Python spawn (~1-2s).
+  const fromOcr = req.body?.fromOcr === true;
   if (!vendor || !model || !currentVersion) {
     return res.status(400).json({
       ok: false,
@@ -5284,14 +5300,13 @@ app.post('/api/firmware', async (req, res) => {
     });
   }
 
-  // Resolve the canonical model via the shared OCR-correction probe so
-  // firmware_advise gets a real vendor + model (else it falls back to
-  // "Unknown" and skips the firmware DB / vendor-latest lookup entirely).
-  // The probe is fast (~1-2s for DB-only; only escalates to live for
-  // genuinely novel models).
-  const { matchedFrom, matchedTo } =
-    await resolveAgentWithOcrCorrection(vendor, model);
-  const firmwareModel = matchedTo || model;
+  let firmwareModel = model;
+  let matchedFrom = null, matchedTo = null;
+  if (fromOcr) {
+    ({ matchedFrom, matchedTo } =
+      await resolveAgentWithOcrCorrection(vendor, model));
+    firmwareModel = matchedTo || model;
+  }
 
   const agentRes = await runAgentCli(
     ['--firmware', `${vendor} ${firmwareModel}`, currentVersion]);
@@ -5390,6 +5405,15 @@ function firmwarePayloadFromAgent(agentRes, req) {
     releaseNotesUrl:   (target && target.release_notes_url) || null,
     releaseNotesError: (!target && advice.message) ? advice.message : null,
     releaseNotesGated: !!advice.release_notes_gated,
+    // Agent's human-readable status. Useful in the null-target case so
+    // the UI can say something specific ("X CVEs known but none match
+    // current version", "no firmware data cached for vendor") instead
+    // of falling back to "couldn't reach vendor right now".
+    advisoryMessage: advice.message || null,
+    // True when the agent has *something* useful (cached latest, diff,
+    // or CVE rows). Lets the UI distinguish a partial hit from a miss.
+    hasAdvisoryData: !!advice.has_data,
+    nos: advice.nos || null,
     versionsFound: [],
     changelog,
     cves,

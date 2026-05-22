@@ -158,6 +158,10 @@ function _prefetchCmdb(rackId, scan) {
 // Specs lookup per (vendor, model). Cached server-side via the
 // /api/specs endpoint's own cache; we cache the response client-side too
 // so the SwitchInformationPage card can render instantly.
+// Prefetches always iterate over OCR-derived devices (see the scheduler
+// below), so we tell the server to run the OCR-correction probe via
+// fromOcr: true. Direct fetches in SwitchInformationPage decide per
+// device based on _fromOcr + whether the model was manually overridden.
 function _prefetchSpecs(rackId, vendor, model, scan) {
   if (!vendor || !model) return;
   const key = _key(rackId, 'specs', vendor, model);
@@ -165,7 +169,7 @@ function _prefetchSpecs(rackId, vendor, model, scan) {
   const p = _fetchJson('/api/specs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vendor, model }),
+    body: JSON.stringify({ vendor, model, fromOcr: true }),
   }).then(d => { if (d) _values.set(key, d); return d; });
   scan.cache.set(key, p);
 }
@@ -177,7 +181,7 @@ function _prefetchFirmware(rackId, vendor, model, version, scan) {
   const p = _fetchJson('/api/firmware', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vendor, model, currentVersion: version }),
+    body: JSON.stringify({ vendor, model, currentVersion: version, fromOcr: true }),
   }).then(d => { if (d) _values.set(key, d); return d; });
   scan.cache.set(key, p);
 }

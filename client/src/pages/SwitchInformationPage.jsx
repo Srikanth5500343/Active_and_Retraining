@@ -295,11 +295,17 @@ function SwitchCard({ sw, rackId }) {
       setFirmwareStatus(versionForLookup ? 'loading' : 'skipped');
     }
 
+    // Only OCR-derived data needs the server's OCR-correction probe. A
+    // manual model edit (modelIsUserSupplied) means the user has
+    // confirmed the model, so we tell the server to skip the probe and
+    // save a Python spawn.
+    const fromOcr = !!sw._fromOcr && !modelIsUserSupplied;
+
     if (!specsCached && specsStatus !== 'ready') {
       authFetch(apiUrl('/api/specs'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendor: displayVendor, model: lookupModel }),
+        body: JSON.stringify({ vendor: displayVendor, model: lookupModel, fromOcr }),
       }).then(async r => {
         const text = await r.text();
         let data = null;
@@ -317,7 +323,7 @@ function SwitchCard({ sw, rackId }) {
       authFetch(apiUrl('/api/firmware'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendor: displayVendor, model: lookupModel, currentVersion: versionForLookup }),
+        body: JSON.stringify({ vendor: displayVendor, model: lookupModel, currentVersion: versionForLookup, fromOcr }),
       }).then(async r => {
         const text = await r.text();
         let data = null;
@@ -427,22 +433,37 @@ function SwitchCard({ sw, rackId }) {
   const cves = firmware?.cves || [];
   const crit = cves.filter(c => (c.severity || '').toUpperCase() === 'CRITICAL').length;
   const high = cves.filter(c => (c.severity || '').toUpperCase() === 'HIGH').length;
+  // Severity drives the pill colour even when `upToDate` is null — a known
+  // CVE matters whether or not we could confirm the latest version.
   const fwTone =
     firmware?.upToDate === true && cves.length === 0 ? 'ok'
-    : (crit > 0 || (firmware?.upToDate === false && high > 0)) ? 'critical'
-    : firmware?.upToDate === false ? 'warn' : 'neutral';
+    : crit > 0 ? 'critical'
+    : (firmware?.upToDate === false && high > 0) ? 'critical'
+    : firmware?.upToDate === false ? 'warn'
+    : (firmware?.upToDate == null && high > 0) ? 'warn'
+    : 'neutral';
   // Headline. When the vendor scrape couldn't confirm the latest version
-  // (upToDate === null), say so honestly rather than the prior cryptic
-  // "Latest version unknown" — the user has no idea what to do with that.
-  // Tell them we couldn't check and offer a path to the vendor's release
-  // notes so they can verify themselves.
-  const fwHeadline =
-    firmware?.upToDate === true ? 'Up to date'
-    : firmware?.upToDate === false
-      ? (crit > 0 ? 'Upgrade strongly recommended' : 'Upgrade available')
-      : firmware?.releaseNotesUrl
-        ? "Couldn't read latest — check vendor"
-        : "Couldn't reach vendor right now";
+  // (upToDate === null), the agent often still surfaces CVE data, a
+  // recommended min version, or a portal pointer — use those instead of
+  // dead-ending with "couldn't reach vendor right now".
+  let fwHeadline;
+  if (firmware?.upToDate === true) {
+    fwHeadline = 'Up to date';
+  } else if (firmware?.upToDate === false) {
+    fwHeadline = crit > 0 ? 'Upgrade strongly recommended' : 'Upgrade available';
+  } else if (cves.length > 0) {
+    fwHeadline = crit > 0
+      ? `${cves.length} CVE${cves.length > 1 ? 's' : ''} — upgrade strongly recommended`
+      : `${cves.length} CVE${cves.length > 1 ? 's' : ''} known — latest version unknown`;
+  } else if (firmware?.recommendedMinVersion) {
+    fwHeadline = `Recommended min: ${firmware.recommendedMinVersion}`;
+  } else if (firmware?.releaseNotesGated || firmware?.portalUrl) {
+    fwHeadline = 'Check vendor portal';
+  } else if (firmware?.releaseNotesUrl) {
+    fwHeadline = "Couldn't read latest — check vendor";
+  } else {
+    fwHeadline = 'Latest version unknown';
+  }
   const fwColor =
     fwTone === 'ok' ? '#16a34a' : fwTone === 'critical' ? '#dc2626'
     : fwTone === 'warn' ? '#d97706' : lt ? '#6B7280' : 'rgba(230,235,245,0.7)';
@@ -708,17 +729,35 @@ function SwitchCard({ sw, rackId }) {
             )}
             {firmwareStatus === 'error'   && <StatusLine color={statusColor}>Couldn't check for updates right now.</StatusLine>}
             {firmwareStatus === 'ready' && firmware && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
-                <MiniField label="Current" value={firmware.currentVersion} accent={accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
-                <MiniField label="Latest"  value={firmware.latestVersion || '—'} accent={accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
-                <MiniField label="CVEs"    value={`${cves.length}${(crit+high)>0?` (${crit}c/${high}h)`:''}`} accent={crit>0?'#dc2626':high>0?'#d97706':accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
-                {firmware.releaseNotesUrl && (
-                  <a href={firmware.releaseNotesUrl} target="_blank" rel="noreferrer noopener"
-                    style={{ display: 'flex', alignItems: 'center', fontSize: '.72rem', color: linkColor, textDecoration: 'none' }}>
-                    Release notes ↗
-                  </a>
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
+                  <MiniField label="Current" value={firmware.currentVersion} accent={accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
+                  <MiniField label="Latest"  value={firmware.latestVersion || '—'} accent={accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
+                  <MiniField label="CVEs"    value={`${cves.length}${(crit+high)>0?` (${crit}c/${high}h)`:''}`} accent={crit>0?'#dc2626':high>0?'#d97706':accent} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
+                  {firmware.recommendedMinVersion && firmware.recommendedMinVersion !== firmware.latestVersion && (
+                    <MiniField label="Min safe" value={firmware.recommendedMinVersion} accent={'#d97706'} fieldBg={fieldBg} fieldBorder={fieldBorder} valueColor={valueColor} />
+                  )}
+                  {firmware.releaseNotesUrl && (
+                    <a href={firmware.releaseNotesUrl} target="_blank" rel="noreferrer noopener"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '.72rem', color: linkColor, textDecoration: 'none' }}>
+                      Release notes ↗
+                    </a>
+                  )}
+                  {!firmware.releaseNotesUrl && firmware.portalUrl && (
+                    <a href={firmware.portalUrl} target="_blank" rel="noreferrer noopener"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '.72rem', color: linkColor, textDecoration: 'none' }}>
+                      Vendor portal ↗
+                    </a>
+                  )}
+                </div>
+                {/* When latest is unknown, surface the agent's diagnostic
+                    message so the user knows why instead of just seeing "—". */}
+                {firmware.latestVersion == null && firmware.advisoryMessage && (
+                  <div style={{ marginTop: 8, fontSize: '.72rem', color: statusColor, lineHeight: 1.5 }}>
+                    {firmware.advisoryMessage}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
 
