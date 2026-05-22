@@ -1139,6 +1139,44 @@ export default function ResultsPage() {
   const livePrevActiveRef = useRef(null); // null = no reading yet
   const LIVE_POLL_MS = 5000;
   const [ticketReportOpen, setTicketReportOpen] = useState(false);
+  // Agent Analysis panel (zero-LLM extraction + reasoning + work-note preview
+  // from the backend's /api/analyze-for-ticket call). Collapsed by default.
+  const [agentExpanded, setAgentExpanded] = useState(false);
+  const [agentNoteCopied, setAgentNoteCopied] = useState(false);
+  const [agentPosting, setAgentPosting] = useState(false);
+  const [agentPostResult, setAgentPostResult] = useState(null); // { status, message }
+  const agent = result?.agent || null;
+
+  // Posts the agent's work-note text to the ServiceNow incident via the
+  // server's /api/incidents/:inc/post-work-note route. Honors agent.py's
+  // guards (confidence floor, no-change hash, 24h rate-limit). When the
+  // user clicks Post again on the same analysis it should report
+  // 'skipped_no_change' instead of double-posting.
+  const postWorkNoteToSn = async ({ force = false } = {}) => {
+    if (!ticket?.incident_number || agentPosting) return;
+    setAgentPosting(true);
+    setAgentPostResult(null);
+    try {
+      const r = await authFetch(
+        apiUrl(`/api/incidents/${encodeURIComponent(ticket.incident_number)}/post-work-note`),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force }),
+        },
+      );
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setAgentPostResult({ status: 'error', message: data.error || `HTTP ${r.status}` });
+      } else {
+        setAgentPostResult({ status: data.status || 'unknown', message: data.status });
+      }
+    } catch (err) {
+      setAgentPostResult({ status: 'error', message: err.message });
+    } finally {
+      setAgentPosting(false);
+    }
+  };
   useEffect(() => {
     if (!ticketMode || !result) return;
     // Drift case: a dedicated early-return render handles it; just don't
@@ -2516,6 +2554,292 @@ export default function ResultsPage() {
                   </>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Agent Analysis — zero-LLM extraction + reasoning chain + work-note preview.
+              Only shown in ticket mode when /api/analyze-for-ticket returned an `agent` payload. */}
+          {ticketMode && agent && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.06), rgba(59,130,246,0.04))',
+              border: '1px solid rgba(16,185,129,0.30)',
+              borderRadius: 12,
+              padding: '12px 14px',
+              margin: '8px 12px 4px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              fontSize: 13,
+            }}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:'#10b981',textTransform:'uppercase'}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a3 3 0 00-3 3v0a3 3 0 003 3 3 3 0 003-3v0a3 3 0 00-3-3z"/>
+                    <path d="M19 12a3 3 0 00-3-3 3 3 0 00-3 3v0a3 3 0 003 3 3 3 0 003-3v0z"/>
+                    <path d="M5 12a3 3 0 00-3 3 3 3 0 003 3 3 3 0 003-3 3 3 0 00-3-3z"/>
+                    <path d="M12 16a3 3 0 00-3 3 3 3 0 003 3 3 3 0 003-3 3 3 0 00-3-3z"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="15" x2="13" y2="13"/><line x1="16" y1="15" x2="11" y2="13"/>
+                  </svg>
+                  Agent Analysis
+                  <span style={{
+                    padding:'2px 6px',
+                    borderRadius:6,
+                    background: (agent.extraction?.confidence ?? 0) >= 0.5
+                      ? 'rgba(16,185,129,0.18)'
+                      : 'rgba(251,191,36,0.18)',
+                    color: (agent.extraction?.confidence ?? 0) >= 0.5 ? '#34d399' : '#fbbf24',
+                    fontSize:10,
+                    letterSpacing:'0.04em',
+                  }}>
+                    conf {Math.round((agent.extraction?.confidence ?? 0) * 100)}%
+                  </span>
+                </div>
+                <button type="button"
+                  onClick={() => setAgentExpanded(v => !v)}
+                  style={{
+                    background:'transparent',
+                    border:'1px solid rgba(255,255,255,0.12)',
+                    color:'var(--muted, #9ca3af)',
+                    fontSize:11,
+                    padding:'4px 10px',
+                    borderRadius:6,
+                    cursor:'pointer',
+                  }}>
+                  {agentExpanded ? 'Collapse' : 'Show details'}
+                </button>
+              </div>
+
+              {/* One-line summary always visible */}
+              <div style={{color:'var(--text, #e5e7eb)',lineHeight:1.4}}>
+                {agent.extraction?.one_line_summary || 'no extractable details'}
+              </div>
+
+              {/* Field grid — always visible, terse */}
+              <div style={{display:'flex',flexWrap:'wrap',gap:8,fontSize:11,color:'var(--muted, #9ca3af)'}}>
+                {agent.extraction?.failure_mode && (
+                  <span>mode: <strong style={{color:'var(--text, #e5e7eb)'}}>{agent.extraction.failure_mode.replace(/_/g,' ')}</strong></span>
+                )}
+                {agent.extraction?.affected_device && (
+                  <>
+                    <span>·</span>
+                    <span>device: <strong style={{color:'var(--text, #e5e7eb)'}}>{agent.extraction.affected_device}</strong></span>
+                  </>
+                )}
+                {agent.extraction?.affected_port != null && (
+                  <>
+                    <span>·</span>
+                    <span>port: <strong style={{color:'var(--text, #e5e7eb)'}}>{agent.extraction.affected_port}</strong></span>
+                  </>
+                )}
+                {agent.extraction?.urgency_signal && (
+                  <>
+                    <span>·</span>
+                    <span>urgency: <strong style={{color:'var(--text, #e5e7eb)'}}>{agent.extraction.urgency_signal.replace(/_/g,' ')}</strong></span>
+                  </>
+                )}
+              </div>
+
+              {/* Expanded body — reasoning chain + signals + work-note preview */}
+              {agentExpanded && (
+                <div style={{marginTop:6,display:'flex',flexDirection:'column',gap:10,fontSize:12}}>
+
+                  {/* Signals used */}
+                  {Array.isArray(agent.extraction?.signals_used) && agent.extraction.signals_used.length > 0 && (
+                    <div>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.08em',color:'var(--muted, #9ca3af)',textTransform:'uppercase',marginBottom:5}}>
+                        Signals
+                      </div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                        {agent.extraction.signals_used.map(sig => (
+                          <code key={sig} style={{
+                            fontSize:10,
+                            padding:'2px 6px',
+                            borderRadius:4,
+                            background:'rgba(255,255,255,0.05)',
+                            color:'#cbd5e1',
+                            fontFamily:'var(--mono, monospace)',
+                          }}>{sig}</code>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reasoning chain */}
+                  {Array.isArray(agent.reasoning) && agent.reasoning.length > 0 && (
+                    <div>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.08em',color:'var(--muted, #9ca3af)',textTransform:'uppercase',marginBottom:5}}>
+                        Reasoning chain
+                      </div>
+                      <ol style={{margin:0,paddingLeft:18,display:'flex',flexDirection:'column',gap:6}}>
+                        {agent.reasoning.map((step, i) => (
+                          <li key={i} style={{color:'var(--text, #e5e7eb)',lineHeight:1.5}}>
+                            <span style={{
+                              display:'inline-block',
+                              minWidth:90,
+                              fontSize:10,
+                              fontWeight:700,
+                              color:'#6366f1',
+                              letterSpacing:'0.04em',
+                              textTransform:'uppercase',
+                            }}>
+                              {step.step?.replace(/_/g,' ')}
+                            </span>
+                            <span style={{color:'var(--muted, #9ca3af)'}}> · </span>
+                            <span>{step.evidence}</span>
+                            <span style={{fontSize:10,color:'rgba(255,255,255,0.35)',marginLeft:6}}>
+                              ({Math.round((step.confidence ?? 0) * 100)}%)
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {/* Work-note preview */}
+                  {agent.work_note_preview?.text && (
+                    <div>
+                      <div style={{
+                        fontSize:10,fontWeight:700,letterSpacing:'0.08em',
+                        color:'var(--muted, #9ca3af)',textTransform:'uppercase',
+                        marginBottom:5,
+                        display:'flex',alignItems:'center',justifyContent:'space-between',
+                      }}>
+                        <span>Work-note preview</span>
+                        <span style={{
+                          fontSize:9,
+                          color: agent.work_note_preview.would_post ? '#34d399' : '#fbbf24',
+                          letterSpacing:'0.02em',
+                          textTransform:'none',
+                        }}>
+                          {agent.work_note_preview.status}
+                        </span>
+                      </div>
+                      <pre style={{
+                        margin:0,
+                        padding:'10px 12px',
+                        borderRadius:8,
+                        background:'rgba(0,0,0,0.35)',
+                        border:'1px solid rgba(255,255,255,0.08)',
+                        color:'#cbd5e1',
+                        fontSize:11,
+                        fontFamily:'var(--mono, monospace)',
+                        whiteSpace:'pre-wrap',
+                        wordBreak:'break-word',
+                        maxHeight:220,
+                        overflowY:'auto',
+                      }}>{agent.work_note_preview.text}</pre>
+                      <div style={{marginTop:6,display:'flex',gap:6,flexWrap:'wrap'}}>
+                        <button type="button"
+                          onClick={() => {
+                            try {
+                              navigator.clipboard.writeText(agent.work_note_preview.text);
+                              setAgentNoteCopied(true);
+                              setTimeout(() => setAgentNoteCopied(false), 1800);
+                            } catch (_) { /* clipboard unavailable */ }
+                          }}
+                          style={{
+                            background: agentNoteCopied ? 'rgba(52,211,153,0.18)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${agentNoteCopied ? 'rgba(52,211,153,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                            color: agentNoteCopied ? '#34d399' : 'var(--text, #e5e7eb)',
+                            fontSize:11,
+                            padding:'5px 12px',
+                            borderRadius:6,
+                            cursor:'pointer',
+                          }}>
+                          {agentNoteCopied ? 'Copied' : 'Copy note'}
+                        </button>
+
+                        {/* Post-to-ServiceNow button. Only shown when the agent
+                            says it would post (confidence ≥ floor); below that
+                            we still let the user force-post but warn first. */}
+                        {ticket?.incident_number && (
+                          <button type="button"
+                            onClick={() => postWorkNoteToSn()}
+                            disabled={agentPosting}
+                            title={agent.work_note_preview.would_post
+                              ? `Post work note to ${ticket.incident_number} in ServiceNow`
+                              : `Agent confidence below auto-post floor — click anyway to post`}
+                            style={{
+                              background: agentPosting
+                                ? 'rgba(99,102,241,0.10)'
+                                : agent.work_note_preview.would_post
+                                  ? 'rgba(99,102,241,0.18)'
+                                  : 'rgba(251,191,36,0.10)',
+                              border: `1px solid ${agent.work_note_preview.would_post
+                                ? 'rgba(99,102,241,0.50)'
+                                : 'rgba(251,191,36,0.40)'}`,
+                              color: agentPosting
+                                ? 'var(--muted, #9ca3af)'
+                                : agent.work_note_preview.would_post
+                                  ? '#a5b4fc'
+                                  : '#fbbf24',
+                              fontSize:11,
+                              fontWeight:600,
+                              padding:'5px 12px',
+                              borderRadius:6,
+                              cursor: agentPosting ? 'wait' : 'pointer',
+                              display:'inline-flex',
+                              alignItems:'center',
+                              gap:6,
+                            }}>
+                            {agentPosting ? (
+                              <>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
+                                  style={{animation:'spin 1s linear infinite'}}>
+                                  <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
+                                  <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+                                </svg>
+                                Posting…
+                              </>
+                            ) : (
+                              <>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                </svg>
+                                Post to ServiceNow
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {/* Result chip */}
+                        {agentPostResult && (
+                          <span style={{
+                            fontSize:10,
+                            padding:'5px 10px',
+                            borderRadius:6,
+                            background: agentPostResult.status === 'posted'
+                              ? 'rgba(52,211,153,0.18)'
+                              : agentPostResult.status === 'error'
+                                ? 'rgba(244,63,94,0.15)'
+                                : 'rgba(251,191,36,0.15)',
+                            color: agentPostResult.status === 'posted'
+                              ? '#34d399'
+                              : agentPostResult.status === 'error'
+                                ? '#fca5a5'
+                                : '#fbbf24',
+                            border: `1px solid ${agentPostResult.status === 'posted'
+                              ? 'rgba(52,211,153,0.40)'
+                              : agentPostResult.status === 'error'
+                                ? 'rgba(244,63,94,0.30)'
+                                : 'rgba(251,191,36,0.30)'}`,
+                            alignSelf:'center',
+                          }}>
+                            {agentPostResult.status === 'posted'         && 'Posted to ServiceNow'}
+                            {agentPostResult.status === 'skipped_low_confidence'
+                              && (<>Skipped — low confidence. <button onClick={() => postWorkNoteToSn({force:true})} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',padding:0,fontSize:10}}>Force post</button></>)}
+                            {agentPostResult.status === 'skipped_no_change'   && 'Already posted — no change'}
+                            {agentPostResult.status === 'skipped_rate_limit'  && 'Rate-limited — already posted within 24h'}
+                            {agentPostResult.status === 'error'               && `Error: ${agentPostResult.message?.slice(0, 80)}`}
+                            {!['posted','skipped_low_confidence','skipped_no_change','skipped_rate_limit','error'].includes(agentPostResult.status)
+                              && (agentPostResult.message || agentPostResult.status)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

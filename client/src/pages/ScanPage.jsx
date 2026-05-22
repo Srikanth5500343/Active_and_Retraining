@@ -100,6 +100,260 @@ function UploadZone({ onFile }) {
   );
 }
 
+// ── Multi-Image Upload Zone (Tall Rack stitch) ───────────────
+// For tall racks that can't fit in a single shot: user picks 2-8 photos
+// top-to-bottom, server stitches them, then runs the standard analyze
+// pipeline on the panorama. Each row shows a thumbnail + reorder/remove
+// controls so the user can correct the order if their files came in
+// alphabetically rather than chronologically.
+function MultiUploadZone({ files, onChange }) {
+  const inputRef = useRef(null);
+  const [urls, setUrls] = useState([]);
+
+  // Blob URLs for thumbnails — lifecycle scoped to the file list so we
+  // don't leak object URLs when the user reorders / removes images.
+  useEffect(() => {
+    const next = files.map(f => URL.createObjectURL(f));
+    setUrls(next);
+    return () => { next.forEach(URL.revokeObjectURL); };
+  }, [files]);
+
+  const addFiles = useCallback((picked) => {
+    const arr = Array.from(picked || []);
+    if (!arr.length) return;
+    const merged = [...files, ...arr].slice(0, 8); // hard cap matches server
+    onChange(merged);
+  }, [files, onChange]);
+
+  const moveUp = (i) => {
+    if (i === 0) return;
+    const next = [...files];
+    [next[i-1], next[i]] = [next[i], next[i-1]];
+    onChange(next);
+  };
+  const moveDown = (i) => {
+    if (i >= files.length - 1) return;
+    const next = [...files];
+    [next[i+1], next[i]] = [next[i], next[i+1]];
+    onChange(next);
+  };
+  const remove = (i) => {
+    const next = files.filter((_, idx) => idx !== i);
+    onChange(next);
+  };
+
+  // Position label is just the slot number — the server auto-arranges
+  // top→bottom by detecting overlaps, so the upload order doesn't matter.
+  // We still surface up/down/remove so the user can manually override if
+  // they want, but the default flow is "drop them in, hit Analyze".
+  const posLabel = (i) => `Photo ${i + 1}`;
+
+  return (
+    <div className={styles.multiZone}>
+      {files.length === 0 ? (
+        <div className={styles.multiEmpty}>
+          <div className={styles.multiEmptyIcon}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3"  y="3"  width="18" height="5" rx="1"/>
+              <rect x="3"  y="10" width="18" height="5" rx="1"/>
+              <rect x="3"  y="17" width="18" height="5" rx="1"/>
+            </svg>
+          </div>
+          <div className={styles.multiEmptyTitle}>Tall rack — multi shot</div>
+          <div className={styles.multiEmptySub}>
+            Take 2-8 overlapping photos of the rack.<br/>
+            Any order — we'll arrange them automatically.
+          </div>
+          <button type="button" className={styles.multiAddBtn}
+            onClick={() => inputRef.current?.click()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Select photos
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className={styles.multiHead}>
+            <span className={styles.multiTitle}>
+              {files.length} photo{files.length === 1 ? '' : 's'} · auto-arranged
+            </span>
+            <span className={styles.multiHint}>{files.length}/8</span>
+          </div>
+          <div className={styles.multiList}>
+            {files.map((f, i) => (
+              <div key={`${f.name}-${i}-${f.lastModified}`} className={styles.multiRow}>
+                <img className={styles.multiThumb} src={urls[i] || ''} alt="" />
+                <div className={styles.multiInfo}>
+                  <div className={styles.multiName}>{f.name}</div>
+                  <div className={styles.multiPos}>{posLabel(i)} · {Math.round(f.size/1024)} KB</div>
+                </div>
+                <div className={styles.multiActions}>
+                  <button type="button" className={styles.multiBtn}
+                    onClick={() => moveUp(i)} disabled={i === 0} aria-label="Move up">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="18 15 12 9 6 15"/>
+                    </svg>
+                  </button>
+                  <button type="button" className={styles.multiBtn}
+                    onClick={() => moveDown(i)} disabled={i === files.length - 1} aria-label="Move down">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  <button type="button" className={`${styles.multiBtn} ${styles.multiBtnDanger}`}
+                    onClick={() => remove(i)} aria-label="Remove">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {files.length < 8 && (
+            <button type="button" className={styles.multiAddBtn}
+              onClick={() => inputRef.current?.click()}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add more
+            </button>
+          )}
+        </>
+      )}
+      <input ref={inputRef} type="file" multiple
+        accept="image/*,image/heic,image/heif,.heic,.heif"
+        style={{display:'none'}}
+        onChange={(e) => addFiles(e.target.files)} />
+    </div>
+  );
+}
+
+// ── Cabled Rack: Same-rack Multi-Angle Upload Zone ────────────
+// For heavily-cabled racks where the front view doesn't show all
+// devices. User uploads 2-4 photos of the SAME rack from different
+// angles (Front + Left + Right + optional 4th). Server analyzes each
+// independently and merges devices by U-position.
+//
+// DIFFERENT from MultiUploadZone (Tall Rack):
+//  - Tall Rack splits ONE rack vertically (top half + bottom half), stitched.
+//  - Cabled Rack shoots the SAME rack from DIFFERENT viewpoints, merged.
+function CabledUploadZone({ files, onChange }) {
+  const inputRef = useRef(null);
+  const [urls, setUrls] = useState([]);
+
+  useEffect(() => {
+    const next = files.map(f => URL.createObjectURL(f));
+    setUrls(next);
+    return () => { next.forEach(URL.revokeObjectURL); };
+  }, [files]);
+
+  const addFiles = useCallback((picked) => {
+    const arr = Array.from(picked || []);
+    if (!arr.length) return;
+    const merged = [...files, ...arr].slice(0, 4); // 4 angles max
+    onChange(merged);
+  }, [files, onChange]);
+
+  const moveUp   = (i) => { if (i === 0) return; const n = [...files]; [n[i-1], n[i]] = [n[i], n[i-1]]; onChange(n); };
+  const moveDown = (i) => { if (i >= files.length - 1) return; const n = [...files]; [n[i+1], n[i]] = [n[i], n[i+1]]; onChange(n); };
+  const remove   = (i) => onChange(files.filter((_, idx) => idx !== i));
+
+  // Suggested role labels per slot. Server doesn't care about order/labels
+  // for merging (it uses U-position), but the labels help the user think
+  // about what to capture.
+  const angleLabel = (i) => {
+    if (i === 0) return 'Front (main)';
+    if (i === 1) return 'Left side';
+    if (i === 2) return 'Right side';
+    return `Angle ${i + 1}`;
+  };
+
+  return (
+    <div className={styles.multiZone}>
+      {files.length === 0 ? (
+        <div className={styles.multiEmpty}>
+          <div className={styles.multiEmptyIcon}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="6" y="3" width="12" height="18" rx="1.5"/>
+              <path d="M2 12 L6 12"/>
+              <path d="M18 12 L22 12"/>
+              <path d="M4 9 L6 12 L4 15"/>
+              <path d="M20 9 L18 12 L20 15"/>
+            </svg>
+          </div>
+          <div className={styles.multiEmptyTitle}>Cabled rack — multi-angle</div>
+          <div className={styles.multiEmptySub}>
+            Take 2-4 photos of the <strong>same rack</strong> from different angles.<br/>
+            Front + Left + Right reveals devices hidden behind cables.
+          </div>
+          <button type="button" className={styles.multiAddBtn}
+            onClick={() => inputRef.current?.click()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Select photos
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className={styles.multiHead}>
+            <span className={styles.multiTitle}>
+              {files.length} angle{files.length === 1 ? '' : 's'} · same rack
+            </span>
+            <span className={styles.multiHint}>{files.length}/4</span>
+          </div>
+          <div className={styles.multiList}>
+            {files.map((f, i) => (
+              <div key={`${f.name}-${i}-${f.lastModified}`} className={styles.multiRow}>
+                <img className={styles.multiThumb} src={urls[i] || ''} alt="" />
+                <div className={styles.multiInfo}>
+                  <div className={styles.multiName}>{f.name}</div>
+                  <div className={styles.multiPos}>{angleLabel(i)} · {Math.round(f.size/1024)} KB</div>
+                </div>
+                <div className={styles.multiActions}>
+                  <button type="button" className={styles.multiBtn}
+                    onClick={() => moveUp(i)} disabled={i === 0} aria-label="Move up">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="18 15 12 9 6 15"/>
+                    </svg>
+                  </button>
+                  <button type="button" className={styles.multiBtn}
+                    onClick={() => moveDown(i)} disabled={i === files.length - 1} aria-label="Move down">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  <button type="button" className={`${styles.multiBtn} ${styles.multiBtnDanger}`}
+                    onClick={() => remove(i)} aria-label="Remove">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {files.length < 4 && (
+            <button type="button" className={styles.multiAddBtn}
+              onClick={() => inputRef.current?.click()}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add another angle
+            </button>
+          )}
+        </>
+      )}
+      <input ref={inputRef} type="file" multiple
+        accept="image/*,image/heic,image/heif,.heic,.heif"
+        style={{display:'none'}}
+        onChange={(e) => addFiles(e.target.files)} />
+    </div>
+  );
+}
+
 // ── Camera Capture ───────────────────────────────────────────
 function pickRecorderMime() {
   const candidates = [
@@ -969,6 +1223,8 @@ export default function ScanPage() {
   const pickerHoverBg   = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)';
   const [tab,      setTab]      = useState('upload');
   const [file,     setFile]     = useState(null);
+  const [multiFiles, setMultiFiles] = useState([]);  // tall-rack mode (vertical stitch)
+  const [cabledFiles, setCabledFiles] = useState([]); // cabled-rack mode (same rack, multiple angles)
   const [loading,  setLoading]  = useState(false);
   const [progress, setProgress] = useState(0);
   const [step,     setStep]     = useState('');
@@ -1199,6 +1455,137 @@ export default function ScanPage() {
     }
   };
 
+  // ── Tall-Rack (multi-image stitch) flow ──
+  // Posts N images to /api/stitch, which stitches them server-side and
+  // then runs the same analyze pipeline that /api/analyze does. Response
+  // shape matches /api/analyze, so downstream navigation/prefetch is
+  // identical — we just route through the stitch endpoint and surface
+  // any "uncertain seam" warnings to the user.
+  const analyzeMulti = async ({ override = false } = {}) => {
+    if (!multiFiles || multiFiles.length < 2) return;
+    setError(null);
+    setQualityChoice(null);
+
+    setLoading(true); setProgress(0);
+    const MULTI_STEPS = [
+      'Preparing photos…',
+      'Detecting overlaps…',
+      'Stitching panorama…',
+      'Identifying components…',
+      'Mapping ports and cables…',
+    ];
+    setStep(MULTI_STEPS[0]);
+    try { triggerBackgroundProbe(); } catch (_) {}
+    let si = 0;
+    const ticker = setInterval(() => {
+      setProgress(p => Math.min(p + 7, 88));
+      si = Math.min(si + 1, MULTI_STEPS.length - 1);
+      setStep(MULTI_STEPS[si]);
+    }, 400);
+
+    try {
+      const body = new FormData();
+      multiFiles.forEach((f) => body.append('images', f));
+      if (override) body.append('skipQualityCheck', '1');
+
+      const res  = await authFetch(apiUrl('/api/stitch'), { method: 'POST', body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.retryable) {
+          clearInterval(ticker); setLoading(false); setProgress(0);
+          setQualityChoice({ error: data.error || 'Stitch quality issue.', kind: data.kind || 'stitch' });
+          return;
+        }
+        throw new Error(data.error || 'Stitch failed. Try again.');
+      }
+
+      clearInterval(ticker);
+      setProgress(100); setStep('Rack analyzed!');
+
+      // Warn (non-blocking) if any seam was uncertain — server still
+      // produced a usable panorama by butting the images flush.
+      const uncertain = Array.isArray(data?.stitch?.uncertain) ? data.stitch.uncertain : [];
+      if (uncertain.length > 0) {
+        console.warn(`[stitch] ${uncertain.length} uncertain seam(s):`, data.stitch.seams);
+      }
+
+      if (data.rackId) {
+        try { prefetchScan(data.rackId); } catch (_) {}
+      }
+      setPendingResult({ result: data, ticketMode: false, ticket: null });
+      if (data.rackId) {
+        setTimeout(() => setShowRearPrompt(true), 600);
+      } else {
+        setTimeout(() => navigate('/results', { state: { result: data } }), 600);
+      }
+    } catch (err) {
+      clearInterval(ticker); setLoading(false); setProgress(0); setError(err.message);
+    }
+  };
+
+  // ── Cabled Rack (same rack, multiple angles) flow ──
+  // For racks where cables block the front view: user uploads 2-4 photos
+  // of the SAME rack from different angles (front + left + right + ...).
+  // Server analyzes each independently and merges devices by U-position,
+  // so a switch hidden behind cables in the front shot but visible from
+  // the left side gets added to the unified device list.
+  // This is DIFFERENT from Tall Rack — Tall Rack splits ONE rack into
+  // top/bottom halves; Cabled Rack shows the SAME rack from different
+  // viewpoints.
+  const analyzeCabled = async ({ override = false } = {}) => {
+    if (!cabledFiles || cabledFiles.length < 2) return;
+    setError(null);
+    setQualityChoice(null);
+
+    setLoading(true); setProgress(0);
+    const CABLED_STEPS = [
+      'Preparing angles…',
+      'Analyzing front view…',
+      'Analyzing side views…',
+      'Merging devices by U-position…',
+      'Building unified rack map…',
+    ];
+    setStep(CABLED_STEPS[0]);
+    try { triggerBackgroundProbe(); } catch (_) {}
+    let si = 0;
+    const ticker = setInterval(() => {
+      setProgress(p => Math.min(p + 6, 90));
+      si = Math.min(si + 1, CABLED_STEPS.length - 1);
+      setStep(CABLED_STEPS[si]);
+    }, 450);
+
+    try {
+      const body = new FormData();
+      cabledFiles.forEach((f) => body.append('images', f));
+      if (override) body.append('skipQualityCheck', '1');
+
+      const res  = await authFetch(apiUrl('/api/analyze-multi-angle'), { method: 'POST', body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.retryable) {
+          clearInterval(ticker); setLoading(false); setProgress(0);
+          setQualityChoice({ error: data.error || 'Multi-angle issue.', kind: data.kind || 'multi_angle' });
+          return;
+        }
+        throw new Error(data.error || 'Multi-angle analysis failed.');
+      }
+      clearInterval(ticker);
+      setProgress(100); setStep('Devices merged!');
+
+      if (data.rackId) {
+        try { prefetchScan(data.rackId); } catch (_) {}
+      }
+      setPendingResult({ result: data, ticketMode: false, ticket: null });
+      if (data.rackId) {
+        setTimeout(() => setShowRearPrompt(true), 600);
+      } else {
+        setTimeout(() => navigate('/results', { state: { result: data } }), 600);
+      }
+    } catch (err) {
+      clearInterval(ticker); setLoading(false); setProgress(0); setError(err.message);
+    }
+  };
+
   const handleRearImageComplete = (mergedData) => {
     // mergedData contains { front, rear, deviceLabels }
     setOcrLabels(mergedData);
@@ -1315,9 +1702,11 @@ export default function ScanPage() {
           {[
             { id:'upload', label:'Upload', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
             { id:'camera', label:'Camera', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> },
+            { id:'multi',  label:'Tall Rack', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1"/><rect x="3" y="17" width="18" height="5" rx="1"/></svg> },
+            { id:'cabled', label:'Cabled Rack', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="3" width="8" height="18" rx="1"/><path d="M2 12 L8 12"/><path d="M16 12 L22 12"/><path d="M4 9 L8 12 L4 15"/><path d="M20 9 L16 12 L20 15"/></svg> },
           ].map(t => (
             <button key={t.id} className={`${styles.tab} ${tab===t.id ? styles.tabOn : ''}`}
-              onClick={() => { setTab(t.id); setFile(null); setError(null); setQualityChoice(null); }}>
+              onClick={() => { setTab(t.id); setFile(null); setMultiFiles([]); setCabledFiles([]); setError(null); setQualityChoice(null); }}>
               {t.icon}{t.label}
             </button>
           ))}
@@ -1379,14 +1768,18 @@ export default function ScanPage() {
 
         {/* Media box */}
         <div className={styles.mediaBox}>
-          {file
-            ? <PreviewCard file={file} onClear={() => setFile(null)}/>
-            : tab === 'upload'
-              ? <UploadZone onFile={setFile}/>
-              : <CameraCapture
-                  onCapture={(f) => { setFile(f); setTab('upload'); }}
-                  onCancel={() => setTab('upload')}
-                />}
+          {tab === 'multi'
+            ? <MultiUploadZone files={multiFiles} onChange={setMultiFiles}/>
+            : tab === 'cabled'
+              ? <CabledUploadZone files={cabledFiles} onChange={setCabledFiles}/>
+              : file
+                ? <PreviewCard file={file} onClear={() => setFile(null)}/>
+                : tab === 'upload'
+                  ? <UploadZone onFile={setFile}/>
+                  : <CameraCapture
+                      onCapture={(f) => { setFile(f); setTab('upload'); }}
+                      onCancel={() => setTab('upload')}
+                    />}
         </div>
 
         {/* Selected-incident description — the short_description trimmed of any
@@ -1592,29 +1985,61 @@ export default function ScanPage() {
             </div>
             <div className={styles.qualityChoiceActions}>
               <button className="btn btn-ghost" onClick={handleRetake}>Retake</button>
-              <button className="btn btn-primary" onClick={() => analyze({ override: true })}>Proceed</button>
+              {/* For occlusion warnings on a single-image scan, offer to jump
+                  into Cabled Rack mode pre-loaded with the current image as
+                  the Front shot. The user then adds 1-3 side angles. */}
+              {qualityChoice.kind === 'occlusion' && tab !== 'cabled' && tab !== 'multi' && file && (
+                <button className="btn btn-primary"
+                  onClick={() => {
+                    setCabledFiles([file]);
+                    setTab('cabled');
+                    setQualityChoice(null);
+                  }}>
+                  Add side angles
+                </button>
+              )}
+              <button className="btn btn-primary"
+                onClick={() => tab === 'multi'
+                  ? analyzeMulti({ override: true })
+                  : tab === 'cabled'
+                    ? analyzeCabled({ override: true })
+                    : analyze({ override: true })
+                }>
+                Proceed anyway
+              </button>
             </div>
           </div>
         )}
 
-        {/* CTA — no magnifying glass, no chips */}
-        {!qualityChoice && (
-          <button className={`btn btn-primary btn-lg btn-full ${styles.cta}`}
-            disabled={!file}
-            style={{
-              opacity: file ? 1 : 0.4,
-              // Make sure the button clears the bottom nav bar on mobile —
-              // add safe-area padding plus extra margin so a tall image doesn't
-              // push it behind the fixed nav.
-              marginBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
-            }}
-            onClick={() => analyze()}>
-            Analyze Rack
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-            </svg>
-          </button>
-        )}
+        {/* CTA — dispatches to single-image analyze(), tall-rack analyzeMulti(), or cabled-rack analyzeCabled() */}
+        {!qualityChoice && (() => {
+          const isMulti  = tab === 'multi';
+          const isCabled = tab === 'cabled';
+          const canSubmit = isMulti
+            ? multiFiles.length >= 2
+            : isCabled
+              ? cabledFiles.length >= 2
+              : !!file;
+          const ctaLabel = isMulti
+            ? (multiFiles.length < 2 ? `Add ${2 - multiFiles.length} more photo` : `Stitch & Analyze (${multiFiles.length})`)
+            : isCabled
+              ? (cabledFiles.length < 2 ? `Add ${2 - cabledFiles.length} more angle` : `Merge & Analyze (${cabledFiles.length} angles)`)
+              : 'Analyze Rack';
+          return (
+            <button className={`btn btn-primary btn-lg btn-full ${styles.cta}`}
+              disabled={!canSubmit}
+              style={{
+                opacity: canSubmit ? 1 : 0.4,
+                marginBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+              }}
+              onClick={() => isMulti ? analyzeMulti() : isCabled ? analyzeCabled() : analyze()}>
+              {ctaLabel}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+          );
+        })()}
         {/* Spacer so the last button isn't flush against the fixed bottom nav */}
         <div style={{height:'calc(env(safe-area-inset-bottom, 0px) + 72px)'}} aria-hidden="true" />
       </div>

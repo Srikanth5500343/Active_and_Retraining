@@ -1,0 +1,12 @@
+[
+  {
+    "type": "recurring_time",
+    "severity": "info",
+    "title": "30 alerts at 04:00 on Wednesdays this month",
+    "detail": "Possible scheduled job or maintenance window causing alerts. Total 30 tickets at this hour.",
+    "hour": 4,
+    "day": "Wednesday",
+    "ticket_count": 30,
+    "generated_at": "2026-05-21T11:46:32.033274+00:00"
+  }
+]

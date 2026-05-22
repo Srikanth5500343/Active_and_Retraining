@@ -1,0 +1,12 @@
+flask>=3.0
+requests>=2.31
+python-dotenv>=1.0
+
+# Agent
+rapidfuzz>=3.0
+
+# Vision (YOLO)
+ultralytics>=8.2
+opencv-python>=4.9
+Pillow>=10.0
+numpy>=1.26

@@ -28,6 +28,29 @@ SIDE_VIEW_AVG_DEG = 20.0           # avg horizontal-line angle > this → side v
 SIDE_VIEW_SPREAD_DEG = 18.0        # P90−P10 of horizontal angles > this → side view
 SIDE_VIEW_MIN_LINES = 8            # need at least this many horizontal lines to judge
 
+# ── Occlusion (cable clutter) thresholds ──
+# Image-only heuristic that runs PRE-analyze. Detects heavily-cabled racks
+# where the front of the equipment is blocked by patch cables / cable spaghetti.
+#
+# Two independent signals — if EITHER fires, the rack is flagged:
+#
+#  (a) Edge-orientation ratio: clean racks have dominant HORIZONTAL edges
+#      (top/bottom of each 1U device); cabled racks have dominant VERTICAL/
+#      DIAGONAL edges (cables crossing across devices). Misses racks with
+#      visible U-position labels (the labels create strong horizontal edges
+#      even when cables block the equipment behind them) — hence signal (b).
+#
+#  (b) Color-saturation fraction: cables are vividly colored (blue, orange,
+#      yellow, red); device faces are desaturated (gray/black/white). When
+#      a large fraction of the central rack region is high-saturation
+#      pixels, cables dominate the view.
+OCCLUSION_NONHORIZ_RATIO = 1.45    # non_horizontal/horizontal edge mag → "warning"
+OCCLUSION_NONHORIZ_HARD  = 2.10    # above this → "hard" (offer multi-angle)
+OCCLUSION_SAT_FRAC_WARN  = 0.22    # fraction of high-saturation pixels → warning
+OCCLUSION_SAT_FRAC_HARD  = 0.38    # fraction of high-saturation pixels → hard
+OCCLUSION_SAT_THRESHOLD  = 80      # HSV saturation value considered "vivid"
+OCCLUSION_MIN_STRONG_PX  = 1500    # minimum strong-edge pixel count to judge at all
+
 
 def check_letterbox(img):
     h = img.shape[0]
@@ -194,6 +217,113 @@ def check_side_view(img):
             "ok": True,
             "warning": "side_angle",
             "error": "The image appears to be taken from a side angle. Results may not be accurate.",
+            "metrics": metrics,
+        }
+
+    return {"ok": True, "metrics": metrics}
+
+
+def check_occlusion(img):
+    """Detect rack images where cables block the front of the equipment.
+
+    Two independent image-only signals (either firing → occluded):
+
+      (a) Edge orientation — strong edges with HORIZONTAL gradient (vertical
+          image lines) come from cables; strong edges with VERTICAL gradient
+          (horizontal image lines) come from 1U/2U device faces. v_to_h_ratio
+          captures cable dominance from edges alone.
+
+      (b) Color saturation fraction — cables are vivid (blue/orange/yellow);
+          device faces and rack frames are desaturated grays. When >20% of
+          the central rack region's pixels are high-saturation, cables
+          dominate the view. This catches racks whose labels would otherwise
+          keep horizontal edges high (signal (a) misses them).
+
+    Returns:
+      - {"ok": True}                                 # clean enough
+      - {"ok": True, "warning": "occlusion", ...}    # cabled but proceed-able
+      - {"ok": False, "kind": "occlusion", ...}      # severely occluded — pop modal
+    """
+    h, w = img.shape[:2]
+    if h < 64 or w < 64:
+        return {"ok": True, "metrics": {"note": "image-too-small"}}
+
+    # Central rack region (skip floor / ceiling / wall margin) shared by both signals.
+    y0, y1 = int(h * 0.10), int(h * 0.92)
+    x0, x1 = int(w * 0.05), int(w * 0.95)
+    central_color = img[y0:y1, x0:x1]
+    if central_color.size == 0:
+        return {"ok": True, "metrics": {"note": "no-central-region"}}
+
+    # ── Signal (a) — edge orientation ratio ──
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    central_gray = gray[y0:y1, x0:x1]
+    gx = cv2.Sobel(central_gray, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(central_gray, cv2.CV_32F, 0, 1, ksize=3)
+    mag = np.hypot(gx, gy)
+    if mag.size == 0 or float(mag.max()) < 1.0:
+        ratio = 0.0
+        strong_count = 0
+    else:
+        thresh = float(np.percentile(mag, 75))
+        strong = mag > thresh
+        strong_count = int(strong.sum())
+        if strong_count < OCCLUSION_MIN_STRONG_PX:
+            ratio = 0.0
+        else:
+            abs_gx = np.abs(gx[strong])
+            abs_gy = np.abs(gy[strong])
+            vertical_line_mag    = float(np.sum(abs_gx[abs_gx > abs_gy * 1.732]))
+            horizontal_line_mag  = float(np.sum(abs_gy[abs_gy > abs_gx * 1.732]))
+            if horizontal_line_mag < 1.0:
+                ratio = 99.0
+            else:
+                ratio = vertical_line_mag / horizontal_line_mag
+
+    # ── Signal (b) — color-saturation fraction ──
+    hsv = cv2.cvtColor(central_color, cv2.COLOR_BGR2HSV)
+    sat = hsv[..., 1]
+    # Also require some minimum brightness (avoid counting dark noisy regions
+    # whose saturation is technically high but visually invisible).
+    val = hsv[..., 2]
+    vivid_mask = (sat >= OCCLUSION_SAT_THRESHOLD) & (val >= 50)
+    sat_frac = float(vivid_mask.mean()) if vivid_mask.size > 0 else 0.0
+    mean_sat = float(sat.mean()) if sat.size > 0 else 0.0
+
+    metrics = {
+        "v_to_h_ratio":  round(ratio, 2),
+        "strong_edge_px": strong_count,
+        "sat_frac":      round(sat_frac, 3),
+        "mean_sat":      round(mean_sat, 1),
+    }
+
+    # ── Decision: hard fail if EITHER signal is severe ──
+    hard_by_ratio = ratio >= OCCLUSION_NONHORIZ_HARD
+    hard_by_sat   = sat_frac >= OCCLUSION_SAT_FRAC_HARD
+    if hard_by_ratio or hard_by_sat:
+        reasons = []
+        if hard_by_ratio: reasons.append(f"cable edges dominate ({ratio:.1f}x device edges)")
+        if hard_by_sat:   reasons.append(f"{int(sat_frac*100)}% of view is colored cables")
+        return {
+            "ok": False,
+            "kind": "occlusion",
+            "retryable": True,
+            "error": ("This rack is heavily covered by cables — " + " and ".join(reasons) +
+                      ". For better accuracy, take additional photos from the left and right "
+                      "sides of the rack so we can see behind the cable bundles, or proceed "
+                      "with this image (results may miss devices)."),
+            "metrics": metrics,
+        }
+
+    warn_by_ratio = ratio >= OCCLUSION_NONHORIZ_RATIO
+    warn_by_sat   = sat_frac >= OCCLUSION_SAT_FRAC_WARN
+    if warn_by_ratio or warn_by_sat:
+        return {
+            "ok": True,
+            "warning": "occlusion",
+            "warning_msg": ("Cables cover much of the rack — some devices behind cable bundles "
+                            "may not be detected. Side-angle photos would improve accuracy."),
             "metrics": metrics,
         }
 

@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RackTrack Agent — Full Plan</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: #121933;
+    --panel-2: #1a2342;
+    --ink: #e7ecff;
+    --ink-dim: #a6b0d6;
+    --accent: #7c8cff;
+    --accent-2: #4dd0c1;
+    --warn: #ffb454;
+    --bad: #ff7a8a;
+    --good: #6ee7a1;
+    --rule: #2a3566;
+    --code-bg: #0e1530;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 28px 96px; }
+  header.hero {
+    background: linear-gradient(135deg, #1a2342 0%, #2a1a4a 100%);
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+    padding: 40px 36px;
+    margin-bottom: 36px;
+  }
+  header.hero .eyebrow { color: var(--accent-2); text-transform: uppercase;
+    letter-spacing: 0.18em; font-size: 12px; font-weight: 700; }
+  header.hero h1 { font-size: 38px; line-height: 1.15; margin: 8px 0 12px;
+    background: linear-gradient(90deg, #fff 0%, #b4c1ff 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header.hero p.lead { font-size: 18px; color: var(--ink-dim); max-width: 720px; margin: 0; }
+  header.hero .pills { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+  header.hero .pill {
+    background: rgba(124,140,255,0.12); color: var(--accent);
+    border: 1px solid rgba(124,140,255,0.3);
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  }
+  h2 { font-size: 26px; margin: 56px 0 10px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule); color: #fff; }
+  h2 .num { color: var(--accent); font-weight: 800; margin-right: 10px; }
+  h3 { font-size: 19px; margin: 28px 0 8px; color: #fff; }
+  h4 { font-size: 15px; margin: 18px 0 6px; color: var(--accent-2);
+    text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+  p, ul, ol { color: var(--ink); }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+  a:hover { color: var(--accent-2); border-bottom-color: var(--accent-2); }
+  code, kbd, pre { font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 13px; }
+  code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #c9d4ff; }
+  pre { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 16px 18px; overflow-x: auto; color: #c9d4ff; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0;
+    background: var(--panel); border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--rule); }
+  th, td { padding: 12px 14px; border-bottom: 1px solid var(--rule); text-align: left;
+    vertical-align: top; }
+  th { background: var(--panel-2); font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--accent-2); }
+  tr:last-child td { border-bottom: none; }
+  td.center, th.center { text-align: center; }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 600; color: #fff; }
+
+  .grid { display: grid; gap: 16px; margin: 18px 0; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 800px) { .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px;
+    padding: 18px 20px; }
+  .card h3 { margin-top: 0; }
+  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--accent-2); font-weight: 700; margin-bottom: 4px; }
+
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: rgba(124,140,255,0.08);
+    padding: 14px 18px;
+    border-radius: 0 10px 10px 0;
+    margin: 18px 0;
+  }
+  .callout.warn { border-left-color: var(--warn); background: rgba(255,180,84,0.08); }
+  .callout.good { border-left-color: var(--good); background: rgba(110,231,161,0.08); }
+  .callout.bad  { border-left-color: var(--bad);  background: rgba(255,122,138,0.08); }
+  .callout strong { color: #fff; }
+
+  .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+  .status-pill.done { background: rgba(110,231,161,0.15); color: var(--good); }
+  .status-pill.todo { background: rgba(255,180,84,0.15); color: var(--warn); }
+  .status-pill.miss { background: rgba(255,122,138,0.15); color: var(--bad); }
+
+  .phase {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 24px 26px;
+    margin: 20px 0;
+  }
+  .phase .phase-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  .phase .phase-num {
+    width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: #0b1020; font-size: 18px; font-weight: 800;
+  }
+  .phase .phase-title { font-size: 20px; font-weight: 700; color: #fff; }
+  .phase .phase-meta { color: var(--ink-dim); font-size: 13px; margin-left: auto; }
+
+  .ascii { white-space: pre; font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px; color: #b4c1ff; background: var(--code-bg);
+    padding: 18px; border-radius: 10px; border: 1px solid var(--rule);
+    overflow-x: auto; line-height: 1.45; }
+
+  .toc { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px;
+    padding: 20px 24px; margin-bottom: 32px; }
+  .toc h4 { margin-top: 0; }
+  .toc ol { columns: 2; column-gap: 32px; padding-left: 22px; }
+  @media (max-width: 700px) { .toc ol { columns: 1; } }
+  .toc a { border-bottom: none; }
+
+  .kicker { color: var(--accent-2); font-weight: 700; text-transform: uppercase;
+    font-size: 11px; letter-spacing: 0.16em; }
+
+  .quote {
+    font-size: 22px; line-height: 1.4; font-weight: 500; color: #fff;
+    border-left: 4px solid var(--accent-2);
+    padding: 12px 0 12px 22px; margin: 24px 0; font-style: italic;
+  }
+  .small { color: var(--ink-dim); font-size: 13px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">RackTrack &mdash; ServiceNow Incident Agent</div>
+  <h1>The Full Plan</h1>
+  <p class="lead">A persistent, autonomous, zero-cost NetOps partner that turns every incident into an audit &mdash; closing the gap between what the records say is in the rack and what's actually there.</p>
+  <div class="pills">
+    <span class="pill">$0 budget</span>
+    <span class="pill">No LLM, ever</span>
+    <span class="pill">Self-contained</span>
+    <span class="pill">Fully automated</span>
+    <span class="pill">Must look intelligent</span>
+    <span class="pill">Runs forever on a laptop</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h4>Contents</h4>
+  <ol>
+    <li><a href="#mission">Mission &mdash; the north star</a></li>
+    <li><a href="#problem">The problem this dissolves</a></li>
+    <li><a href="#stakeholders">Stakeholders &mdash; who benefits</a></li>
+    <li><a href="#principles">Five non-negotiable principles</a></li>
+    <li><a href="#flywheel">The closed-loop data flywheel</a></li>
+    <li><a href="#architecture">Architecture &mdash; modules &amp; data flow</a></li>
+    <li><a href="#intelligence">Where the intelligence comes from</a></li>
+    <li><a href="#current">Current state &mdash; what exists today</a></li>
+    <li><a href="#phases">Build phases &mdash; tactical roadmap</a></li>
+    <li><a href="#proactive">Proactive behaviors &mdash; between incidents</a></li>
+    <li><a href="#fleet">Fleet-wide intelligence</a></li>
+    <li><a href="#learning">The learning system (no LLM)</a></li>
+    <li><a href="#operational">Operational surface</a></li>
+    <li><a href="#arc">The arc &mdash; week 1 to year 1</a></li>
+    <li><a href="#demo">Demo script for leadership</a></li>
+    <li><a href="#nongoals">Non-goals &mdash; what this is not</a></li>
+    <li><a href="#risks">Risks &amp; mitigations</a></li>
+    <li><a href="#files">File layout &amp; dependencies</a></li>
+    <li><a href="#question">The single question this design must answer</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== 1. MISSION ===================== -->
+<h2 id="mission"><span class="num">01</span>Mission &mdash; the north star</h2>
+
+<div class="quote">
+  Close the gap between what the records say is in the rack and what's actually in the rack &mdash; automatically, continuously, and for free &mdash; by making every incident handled a moment where the data center re-verifies itself.
+</div>
+
+<p>That single sentence is the design contract. Everything else &mdash; parsing, reasoning chains, work notes, batching, anomaly cards &mdash; is a <em>side effect</em> of that mission. If a feature doesn't push the gap between records and reality smaller, it doesn't ship.</p>
+
+<div class="callout">
+  <strong>Why this framing matters.</strong> Most "incident triage" agents stop at <em>"the ticket was handled."</em> This one's primary output is <em>"one more cell in the CMDB&times;reality grid is now confirmed or flagged."</em> Triage is the side effect. Reconciliation is the product.
+</div>
+
+<!-- ===================== 2. THE PROBLEM ===================== -->
+<h2 id="problem"><span class="num">02</span>The problem this dissolves</h2>
+
+<p>A data center has two parallel universes that are always drifting apart. Nobody has 200 hours a month to walk every rack and audit, so drift compounds silently until it causes an outage, an audit failure, or a 3am scramble through stale information.</p>
+
+<table>
+  <thead>
+    <tr><th>The world of records</th><th>The world of facts</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CMDB says <code>SW-CORE-01</code> is at <code>U22</code></td>
+      <td>A server is actually at <code>U22</code>; the switch moved in 2023</td>
+    </tr>
+    <tr>
+      <td>Ticket says "port 12 on core switch is down"</td>
+      <td>The tech finds port 12 empty &mdash; port 14 is the one cabled</td>
+    </tr>
+    <tr>
+      <td>Asset DB has a serial number for that PSU</td>
+      <td>The PSU was swapped in a midnight maintenance; nobody updated the row</td>
+    </tr>
+    <tr>
+      <td>The runbook says "check the patch panel mapping"</td>
+      <td>Patch panel labels haven't matched reality for two years</td>
+    </tr>
+    <tr>
+      <td>Monitoring alert pointed to a device name</td>
+      <td>That name was renamed during a refresh; the alert template never caught up</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Reconciling these two worlds is everyone's job and therefore nobody's job. The agent's mission is to turn every incident into a quiet audit &mdash; each ticket flowing through it re-grounds one tiny slice of the data center against physical truth, and any drift gets flagged, posted to ServiceNow, and fixed as a normal part of work.</p>
+
+<!-- ===================== 3. STAKEHOLDERS ===================== -->
+<h2 id="stakeholders"><span class="num">03</span>Stakeholders &mdash; who benefits</h2>
+
+<div class="grid cols-2">
+  <div class="card">
+    <div class="label">The tech on the floor</div>
+    <h3>From vague ticket to ranked route</h3>
+    <p><strong>Today:</strong> A vague ticket, a building badge, a hunch about which row. 15&ndash;20 min of cognitive overhead before they even leave the desk.</p>
+    <p><strong>With the agent:</strong> A ranked route with exact rack + U position, what the last scan saw there, what to bring, what to verify, in their phone &mdash; before they stand up.</p>
+  </div>
+  <div class="card">
+    <div class="label">NetOps lead</div>
+    <h3>From flat queue to triaged plan</h3>
+    <p><strong>Today:</strong> A queue of unrelated tickets, manually prioritized.</p>
+    <p><strong>With the agent:</strong> A queue ranked by real impact, batched by location, with rack drift and recurring-failure clusters surfaced before they become the third outage.</p>
+  </div>
+  <div class="card">
+    <div class="label">Leadership &amp; audit</div>
+    <h3>From hope to evidence</h3>
+    <p><strong>Today:</strong> "We think the CMDB is mostly right."</p>
+    <p><strong>With the agent:</strong> A continuously-updated diff between CMDB and reality, with timestamps and evidence per asset &mdash; compliance gets a defensible record for free.</p>
+  </div>
+  <div class="card">
+    <div class="label">The night-shift junior</div>
+    <h3>Tribal knowledge becomes transferable</h3>
+    <p><strong>Today:</strong> "Ask Senior X, they remember how this rack is laid out."</p>
+    <p><strong>With the agent:</strong> Senior X's intuition is encoded as patterns the agent applies and grows &mdash; juniors get expert-quality calls on night one.</p>
+  </div>
+  <div class="card">
+    <div class="label">The data center itself</div>
+    <h3>From mute to self-documenting</h3>
+    <p><strong>Today:</strong> The building can't tell you what it actually looks like.</p>
+    <p><strong>With the agent:</strong> A live, machine-readable map of its physical state, updated every time someone touches it.</p>
+  </div>
+  <div class="card">
+    <div class="label">Finance &amp; procurement</div>
+    <h3>From SaaS bills to laptop costs</h3>
+    <p><strong>Today:</strong> "AI features" mean per-token bills, vendor risk, lock-in, renewal cycles.</p>
+    <p><strong>With the agent:</strong> Zero SaaS spend. Zero per-call cost. A free Python script that does the work of a paid platform.</p>
+  </div>
+</div>
+
+<!-- ===================== 4. PRINCIPLES ===================== -->
+<h2 id="principles"><span class="num">04</span>Five non-negotiable principles</h2>
+
+<ol>
+  <li><strong>Every incident is an opportunity to re-verify reality.</strong> The agent's primary output is "one more cell in the CMDB&times;reality grid confirmed or flagged." Triage is the side effect.</li>
+  <li><strong>The agent never bluffs.</strong> When signals conflict or are weak, it routes to a human. Confidence is reported, not faked. Trust is built one calibrated answer at a time.</li>
+  <li><strong>Tribal knowledge gets captured, not paraphrased.</strong> When a senior person says <em>"oh, that's always the PSU,"</em> that becomes a pattern in the dictionary &mdash; with their reasoning attached &mdash; not a vague summary generated by a model.</li>
+  <li><strong>The data center is source of truth, the records follow.</strong> When CMDB and a scan disagree (within scan-confidence bounds), the scan wins. The agent's job is to make the records catch up to reality, not the other way around.</li>
+  <li><strong>Free, forever, on a laptop.</strong> Any feature that requires a paid API, hosted model, or ongoing subscription is out of scope by definition. The constraint is part of the mission, not a limitation of it.</li>
+</ol>
+
+<!-- ===================== 5. FLYWHEEL ===================== -->
+<h2 id="flywheel"><span class="num">05</span>The closed-loop data flywheel</h2>
+
+<p>The agent isn't a script that runs against tickets &mdash; it's a feedback loop where every output becomes input for the next decision. The flywheel is the reason it gets smarter over time without ever calling a model.</p>
+
+<div class="ascii">                  ┌────────────────────────────────────────────────────────────┐
+                  │                                                            │
+                  v                                                            │
+        ┌─────────────────┐         ┌─────────────────┐         ┌──────────────┴────┐
+        │   ServiceNow    │ ──────► │     AGENT       │ ──────► │  Tech walks rack  │
+        │   incidents     │  poll   │ extract+reason  │  route  │  scans + fixes    │
+        └─────────────────┘         └─────────────────┘         └──────────────┬────┘
+              ▲                          ▲      │                              │
+              │                          │      │                              │
+              │ work-note                │      │ work-note                    │ scan output
+              │ (analysis)               │      ▼                              ▼
+              │                    ┌─────────────────┐               ┌──────────────────┐
+              │                    │  CMDB lookup    │ ◄──────────── │  device_unit_map │
+              │                    │  (read only)    │   ground      │  (rack scans)    │
+              │                    └─────────────────┘   truth       └──────────────────┘
+              │                          ▲                                    │
+              │                          │                                    │
+              └──── outcome capture ─────┴─── scan-history diff ──────────────┘
+                   (ticket resolved? in what time? was the diagnosis right?)</div>
+
+<p>The non-obvious arrows are the bottom ones &mdash; <strong>outcome capture</strong> and <strong>scan-history diff</strong>. They're what turn a one-shot parser into a system that learns.</p>
+
+<table>
+  <thead><tr><th>Arrow</th><th>What flows</th><th>Why it makes the next decision better</th></tr></thead>
+  <tbody>
+    <tr><td>SN &rarr; Agent</td><td>Incident text, priority, CMDB CI</td><td>Raw material to parse</td></tr>
+    <tr><td>Agent &rarr; Tech</td><td>Ranked route, target rack/port, last-scan view, suggested action</td><td>Tech walks knowing what to verify, not investigating from scratch</td></tr>
+    <tr><td>Tech &rarr; Scan</td><td>Fresh device_unit_map for the rack</td><td>New ground truth lands in <code>outputs/&lt;rackId&gt;/</code></td></tr>
+    <tr><td>Scan &rarr; CMDB lookup</td><td>Class observations + port states + confidences</td><td>Drift detection runs on the freshest possible evidence</td></tr>
+    <tr><td>Agent &rarr; SN (work note)</td><td>Reasoning chain + suggested action + confidence</td><td>Auditable record per incident, closes the human loop</td></tr>
+    <tr><td>SN &rarr; Agent (outcome capture)</td><td>Resolution code, time-to-close, resolution notes</td><td>Patterns get a "did this work?" signal &rarr; weights tune themselves</td></tr>
+    <tr><td>Scan history &rarr; Agent</td><td>Diff between today's scan and last scan of the same rack</td><td>Port-state flips, device moves, layout changes get caught</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================== 6. ARCHITECTURE ===================== -->
+<h2 id="architecture"><span class="num">06</span>Architecture &mdash; modules &amp; data flow</h2>
+
+<p>The current code is a single <code>poll.py</code>. The bigger picture is a small set of cooperating modules &mdash; each with one job, each unit-testable, each replaceable.</p>
+
+<div class="ascii">servicenow_inbox/
+├── poll.py                ← orchestrator: every N sec, runs the pipeline
+├── ingest.py              ← verifier: CMDB vs scan, per-incident
+├── agent/
+│   ├── __init__.py
+│   ├── extract.py         ← Phase 1: messy text → structured dict
+│   ├── patterns.py        ← keyword dictionary (grows from unmatched.log)
+│   ├── word_numbers.py    ← "third" → 3, "first uplink" → 1
+│   ├── fuzzy.py           ← rapidfuzz wrapper over CMDB device list
+│   ├── reasoning.py       ← Phase 2: build reasoning chain step-by-step
+│   ├── templates.py       ← Phase 2: suggested-action templates
+│   ├── rank.py            ← Phase 3: score + batch + anomaly detect
+│   ├── post.py            ← Phase 4: work-note dedup + auto-post
+│   ├── outcomes.py        ← captures resolution data, tunes weights
+│   ├── sweeps.py          ← proactive: stale-rack scans, drift hunts
+│   └── confidence.py      ← multi-signal scoring + calibration
+├── state/
+│   ├── posted.json        ← Phase 4: work-note dedup state
+│   ├── unmatched.log      ← extraction misses, weekly human review
+│   ├── outcomes.jsonl     ← every (prediction, resolution) pair
+│   └── pattern_weights.json ← learned weights, snapshotted weekly
+└── AGENT_PLAN.html        ← this file</div>
+
+<p><strong>Why this split.</strong> Each file is small (&lt;200 LOC), single-purpose, and trivially mockable. <code>extract.py</code> is the only module that touches raw text; <code>fuzzy.py</code> is the only one that calls rapidfuzz; <code>post.py</code> is the only one that writes to SN. If you ever want to swap fuzzy matching for a different algorithm, you change one file.</p>
+
+<!-- ===================== 7. INTELLIGENCE SOURCES ===================== -->
+<h2 id="intelligence"><span class="num">07</span>Where the intelligence comes from</h2>
+
+<p>Six deterministic signals. Each cheap, each auditable, each combined to produce something that <em>looks like</em> AI to a leadership demo &mdash; and <em>is</em> AI by any honest 1980s-AI textbook definition.</p>
+
+<table>
+  <thead><tr><th>#</th><th>Signal</th><th>What it does</th><th>Data source</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td><strong>Pattern dictionary</strong></td><td>Maps failure keywords to buckets: <code>down</code>, <code>slow</code>, <code>no_link</code>, <code>cable</code>, <code>replace</code>, <code>unreachable</code>, <code>blinking_amber</code>, <code>flapping</code></td><td>Hand-curated dict in <code>patterns.py</code>, grows from unmatched.log</td></tr>
+    <tr><td class="num">2</td><td><strong>Fuzzy CMDB match</strong></td><td>"core switch 1" &rarr; <code>SW-CORE-01</code> via Levenshtein against actual CMDB device names</td><td><code>rapidfuzz</code> + CMDB list already fetched in <code>poll.py</code></td></tr>
+    <tr><td class="num">3</td><td><strong>Word-to-number</strong></td><td>"the third port" &rarr; 3, "second uplink" &rarr; 2</td><td>Tiny static dict, no library</td></tr>
+    <tr><td class="num">4</td><td><strong>Scan-history diff</strong></td><td>Compare current scan against last scan for the same rack &mdash; flag ports that flipped state, devices that moved</td><td><code>outputs/&lt;rackId&gt;/device_unit_map.json</code> history</td></tr>
+    <tr><td class="num">5</td><td><strong>Time-window correlation</strong></td><td>N incidents in &lt;1h pointing to the same rack &rArr; likely shared root cause; surface as a single batch</td><td><code>active_tickets.json</code></td></tr>
+    <tr><td class="num">6</td><td><strong>Class-mismatch detection</strong></td><td>CMDB says U10 is a switch; last scan saw a server there &rArr; rack drift</td><td>CMDB lookup vs scan output (both already in <code>poll.py</code>)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>Confidence scoring &mdash; the honesty layer.</strong> Each signal contributes 0&ndash;1. Multi-signal agreement raises confidence; conflicting signals lower it; a single weak signal caps at 0.4 &rArr; ticket goes to a "needs human review" bucket. The agent says <em>"I don't know"</em> when it doesn't &mdash; that's what makes it trustable over time.
+</div>
+
+<!-- ===================== 8. CURRENT STATE ===================== -->
+<h2 id="current"><span class="num">08</span>Current state &mdash; what exists today</h2>
+
+<table>
+  <thead><tr><th>Piece</th><th>Status</th><th>File</th></tr></thead>
+  <tbody>
+    <tr><td>Poller &mdash; SN incident fetch + filter</td><td><span class="status-pill done">Done</span></td><td><a href="poll.py">servicenow_inbox/poll.py</a></td></tr>
+    <tr><td>Regex device + port extraction</td><td><span class="status-pill done">Done</span></td><td><a href="poll.py">poll.py</a> &mdash; <code>extract_port</code>, <code>RACKTRACK_DEVICE_RE</code></td></tr>
+    <tr><td>CMDB enrichment (device + interface + rack)</td><td><span class="status-pill done">Done</span></td><td><a href="poll.py">poll.py</a> &mdash; <code>fetch_cmdb_device_details</code></td></tr>
+    <tr><td><code>active_tickets.json</code> aggregate output</td><td><span class="status-pill done">Done</span></td><td><a href="active_tickets.json">servicenow_inbox/active_tickets.json</a></td></tr>
+    <tr><td>Verifier &mdash; CMDB vs rack scan</td><td><span class="status-pill done">Done</span></td><td><a href="ingest.py">servicenow_inbox/ingest.py</a></td></tr>
+    <tr><td><code>/api/incidents/active</code> + <code>/expected-rack</code></td><td><span class="status-pill done">Done</span></td><td><a href="../server/app.js">server/app.js:2705+</a></td></tr>
+    <tr><td><code>add_work_note()</code> SN client</td><td><span class="status-pill done">Done</span></td><td><a href="../servicenow/servicenow.py">servicenow/servicenow.py:112</a></td></tr>
+    <tr><td>Pattern-dictionary extraction (<code>agent/extract.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td>Fuzzy CMDB matcher (<code>agent/fuzzy.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td>Reasoning chain builder (<code>agent/reasoning.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td>Action templates (<code>agent/templates.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td>Ranking + batching + anomaly (<code>agent/rank.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td>Auto work-note posting (<code>agent/post.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td>Outcome capture (<code>agent/outcomes.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td>Proactive sweeps (<code>agent/sweeps.py</code>)</td><td><span class="status-pill todo">To build</span></td><td>new</td></tr>
+    <tr><td><code>&lt;IncidentReasoning /&gt;</code> client panel</td><td><span class="status-pill todo">To build</span></td><td>new in <a href="../client/src/pages/ScanPage.jsx">client/src/pages/ScanPage.jsx</a></td></tr>
+    <tr><td><code>rapidfuzz</code> in <code>requirements.txt</code></td><td><span class="status-pill miss">Missing</span></td><td><a href="../requirements.txt">requirements.txt</a></td></tr>
+  </tbody>
+</table>
+
+<!-- ===================== 9. PHASES ===================== -->
+<h2 id="phases"><span class="num">09</span>Build phases &mdash; tactical roadmap</h2>
+
+<p class="small">Each phase ships independently behind a PR. None blocks the next, but they layer well in order.</p>
+
+<div class="phase">
+  <div class="phase-head">
+    <div class="phase-num">1</div>
+    <div class="phase-title">Smarter extraction &mdash; rules + fuzzy match</div>
+    <div class="phase-meta">~1 day</div>
+  </div>
+  <p><strong>New file:</strong> <code>agent/extract.py</code> exposing <code>extract_incident(text, cmdb_devices) → dict</code>.</p>
+
+  <h4>Returns</h4>
+<pre><code>{
+  "failure_mode": "port_down | cable_swap | device_unreachable | hardware_replace | config_change | other",
+  "affected_device": "SW-CORE-01",
+  "affected_port": 12,
+  "affected_role": "uplink | access | management | unknown",
+  "urgency_signal": "user_reported | monitoring_alert | scheduled",
+  "one_line_summary": "WEB-01 lost link, port 12 on access switch suspected",
+  "confidence": 0.78,
+  "signals_used": ["keyword:down", "fuzzy_match:SW-CORE-01", "word_num:third->3"]
+}</code></pre>
+
+  <h4>How it works</h4>
+  <ol>
+    <li><strong>Tokenize</strong> short_description + description.</li>
+    <li><strong>Pattern dictionary hit</strong> &rarr; failure_mode + role.</li>
+    <li><strong>Word-to-number expansion</strong> &rarr; resolve "third", "first", "Gi1/0/12".</li>
+    <li><strong>Fuzzy device match</strong> with <code>rapidfuzz.process.extractOne(text, cmdb_names, score_cutoff=85)</code>.</li>
+    <li><strong>One-line summary</strong> = template fill, not generation: <code>f"{device} {mode_human}, port {port} suspected"</code>.</li>
+    <li><strong>Confidence</strong> = <code>min(1.0, sum(signal_weights))</code>.</li>
+  </ol>
+
+  <h4>Wiring</h4>
+  <p>Call from <code>poll.py:ticket_record()</code> <strong>after</strong> the existing regex pass. If the agent agrees with regex &rarr; confidence boost. If they disagree &rarr; keep the higher-confidence one and log both to <code>state/unmatched.log</code>.</p>
+
+  <div class="callout good"><strong>Definition of done.</strong> <em>"the third uplink on the access switch in row 4 went dark around 9am"</em> &rarr; regex returns null, agent returns <code>{device: SW-ACC-01, port: 3, role: uplink, urgency: user_reported, confidence ≥ 0.6}</code>.</div>
+</div>
+
+<div class="phase">
+  <div class="phase-head">
+    <div class="phase-num">2</div>
+    <div class="phase-title">Reasoning chain &mdash; deterministic, visible</div>
+    <div class="phase-meta">~1 day</div>
+  </div>
+  <p>For each actionable ticket, the agent emits a <code>reasoning</code> array that walks through what it did, with evidence. <strong>No generation &mdash; it's just narrating the pipeline.</strong></p>
+
+<pre><code>"reasoning": [
+  {"step": "parsed_incident",
+   "evidence": "Matched keyword 'down', fuzzy-matched 'SW-CORE-01' (score 92)",
+   "confidence": 0.85},
+  {"step": "looked_up_cmdb",
+   "evidence": "SW-CORE-01 found in cmdb_ci_ip_switch, port 12 = Gi1/0/12",
+   "confidence": 1.0},
+  {"step": "found_rack",
+   "evidence": "Contains-rel parent: RACK-04, scan ID RK-DC1RACK4",
+   "confidence": 1.0},
+  {"step": "checked_last_scan",
+   "evidence": "Last scan 2026-05-18: port 12 visual state EMPTY",
+   "confidence": 0.9},
+  {"step": "detected_drift",
+   "evidence": "CMDB expects port 12 CONNECTED; scan saw EMPTY — drift detected",
+   "confidence": 0.95},
+  {"step": "suggested_action",
+   "evidence": "Walk to RACK-04 U10, verify cable to port 12; check patch panel PP-01 mapping",
+   "confidence": 0.7}
+]</code></pre>
+
+  <h4>Action templates</h4>
+  <p>Live in <code>agent/templates.py</code>, keyed by <code>(failure_mode, device_role)</code>:</p>
+<pre><code>TEMPLATES = {
+  ("port_down", "uplink"):
+      "Walk to {rack} {u_position}, verify uplink cable on port {port}; check both ends + LED",
+  ("port_down", "access"):
+      "Walk to {rack} {u_position}, verify cable on port {port}; check patch panel mapping",
+  ("device_unreachable", "*"):
+      "Walk to {rack} {u_position}, verify {device} is powered and front LEDs are green",
+  # ~15-20 templates total cover 90% of demo incidents
+}</code></pre>
+
+  <h4>Client</h4>
+  <p>New component <code>&lt;IncidentReasoning /&gt;</code> in <a href="../client/src/pages/ScanPage.jsx">ScanPage.jsx</a>. Collapsible "Why this rack?" panel. Each step a row: icon + step name + evidence + confidence pill.</p>
+
+  <div class="callout good"><strong>Definition of done.</strong> Every actionable ticket shows a "Why this rack?" panel with &ge;4 reasoning steps and a per-step confidence pill.</div>
+</div>
+
+<div class="phase">
+  <div class="phase-head">
+    <div class="phase-num">3</div>
+    <div class="phase-title">Triage, batching, anomaly detection</div>
+    <div class="phase-meta">~1 day</div>
+  </div>
+  <p>The agent ranks the queue and recommends visit order. <strong>This is the most visible "intelligence" feature</strong> &mdash; it surfaces things humans miss because they're handling tickets one at a time.</p>
+
+  <h4>New function</h4>
+  <p><code>rank_and_cluster(tickets, scan_history) → {ranked, batches, anomalies, needs_human_review, top}</code></p>
+
+  <h4>Score per ticket</h4>
+  <table>
+    <thead><tr><th>Component</th><th>Weight</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>Priority (<code>1</code> = highest)</td><td class="num">+40</td><td>SN's own priority signal anchors the score</td></tr>
+      <tr><td>Age in hours</td><td class="num">+1/hr, cap +20</td><td>Old tickets bubble up but don't dominate</td></tr>
+      <tr><td>Same-rack batch bonus</td><td class="num">+15</td><td>&ge;2 tickets in same rack within 1h &rArr; one visit, not two</td></tr>
+      <tr><td>Recent-scan available</td><td class="num">+10</td><td>Fresh ground truth &rArr; better diagnosis</td></tr>
+      <tr><td>Drift anomaly</td><td class="num">+25</td><td>CMDB vs scan class mismatch is high-value to surface</td></tr>
+      <tr><td>Confidence &lt; 0.4</td><td class="num">&rarr; human_review</td><td>Honest about uncertainty</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Output payload additions</h4>
+<pre><code>{
+  "polled_at": "...",
+  "count": 7,
+  "ranked": [...],
+  "batches": [
+    {
+      "rack": "RACK-04",
+      "incident_count": 3,
+      "shared_root_cause_hint": "All 3 mention port_down on switches in same rack within 22min — possible PSU/uplink event",
+      "tickets": [...]
+    }
+  ],
+  "anomalies": [
+    {
+      "type": "rack_drift",
+      "rack": "RACK-04",
+      "evidence": "CMDB places SW-CORE-01 at U22; last scan saw a server at U22",
+      "tickets_affected": ["INC0010001", "INC0010005"]
+    }
+  ],
+  "needs_human_review": [...],
+  "top": {...}
+}</code></pre>
+
+  <div class="callout good"><strong>Definition of done.</strong> <code>/api/incidents/active</code> includes all four buckets; app renders batches as grouped cards on the queue page.</div>
+</div>
+
+<div class="phase">
+  <div class="phase-head">
+    <div class="phase-num">4</div>
+    <div class="phase-title">Auto-post work notes &mdash; closes the loop</div>
+    <div class="phase-meta">~0.5 day</div>
+  </div>
+  <p>Without anyone clicking anything, every actionable incident gets a work note posted back to ServiceNow with the agent's analysis. This is where "automation" becomes literal.</p>
+
+  <h4>Work note template</h4>
+<pre><code>RackTrack Agent Analysis — auto-generated
+
+Incident: WEB-01 unreachable, port 12 suspected
+Confidence: 0.82
+
+Reasoning:
+  1. Parsed text: failure_mode=port_down, device=SW-CORE-01, port=12
+  2. CMDB: SW-CORE-01 lives in RACK-04, port 12 = Gi1/0/12
+  3. Last rack scan (2026-05-18): port 12 was EMPTY
+  4. Drift detected: CMDB expects port 12 CONNECTED
+
+Suggested action:
+  Walk to RACK-04 (U10), verify cable on port 12, check patch panel PP-01.
+
+Related incidents in same rack: INC0010003, INC0010005</code></pre>
+
+  <h4>Guards (so it doesn't spam SN)</h4>
+  <ul>
+    <li>Track posted incidents in <code>state/posted.json</code> &mdash; <code>{incident_number: analysis_hash}</code>.</li>
+    <li>Re-post only if the analysis hash changes (new scan data changed the conclusion).</li>
+    <li>Hard cap: 1 post per incident per 24h.</li>
+    <li>Confidence floor: post only if <code>confidence &ge; 0.5</code>. Below that &rarr; log only.</li>
+  </ul>
+
+  <div class="callout good"><strong>Definition of done.</strong> A fresh SN incident, within one poll cycle, gets a work note posted automatically with the full reasoning chain. Re-running with no changes is a no-op.</div>
+</div>
+
+<div class="phase">
+  <div class="phase-head">
+    <div class="phase-num">5</div>
+    <div class="phase-title">Outcome capture &mdash; the learning loop</div>
+    <div class="phase-meta">~1 day</div>
+  </div>
+  <p>Until now the agent has only been an emitter. Phase 5 makes it a learner: every resolved ticket becomes a training signal &mdash; <em>without</em> training a model. Pattern weights, fuzzy thresholds, and template selections get tuned from real outcomes.</p>
+
+  <h4>What gets captured</h4>
+  <ul>
+    <li>Resolution code from SN (resolved, cancelled, duplicate, false-positive)</li>
+    <li>Time-to-resolve</li>
+    <li>Resolution notes text (parsed for "agent was right" / "agent was wrong" signals)</li>
+    <li>Whether the suggested action matched the actual fix</li>
+  </ul>
+
+  <h4>What gets tuned</h4>
+  <ul>
+    <li>Pattern weights &mdash; patterns that consistently lead to right calls get +, wrong calls get &minus;</li>
+    <li>Fuzzy threshold per site &mdash; sites with messy naming may lower the cutoff over time</li>
+    <li>Template ranking &mdash; templates that mapped to actual fixes win in future tie-breaks</li>
+    <li>Confidence calibration &mdash; if "0.8" calls are right 60% of the time, the scale is recalibrated</li>
+  </ul>
+
+  <p>All tuning is logged, snapshotted weekly, and human-reviewable. Bad updates can be rolled back. No silent drift.</p>
+
+  <div class="callout good"><strong>Definition of done.</strong> Pattern weights are persisted in <code>state/pattern_weights.json</code>, updated weekly from outcomes, and the agent's accuracy improves measurably across two consecutive months.</div>
+</div>
+
+<div class="phase">
+  <div class="phase-head">
+    <div class="phase-num">6</div>
+    <div class="phase-title">Proactive sweeps &mdash; between incidents</div>
+    <div class="phase-meta">~1 day</div>
+  </div>
+  <p>Until now the agent only acts when a ticket arrives. Phase 6 makes it look at the data center even when nothing is on fire.</p>
+
+  <h4>Sweeps</h4>
+  <ul>
+    <li><strong>Stale-rack sweep.</strong> "We haven't scanned RACK-09 in 96 days." Surface as proactive item; suggest next-visit candidate.</li>
+    <li><strong>Drift hunt.</strong> Cross every recent scan with current CMDB, surface mismatches that haven't been ticketed.</li>
+    <li><strong>Pattern accumulation review.</strong> Weekly digest of unmatched-log entries &rarr; suggested new patterns for human approval.</li>
+    <li><strong>Recurring-failure detection.</strong> "This rack had 6 port-down tickets in 30 days, 4 on Thursdays." Predict and surface.</li>
+    <li><strong>Cable-age cohort.</strong> Cables installed before date X are showing higher failure rates &rarr; suggest preventive swap.</li>
+  </ul>
+
+  <div class="callout good"><strong>Definition of done.</strong> The app's "today" view shows at least one proactive card per week that wasn't tied to an incident.</div>
+</div>
+
+<!-- ===================== 10. PROACTIVE ===================== -->
+<h2 id="proactive"><span class="num">10</span>Proactive behaviors &mdash; what the agent does between incidents</h2>
+
+<p>An incident-driven agent is just a smarter inbox. The mission demands the agent works <em>between</em> incidents too &mdash; turning idle time into reconciliation time.</p>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Stale-rack alerts</h3>
+    <p>Every rack has a "last verified" timestamp from the last scan. After a threshold (60 days, configurable) the agent surfaces the rack as a sweep candidate &mdash; "include this in next physical visit."</p>
+  </div>
+  <div class="card">
+    <h3>Drift digest</h3>
+    <p>Weekly: cross every recent scan with CMDB, surface every mismatch that hasn't been ticketed. Email/queue items the NetOps lead can triage in 5 minutes.</p>
+  </div>
+  <div class="card">
+    <h3>Pattern accumulation</h3>
+    <p>Weekly: the unmatched.log gets summarized into "phrases the agent saw and couldn't parse." Senior NetOps reviews and approves new patterns in batches.</p>
+  </div>
+  <div class="card">
+    <h3>Recurring-failure detection</h3>
+    <p>Slow analytics over the resolved-incident log: which racks have above-baseline failure rates, which device families, which times of day. Surface as predictive heat-map.</p>
+  </div>
+</div>
+
+<!-- ===================== 11. FLEET ===================== -->
+<h2 id="fleet"><span class="num">11</span>Fleet-wide intelligence</h2>
+
+<p>Single-incident reasoning is table stakes. The real differentiator is what the agent sees when it looks across many incidents, many racks, many days:</p>
+
+<ul>
+  <li><strong>Shared-root-cause batches.</strong> Three port-down tickets in RACK-04 within 22 minutes &rArr; one PSU fault, not three cable problems.</li>
+  <li><strong>Cross-rack patterns.</strong> Every "device unreachable" ticket in row 4 happens at 2am Thursdays &rArr; scheduled job is misconfigured, not hardware.</li>
+  <li><strong>Vendor / firmware cohorts.</strong> Failures concentrate on a specific firmware version &rArr; the fleet view surfaces it before a vendor advisory does.</li>
+  <li><strong>Geography of drift.</strong> Site A's CMDB-accuracy is 96%; site B's is 71% &mdash; resource allocation decision lives in the gap.</li>
+  <li><strong>Tech routing optimization.</strong> Given today's queue + the building map, what's the minimum-walk visit order? (Trivial TSP on a small graph.)</li>
+</ul>
+
+<!-- ===================== 12. LEARNING ===================== -->
+<h2 id="learning"><span class="num">12</span>The learning system (still no LLM)</h2>
+
+<p>This is the part most teams miss. You can build a sharp deterministic agent that learns &mdash; the trick is to learn <strong>weights and thresholds</strong>, not representations.</p>
+
+<table>
+  <thead><tr><th>What gets learned</th><th>How</th><th>Where it lives</th></tr></thead>
+  <tbody>
+    <tr><td>Pattern weights</td><td>Patterns whose tickets resolved as predicted get +; mis-resolved get &minus;. Capped, decayed, snapshotted.</td><td><code>state/pattern_weights.json</code></td></tr>
+    <tr><td>Fuzzy thresholds (per site)</td><td>If a site has many "low-confidence but right" cases, lower the cutoff for that site only.</td><td><code>state/site_config.json</code></td></tr>
+    <tr><td>Confidence calibration</td><td>Brier-score-style: if 0.8 predictions are right 60% of the time, the curve gets bent.</td><td><code>state/calibration.json</code></td></tr>
+    <tr><td>Template ranking</td><td>Templates that matched the actual resolution beat templates that didn't.</td><td><code>state/template_stats.json</code></td></tr>
+    <tr><td>New patterns (human-approved)</td><td>Unmatched phrases &rarr; weekly review &rarr; human says "yes, add it" &rarr; PR.</td><td><code>agent/patterns.py</code> (code, not state)</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>What is <em>not</em> learned.</strong> No embeddings. No neural net. No "the agent figured out the rules itself." Every learned weight is human-inspectable, human-rollback-able, and tied to a real outcome. <em>That</em> is the difference between learning and drifting.
+</div>
+
+<!-- ===================== 13. OPERATIONAL ===================== -->
+<h2 id="operational"><span class="num">13</span>Operational surface</h2>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Observability of the agent itself</h3>
+    <ul>
+      <li>Per-poll: tickets seen, tickets actionable, tickets posted, avg confidence</li>
+      <li>Per-week: extraction accuracy (post-resolution backtest), pattern hit rate, fuzzy miss rate</li>
+      <li>Per-month: drift caught, drift remaining, CMDB accuracy by site</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Kill switches</h3>
+    <ul>
+      <li><code>--no-post</code> &mdash; observe only, never write to SN</li>
+      <li><code>--site=&lt;X&gt;</code> &mdash; restrict to one site for safe rollout</li>
+      <li><code>--max-posts-per-hour</code> &mdash; rate limiter</li>
+      <li>Single env var <code>RACKTRACK_AGENT_DISABLED=1</code> hard-stops auto-posting</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Audit trail</h3>
+    <ul>
+      <li>Every posted work note is hashed and stored locally</li>
+      <li>Every prediction + outcome pair is appended to <code>outcomes.jsonl</code></li>
+      <li>Every pattern-weight update is logged with the outcome that caused it</li>
+      <li>Easy to answer "why did the agent say that, on date X" months later</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Failure modes &amp; recovery</h3>
+    <ul>
+      <li>SN unreachable &rarr; agent keeps running, queues posts, retries next cycle</li>
+      <li>Scan corrupted &rarr; ticket flagged "no recent scan", no auto-post</li>
+      <li>Pattern weights look bad &rarr; rollback to last weekly snapshot is one file copy</li>
+      <li>Poller crashes &rarr; Task Scheduler restarts on failure</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===================== 14. ARC ===================== -->
+<h2 id="arc"><span class="num">14</span>The arc &mdash; week 1 to year 1</h2>
+
+<table>
+  <thead><tr><th>Horizon</th><th>What the agent does</th><th>What the demo says</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Week 1</strong></td>
+      <td>Parses messy tickets. Posts work notes to SN with reasoning. Ranks the tech's queue.</td>
+      <td>"The agent figured it out."</td>
+    </tr>
+    <tr>
+      <td><strong>Month 1</strong></td>
+      <td>Catches its first live rack drift &mdash; a server where CMDB swore there was a switch. The fix happens because the agent surfaced it.</td>
+      <td>"The agent caught something humans missed."</td>
+    </tr>
+    <tr>
+      <td><strong>Month 3</strong></td>
+      <td>Pattern dictionary has grown from unmatched logs. Fuzzy matcher has learned the local naming variants. Batching has prevented two truck-rolls.</td>
+      <td>"The agent is getting sharper. By itself."</td>
+    </tr>
+    <tr>
+      <td><strong>Month 6</strong></td>
+      <td>Every rack has a verified-vs-CMDB freshness score. Lowest-freshness racks bubble up as sweep targets. Drift no longer builds up silently.</td>
+      <td>"The data center documents itself now."</td>
+    </tr>
+    <tr>
+      <td><strong>Year 1</strong></td>
+      <td>New hires read the pattern dictionary as part of onboarding. Compliance pulls CMDB-accuracy reports in two clicks. The agent has never called a paid API.</td>
+      <td>"This is what good NetOps looks like in 2027."</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== 15. DEMO ===================== -->
+<h2 id="demo"><span class="num">15</span>Demo script &mdash; 90 seconds for leadership</h2>
+
+<ol>
+  <li><strong>Setup shown:</strong> terminal running the poller, app open on a phone (or browser).</li>
+  <li><strong>In ServiceNow:</strong> show a fresh incident &mdash; <em>no work notes yet</em>.</li>
+  <li><strong>Wait ~60 seconds.</strong> Refresh the incident. Work note appears with the agent's full reasoning. <em>"Nobody clicked anything."</em></li>
+  <li><strong>In the app:</strong> open the Tickets tab. Show the ranked queue with the top item flagged "<strong>BATCH: 3 incidents in RACK-04</strong> &mdash; possible shared root cause."</li>
+  <li><strong>Tap the top ticket.</strong> Show the "Why this rack?" reasoning panel &mdash; 5 steps, evidence per step, confidence pills.</li>
+  <li><strong>Show an anomaly card:</strong> "Rack drift detected &mdash; CMDB and last scan disagree on position U22."</li>
+  <li><strong>Show the "needs human review" bucket:</strong> one low-confidence ticket the agent honestly admits it doesn't know. <em>"It doesn't bluff."</em></li>
+  <li><strong>Closer:</strong> "Zero API cost. Runs on a laptop. Catches things humans miss. Posts back to ServiceNow without being asked. Gets sharper every week."</li>
+</ol>
+
+<!-- ===================== 16. NON-GOALS ===================== -->
+<h2 id="nongoals"><span class="num">16</span>Non-goals &mdash; what this is not</h2>
+
+<div class="callout bad">
+  <ul>
+    <li><strong>Not an LLM wrapper.</strong> Ever. If a feature can't be done deterministically, it doesn't ship.</li>
+    <li><strong>Not a replacement for techs.</strong> Force multiplier, not substitute &mdash; humans still walk the floor and make the call.</li>
+    <li><strong>Not a CMDB writer (yet).</strong> Surfaces drift; doesn't auto-correct. Auto-write needs governance, not a v1 feature.</li>
+    <li><strong>Not an incident closer.</strong> Humans close incidents. Agent suggests, evidences, prepares &mdash; never resolves.</li>
+    <li><strong>Not a monitoring system.</strong> Reacts to incidents that monitoring or humans raise; doesn't watch network health itself.</li>
+    <li><strong>Not a port-as-CI modeler in ServiceNow.</strong> Already decided.</li>
+    <li><strong>Not multi-tenant SaaS.</strong> One install per data center; the install is the product.</li>
+  </ul>
+</div>
+
+<!-- ===================== 17. RISKS ===================== -->
+<h2 id="risks"><span class="num">17</span>Risks &amp; mitigations</h2>
+
+<table>
+  <thead><tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td>Pattern dictionary misses common phrasings</td><td>High at first, falls quickly</td><td>Log every miss to <code>unmatched.log</code>; weekly human review; auto-suggest new patterns</td></tr>
+    <tr><td>Fuzzy matcher maps to wrong device</td><td>Medium</td><td>Score cutoff 85; on confidence &lt; 0.5 &rarr; human review, no auto-post</td></tr>
+    <tr><td>Anomaly false-positive spams SN</td><td>Medium</td><td>Confidence floor (&ge; 0.5); hash dedup; 24h rate limit per incident</td></tr>
+    <tr><td>Pattern-weight learning drifts wrong</td><td>Low</td><td>Weekly snapshot &mdash; rollback is one file copy; weights bounded</td></tr>
+    <tr><td>Scan data unavailable for a rack</td><td>High in early days</td><td>Ticket flagged "no recent scan", confidence floor blocks auto-post</td></tr>
+    <tr><td>Demo flakes because PDI hibernated</td><td>Medium</td><td>Pre-demo: wake the PDI, run poller once, verify work note posted; have recorded video as fallback</td></tr>
+    <tr><td>Pushback: "this should use AI"</td><td>Constant</td><td>The demo answers it &mdash; show the reasoning chain and ask "what would an LLM add here, that this doesn't already do, that you'd pay for?"</td></tr>
+  </tbody>
+</table>
+
+<!-- ===================== 18. FILES ===================== -->
+<h2 id="files"><span class="num">18</span>File layout &amp; dependencies</h2>
+
+<h4>New files</h4>
+<pre><code>servicenow_inbox/
+├── poll.py                ← MODIFY: wire agent into ticket_record()
+├── ingest.py              ← unchanged
+├── AGENT_PLAN.html        ← THIS FILE
+├── agent/
+│   ├── __init__.py
+│   ├── extract.py
+│   ├── patterns.py
+│   ├── word_numbers.py
+│   ├── fuzzy.py
+│   ├── reasoning.py
+│   ├── templates.py
+│   ├── rank.py
+│   ├── post.py
+│   ├── outcomes.py
+│   ├── sweeps.py
+│   └── confidence.py
+└── state/
+    ├── posted.json            (gitignored)
+    ├── unmatched.log          (gitignored)
+    ├── outcomes.jsonl         (gitignored)
+    ├── pattern_weights.json   (snapshotted weekly, committed)
+    ├── site_config.json       (committed)
+    ├── calibration.json       (committed)
+    └── template_stats.json    (committed)</code></pre>
+
+<h4>Dependencies to add</h4>
+<pre><code># in requirements.txt
+rapidfuzz>=3.0     # fuzzy CMDB matching, pure Python, ~1MB
+# nothing else. no ML libs, no models, no API SDKs.</code></pre>
+
+<!-- ===================== 19. THE QUESTION ===================== -->
+<h2 id="question"><span class="num">19</span>The single question this design must keep answering</h2>
+
+<div class="quote">
+  Did the data center know more about itself at the end of this week than it did at the start?
+</div>
+
+<p>Every feature, every phase, every line of code has to push that needle. If a proposed change doesn't, it's the wrong change.</p>
+
+<hr>
+
+<p class="small">Source: <a href="AGENT_PLAN.md">AGENT_PLAN.md</a> (canonical markdown) &middot; constraints: <a href="../servicenow/PLAN.md">servicenow/PLAN.md</a> &middot; existing code: <a href="poll.py">poll.py</a>, <a href="ingest.py">ingest.py</a></p>
+
+</div>
+</body>
+</html>

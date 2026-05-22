@@ -304,6 +304,44 @@ async function runPipelineAnalyze(imagePath, outputDir) {
   }, { imagePath, outputDir });
 }
 
+// Zero-LLM ticket-text extraction + reasoning chain + work-note preview.
+// Runs in the warm Python worker (no model loads), so this is near-instant.
+// Best-effort — never throws; on failure returns null so ticket-mode flows
+// still complete with their primary payload.
+async function runAgentExtraction(ticket, rackDir) {
+  try {
+    const cmdb = ticket?.cmdb || {};
+    const text = [(ticket?.short_description || ''), (ticket?.description || '')].join(' ').trim();
+    if (!text) return null;
+    const res = await pool.request('extract_ticket', {
+      text,
+      cmdb_facts: {
+        sys_class_name:  cmdb.sys_class_name  || null,
+        model:           cmdb.model           || null,
+        serial:          cmdb.serial          || null,
+        mgmt_ip:         cmdb.mgmt_ip         || null,
+        interface_alias: cmdb.interface_alias || null,
+        rack_name:       cmdb.rack_name       || null,
+        rack_scan_id:    cmdb.rack_scan_id    || null,
+        u_position:      cmdb.u_position      || null,
+      },
+      last_scan_path:    path.join(rackDir, 'device_unit_map.json'),
+      incident_number:   ticket?.incident_number || null,
+      short_description: ticket?.short_description || null,
+      priority:          ticket?.priority || null,
+    });
+    if (!res || res.ok === false) return null;
+    return {
+      extraction:        res.extraction,
+      reasoning:         res.reasoning,
+      work_note_preview: res.work_note_preview,
+    };
+  } catch (err) {
+    logger.warn(`[agent] extract_ticket failed for ${ticket?.incident_number}: ${err.message}`);
+    return null;
+  }
+}
+
 async function runPipelineSelect(imagePath, outputDir, deviceIndex, port, portCategory) {
   return withSpan('pipeline.select', async () => {
     const payload = {
@@ -1638,6 +1676,30 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
           kind: 'quality',
         });
       }
+
+      // Post-analyze occlusion check: if we detected lots of U-slots
+      // (the rack is large enough) but very few devices, the devices are
+      // most likely hidden behind cables. Confirms the pre-analyze
+      // image-based heuristic; this one is more precise because it uses
+      // the actual model output. Keeps the rackDir intact so Proceed
+      // and Multi-angle can both reuse the cached analyze.
+      if (unitCount >= 6 && deviceCount > 0) {
+        const ratio = deviceCount / unitCount;
+        if (ratio < 0.35) {
+          return res.status(400).json({
+            error: ('This rack appears to be heavily covered by cables — we can see '
+                  + `${unitCount} U-slots but only ${deviceCount} device${deviceCount===1?'':'s'} `
+                  + 'were detectable. For better accuracy, take additional photos from the '
+                  + 'left and right sides of the rack so we can see behind the cable bundles, '
+                  + 'or proceed with this image (results may miss devices behind cables).'),
+            retryable: true,
+            kind: 'occlusion',
+            metrics: { units: unitCount, devices: deviceCount, ratio: Number(ratio.toFixed(2)) },
+            rackId,
+          });
+        }
+      }
+
       if (unitCount < 3) {
         fs.rmSync(rackDir, { recursive: true, force: true });
         return res.status(400).json({
@@ -1673,6 +1735,397 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
       error: 'Please upload a clearer photo of the rack — keep the camera steady and make sure the full rack fits in the frame.',
       retryable: true,
       kind: 'quality',
+    });
+  }
+});
+
+/**
+ * POST /api/stitch
+ * Multi-image upload for tall racks. Accepts 2–8 photos (top-to-bottom),
+ * normalizes each, runs pipeline/rack_stitch.py to produce a single
+ * stitched panorama, then funnels the result through the SAME analyze
+ * path as /api/analyze and returns the same shape — plus a `stitch`
+ * sub-object describing the seams (so the client can warn the user
+ * when an overlap fell back to "butt-flush").
+ *
+ * Form fields:
+ *   images (file[], required) — 2–8 image files, ORDER MATTERS (top→bottom)
+ *   skipQualityCheck (string, optional) — same as /api/analyze
+ */
+function runStitcher(inputPaths, outputPath) {
+  return new Promise((resolve, reject) => {
+    const { spawn } = require('child_process');
+    const pyBin = resolvePythonBin();
+    const script = path.join(__dirname, '..', 'pipeline', 'rack_stitch.py');
+    const args = [script, '--inputs', ...inputPaths, '--output', outputPath];
+    const child = spawn(pyBin, args, {
+      cwd: path.join(__dirname, '..'),
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' },
+    });
+    let out = '', err = '';
+    child.stdout.on('data', d => out += d.toString());
+    child.stderr.on('data', d => err += d.toString());
+    child.on('close', code => {
+      if (code !== 0 && !out.trim()) {
+        return reject(new Error(`stitcher failed (exit ${code}): ${err.trim() || 'no output'}`));
+      }
+      try {
+        resolve(JSON.parse(out));
+      } catch (e) {
+        reject(new Error(`stitcher output was not JSON: ${e.message} / stderr: ${err.trim()}`));
+      }
+    });
+    child.on('error', reject);
+  });
+}
+
+app.post('/api/stitch', scanLimit, upload.array('images', 8), async (req, res) => {
+  const files = Array.isArray(req.files) ? req.files : [];
+  if (files.length < 2) {
+    files.forEach(f => safeUnlink(f.path));
+    return res.status(400).json({ error: 'Please upload at least 2 images to stitch (top-to-bottom).' });
+  }
+
+  const reqStart = Date.now();
+  const timings = {};
+  const tmpPaths = [];
+  let stitchedPath = null;
+
+  try {
+    // Normalize every input (HEIC->JPEG, EXIF rotate) before stitching.
+    const tNormStart = Date.now();
+    for (const f of files) {
+      const p = await normalizeImage(f.path);
+      tmpPaths.push(p);
+    }
+    timings.normalize_ms = Date.now() - tNormStart;
+
+    stitchedPath = path.join(uploadsDir, `tmp_stitched_${uuidv4()}.jpg`);
+
+    const tStitchStart = Date.now();
+    const stitchResult = await runStitcher(tmpPaths, stitchedPath);
+    timings.stitch_ms = Date.now() - tStitchStart;
+
+    if (!stitchResult.ok) {
+      tmpPaths.forEach(safeUnlink);
+      safeUnlink(stitchedPath);
+      return res.status(400).json({
+        error: stitchResult.error || 'Could not stitch the uploaded images.',
+        retryable: true,
+        kind: 'stitch',
+        stitch: { seams: stitchResult.seams || [], uncertain: stitchResult.uncertain || [] },
+      });
+    }
+
+    // Inputs no longer needed — only the stitched output goes downstream.
+    tmpPaths.forEach(safeUnlink);
+
+    // ── Now mirror /api/analyze flow on the stitched image ───────
+    const rackId   = computeRackId(stitchedPath);
+    const rackDir  = path.join(outputsDir, rackId);
+    const jsonPath = path.join(rackDir, 'device_unit_map.json');
+
+    const _authPayload = softAuthPayload(req);
+    const _scanTenantId = _authPayload?.tenantId || null;
+    const _scanUserId = _authPayload?.sub || null;
+    if (_scanTenantId) tenant.claimRack(_scanTenantId, rackId, _scanUserId);
+
+    // Cache hit — same stitched image was scanned before.
+    if (fs.existsSync(jsonPath)) {
+      safeUnlink(stitchedPath);
+      logger.info({ event: 'scan.cache_hit', rackId, tenantId: _scanTenantId, stitched: true }, `stitch cache hit ${rackId}`);
+      recordEvent('scan.cache_hit', { rackId, tenantId: _scanTenantId, stitched: true });
+      await ensurePortCounts(rackId);
+      timings.total_ms = Date.now() - reqStart;
+      timings.cached = true;
+      audit.log({ req, action: 'scan.create', status: 'ok', targetType: 'rack', targetId: rackId, payload: { cached: true, stitched: true, inputs: files.length } });
+      scheduleCanonicalRefresh(rackId);
+      return res.json({
+        ...buildResponse(rackId, true),
+        stitch: {
+          seams: stitchResult.seams,
+          uncertain: stitchResult.uncertain,
+          image_size: stitchResult.image_size,
+          input_count: files.length,
+          input_order: stitchResult.input_order || null,
+          auto_order: stitchResult.auto_order || null,
+        },
+        timings,
+      });
+    }
+
+    // Quality check (optional override).
+    const skipQualityCheck = req.body?.skipQualityCheck === '1' || req.body?.skipQualityCheck === 'true';
+    const tQualStart = Date.now();
+    const quality = skipQualityCheck
+      ? { ok: true, metrics: { note: 'user-override' } }
+      : await runQualityCheck(stitchedPath);
+    timings.quality_check_ms = Date.now() - tQualStart;
+    if (!quality.ok) {
+      safeUnlink(stitchedPath);
+      return res.status(400).json({
+        error: quality.error,
+        metrics: quality.metrics,
+        kind: quality.kind || null,
+        retryable: quality.retryable === true,
+        stitch: { seams: stitchResult.seams, uncertain: stitchResult.uncertain },
+      });
+    }
+
+    fs.mkdirSync(rackDir, { recursive: true });
+    const imagePath = path.join(rackDir, 'original_image.jpg');
+    fs.copyFileSync(stitchedPath, imagePath);
+    safeUnlink(stitchedPath);
+
+    const meta = {
+      rackId,
+      userId:     softAuthUserId(req),
+      imageHash:  crypto.createHash('sha256').update(fs.readFileSync(imagePath)).digest('hex'),
+      imagePath,
+      timestamp:  new Date().toISOString(),
+      quality:    quality.metrics || null,
+      qualityWarning:    quality.warning || null,
+      qualityWarningMsg: quality.warning_msg || null,
+      stitched:   true,
+      stitch:     { seams: stitchResult.seams, uncertain: stitchResult.uncertain, input_count: files.length },
+    };
+    writeMeta(rackId, meta);
+
+    const tPipeStart = Date.now();
+    await runPipelineAnalyze(imagePath, rackDir);
+    timings.pipeline_ms = Date.now() - tPipeStart;
+
+    // Post-pipeline framing check (looser than /api/analyze — the user
+    // explicitly stitched a tall rack, so we expect more units, but be
+    // forgiving about per-tile detection quality).
+    const mapData = fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : {};
+    const deviceCount = Array.isArray(mapData.devices) ? mapData.devices.length : 0;
+    if (!skipQualityCheck && deviceCount === 0) {
+      fs.rmSync(rackDir, { recursive: true, force: true });
+      return res.status(400).json({
+        error: 'No devices were detected on the stitched rack — make sure each photo shows the front of the rack and the shots overlap.',
+        retryable: true,
+        kind: 'quality',
+        stitch: { seams: stitchResult.seams, uncertain: stitchResult.uncertain },
+      });
+    }
+
+    timings.total_ms = Date.now() - reqStart;
+    timings.cached = false;
+    logger.info({ event: 'scan.created', rackId, durationMs: timings.total_ms, timings, stitched: true, inputs: files.length },
+      `new stitched scan ${rackId} (${files.length} inputs, ${timings.total_ms}ms)`);
+    recordEvent('scan.created', { rackId, durationMs: timings.total_ms, stitched: true });
+    audit.log({
+      req,
+      action: 'scan.create',
+      status: 'ok',
+      targetType: 'rack',
+      targetId: rackId,
+      payload: { devices: deviceCount, totalMs: timings.total_ms, stitched: true, inputs: files.length },
+    });
+    scheduleCanonicalRefresh(rackId);
+    res.json({
+      ...buildResponse(rackId, false),
+      stitch: {
+          seams: stitchResult.seams,
+          uncertain: stitchResult.uncertain,
+          image_size: stitchResult.image_size,
+          input_count: files.length,
+          input_order: stitchResult.input_order || null,
+          auto_order: stitchResult.auto_order || null,
+        },
+      timings,
+    });
+
+  } catch (err) {
+    tmpPaths.forEach(safeUnlink);
+    if (stitchedPath) safeUnlink(stitchedPath);
+    logger.error(err.message);
+    audit.log({ req, action: 'scan.create', status: 'fail', error: err.message, payload: { stitched: true } });
+    res.status(400).json({
+      error: 'Could not stitch and analyze the rack. Make sure each photo shows the rack front and adjacent shots overlap by ~20–40%.',
+      retryable: true,
+      kind: 'stitch',
+    });
+  }
+});
+
+/**
+ * POST /api/analyze-multi-angle
+ * Heavily-cabled-rack capture flow. Accepts 2-4 photos of the SAME rack
+ * from different angles (typically front + left + right). Each photo is
+ * analyzed independently; we then merge the detected devices by their
+ * U-position so a switch hidden behind cables in the front shot but
+ * visible from the left side gets added to the unified device list.
+ *
+ * The merged result is written into a NEW rack folder (the "primary"
+ * angle's rackId — the angle with the most detected devices wins) and
+ * returned with the same shape as /api/analyze, plus a `multi_angle`
+ * sub-object describing which angle contributed each device.
+ */
+app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async (req, res) => {
+  const files = Array.isArray(req.files) ? req.files : [];
+  if (files.length < 2) {
+    files.forEach(f => safeUnlink(f.path));
+    return res.status(400).json({ error: 'Please upload at least 2 angles (front + one side).' });
+  }
+
+  const reqStart = Date.now();
+  const timings = {};
+  const perAngle = [];   // [{ rackId, deviceCount, unitCount, mapData, imagePath }, ...]
+
+  try {
+    // STEP 1 — normalize + analyze each angle. We DO NOT run the quality
+    // gate here (skipQualityCheck implicitly true): the user already saw
+    // the occlusion warning and chose multi-angle, so we trust their
+    // intent. Each analyze runs sequentially through the warm worker.
+    const tNormStart = Date.now();
+    for (const f of files) {
+      const norm = await normalizeImage(f.path);
+      const rackId = computeRackId(norm);
+      const rackDir = path.join(outputsDir, rackId);
+      const jsonPath = path.join(rackDir, 'device_unit_map.json');
+
+      // Reuse cache if this exact image was scanned before.
+      let mapData = null;
+      if (fs.existsSync(jsonPath)) {
+        safeUnlink(norm);
+        mapData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      } else {
+        fs.mkdirSync(rackDir, { recursive: true });
+        const imagePath = path.join(rackDir, 'original_image.jpg');
+        fs.copyFileSync(norm, imagePath);
+        safeUnlink(norm);
+        try {
+          await runPipelineAnalyze(imagePath, rackDir);
+          mapData = fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : null;
+        } catch (e) {
+          // One angle failing isn't fatal — skip it and continue.
+          logger.warn(`[multi-angle] analyze failed for ${rackId}: ${e.message}`);
+          continue;
+        }
+      }
+      if (!mapData) continue;
+      const deviceCount = (mapData.devices || []).length;
+      const unitCount = (mapData.units_detected || []).length;
+      perAngle.push({
+        rackId,
+        rackDir,
+        deviceCount,
+        unitCount,
+        mapData,
+        imagePath: path.join(rackDir, 'original_image.jpg'),
+      });
+    }
+    timings.per_angle_ms = Date.now() - tNormStart;
+
+    if (perAngle.length < 2) {
+      return res.status(400).json({
+        error: 'At least 2 angles needed to merge — some analyses failed. Please retake clearer shots.',
+        retryable: true,
+        kind: 'multi_angle',
+      });
+    }
+
+    // STEP 2 — pick the "primary" angle: the one with the most devices
+    // detected. Its image becomes the canonical hero, and its rackId is
+    // the one we return to the client. Other angles' devices get merged
+    // into it by U-position.
+    perAngle.sort((a, b) => b.deviceCount - a.deviceCount);
+    const primary = perAngle[0];
+    const supports = perAngle.slice(1);
+
+    // STEP 3 — merge devices by U-position. For each U-slot, keep the
+    // detection from the angle with the highest confidence. Tracks which
+    // angle contributed each device for transparency.
+    const devicesByU = new Map();  // unitKey -> { device, source_angle_idx }
+    const allAngles = [primary, ...supports];
+    allAngles.forEach((angle, idx) => {
+      for (const dev of angle.mapData.devices || []) {
+        const units = Array.isArray(dev.units) ? dev.units : [];
+        if (units.length === 0) continue;
+        // Use the highest U as the unit key (devices are typically labeled
+        // by their top-most U-slot).
+        const unitKey = units[0];
+        const existing = devicesByU.get(unitKey);
+        const conf = Number(dev.confidence ?? 0);
+        if (!existing || conf > Number(existing.device.confidence ?? 0)) {
+          devicesByU.set(unitKey, {
+            device: { ...dev, _source_angle: idx },
+            source_angle_idx: idx,
+          });
+        }
+      }
+    });
+
+    const mergedDevices = Array.from(devicesByU.values())
+      .map(e => e.device)
+      .sort((a, b) => {
+        const au = (a.units?.[0] || 'u00').slice(1);
+        const bu = (b.units?.[0] || 'u00').slice(1);
+        return Number(bu) - Number(au);  // descending U-number (top of rack first)
+      });
+
+    // Union of unit-detections — same logic as devices, take superset
+    const mergedUnits = new Set();
+    for (const angle of allAngles) {
+      for (const u of angle.mapData.units_detected || []) {
+        mergedUnits.add(u);
+      }
+    }
+
+    // STEP 4 — write the merged device_unit_map back to the primary's
+    // rackDir. Annotate with multi_angle provenance.
+    const mergedMap = {
+      ...primary.mapData,
+      devices: mergedDevices,
+      units_detected: Array.from(mergedUnits).sort(),
+      multi_angle: {
+        input_count: perAngle.length,
+        angle_rack_ids: perAngle.map(a => a.rackId),
+        primary_rack_id: primary.rackId,
+        per_angle_devices: perAngle.map(a => ({ rackId: a.rackId, devices: a.deviceCount, units: a.unitCount })),
+      },
+    };
+    fs.writeFileSync(
+      path.join(primary.rackDir, 'device_unit_map.json'),
+      JSON.stringify(mergedMap, null, 2),
+    );
+
+    // Update primary's scan_meta so it knows it was multi-angle.
+    try {
+      const meta = readMeta(primary.rackId) || { rackId: primary.rackId };
+      meta.multi_angle = mergedMap.multi_angle;
+      meta.timestamp = new Date().toISOString();
+      writeMeta(primary.rackId, meta);
+    } catch (_) {}
+
+    timings.total_ms = Date.now() - reqStart;
+    logger.info({ event: 'scan.multi_angle_created', primaryRackId: primary.rackId, angles: perAngle.length, mergedDevices: mergedDevices.length, timings },
+      `multi-angle merge: ${perAngle.length} angles → ${mergedDevices.length} devices on ${primary.rackId}`);
+    recordEvent('scan.multi_angle_created', { primaryRackId: primary.rackId, angles: perAngle.length });
+    audit.log({
+      req, action: 'scan.create', status: 'ok',
+      targetType: 'rack', targetId: primary.rackId,
+      payload: { multi_angle: true, angles: perAngle.length, merged_devices: mergedDevices.length },
+    });
+
+    res.json({
+      ...buildResponse(primary.rackId, false),
+      multi_angle: mergedMap.multi_angle,
+      timings,
+    });
+
+  } catch (err) {
+    files.forEach(f => safeUnlink(f.path));
+    logger.error(err.message);
+    audit.log({ req, action: 'scan.create', status: 'fail', error: err.message, payload: { multi_angle: true } });
+    res.status(400).json({
+      error: 'Multi-angle analysis failed. Make sure each photo shows the same rack from a different angle.',
+      retryable: true,
+      kind: 'multi_angle',
     });
   }
 });
@@ -2960,6 +3413,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
         targetId: rackId,
         payload: { incident: incNumber, device: target.device, drift: true, expected_u: resolved.expected_u, seen: seen.map(d => d.class_name) },
       });
+      const agent = await runAgentExtraction(ticket, rackDir);
       return res.json({
         ...analyzeResp,
         ticket,
@@ -2977,6 +3431,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
         portInfo: null,
         portClassification: null,
         lldp: null,
+        agent,
         timings,
       });
     }
@@ -3055,8 +3510,11 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
 
     // Merge full analyze response (devices list, units_detected, imageUrl, etc.)
     // with the ticket-specific fields so ResultsPage has the same shape it's
-    // used to, plus the bundled ticket/resolved/lldp extras.
+    // used to, plus the bundled ticket/resolved/lldp/agent extras.
     const analyzeResp = buildResponse(rackId, fs.existsSync(jsonPath));
+    const tAgentStart = Date.now();
+    const agent = await runAgentExtraction(ticket, rackDir);
+    timings.agent_ms = Date.now() - tAgentStart;
     res.json({
       ...analyzeResp,
       ticket,
@@ -3068,6 +3526,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
       portInfo,
       portClassification: fullData.port_classification || null,
       lldp,
+      agent,
       timings,
     });
   } catch (err) {
@@ -3077,6 +3536,175 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
       retryable: true,
       kind: 'quality',
     });
+  }
+});
+
+// ── Agent dashboard routes ───────────────────────────────────────────────
+// SN credentials are read once at module load from either server/.env (if
+// they live there) or s_agent/.env (where the agent was originally tested).
+// Never log the password.
+let _snCredsCache = null;
+function getSnCreds() {
+  if (_snCredsCache !== null) return _snCredsCache;
+  let instance = process.env.SN_INSTANCE;
+  let user     = process.env.SN_USER;
+  let password = process.env.SN_PASSWORD;
+  if (!(instance && user && password)) {
+    // Fall back to s_agent/.env so the original test creds work without
+    // having to duplicate them into server/.env.
+    const sAgentEnv = path.join(__dirname, '..', 's_agent', '.env');
+    if (fs.existsSync(sAgentEnv)) {
+      try {
+        const lines = fs.readFileSync(sAgentEnv, 'utf8').split(/\r?\n/);
+        for (const line of lines) {
+          const m = line.match(/^([A-Z_]+)\s*=\s*(.+?)\s*$/);
+          if (!m) continue;
+          const [, k, v] = m;
+          if (k === 'SN_INSTANCE' && !instance) instance = v;
+          if (k === 'SN_USER'     && !user)     user     = v;
+          if (k === 'SN_PASSWORD' && !password) password = v;
+        }
+      } catch (_) { /* swallow — caller handles missing creds */ }
+    }
+  }
+  _snCredsCache = (instance && user && password) ? { instance, user, password } : null;
+  if (_snCredsCache) {
+    logger.info({ event: 'agent.sn_creds_loaded', instance }, `agent SN creds loaded for ${instance}`);
+  } else {
+    logger.warn({ event: 'agent.sn_creds_missing' }, 'agent SN creds not configured (set SN_INSTANCE/SN_USER/SN_PASSWORD)');
+  }
+  return _snCredsCache;
+}
+
+/**
+ * GET /api/agent/feedback/scoreboard
+ * Returns the agent accuracy scoreboard (local state — no SN call).
+ */
+app.get('/api/agent/feedback/scoreboard', async (req, res) => {
+  try {
+    const r = await pool.request('feedback_scoreboard', {});
+    if (!r.ok) return res.status(500).json({ error: r.error || 'scoreboard failed' });
+    res.json(r.scoreboard || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/agent/feedback/refresh
+ * Pulls recently resolved incidents from ServiceNow, evaluates each against
+ * the agent's stored prediction, and returns the updated scoreboard.
+ */
+app.post('/api/agent/feedback/refresh', async (req, res) => {
+  const sn_creds = getSnCreds();
+  if (!sn_creds) return res.status(400).json({ error: 'ServiceNow credentials not configured' });
+  try {
+    const r = await pool.request('feedback_refresh', { sn_creds, limit: req.body?.limit });
+    if (!r.ok) return res.status(502).json({ error: r.error || 'refresh failed' });
+    audit.log({ req, action: 'agent.feedback_refresh', status: 'ok', payload: { evaluations: (r.evaluations || []).length } });
+    res.json({ evaluations: r.evaluations || [], scoreboard: r.scoreboard });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/agent/proactive/insights
+ * Returns the most recently cached proactive insights (no SN call).
+ */
+app.get('/api/agent/proactive/insights', async (req, res) => {
+  try {
+    const r = await pool.request('proactive_cached', {});
+    if (!r.ok) return res.status(500).json({ error: r.error || 'cached fetch failed' });
+    res.json({ insights: r.insights || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/agent/proactive/refresh
+ * Regenerates proactive insights from live SN data and returns the new list.
+ */
+app.post('/api/agent/proactive/refresh', async (req, res) => {
+  const sn_creds = getSnCreds();
+  if (!sn_creds) return res.status(400).json({ error: 'ServiceNow credentials not configured' });
+  try {
+    const r = await pool.request('proactive_refresh', { sn_creds });
+    if (!r.ok) return res.status(502).json({ error: r.error || 'refresh failed' });
+    audit.log({ req, action: 'agent.proactive_refresh', status: 'ok', payload: { insights: (r.insights || []).length } });
+    res.json({ insights: r.insights || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/incidents/:inc/post-work-note
+ * Posts the agent's work-note text to ServiceNow on the named incident.
+ * Honors agent.py's guards: confidence >= POST_CONFIDENCE_FLOOR, no re-post
+ * if the analysis hash hasn't changed, and a 24h rate-limit per incident.
+ *
+ * Body (JSON):
+ *   { force?: boolean }   // skip rate-limit + no-change guards
+ *
+ * Requires: server/.env (or s_agent/.env) has SN_INSTANCE / SN_USER / SN_PASSWORD.
+ * Requires: an extract_ticket call was made previously (so we have the
+ *   reasoning + extracted fields). We rebuild ticket context from the inbox
+ *   + a fresh agent extraction so callers don't have to round-trip the whole
+ *   ticket payload back through the wire.
+ */
+app.post('/api/incidents/:inc/post-work-note', async (req, res) => {
+  const incNumber = req.params.inc;
+  const sn_creds = getSnCreds();
+  if (!sn_creds) return res.status(400).json({ error: 'ServiceNow credentials not configured' });
+
+  const ticket = readTicketByNumber(incNumber);
+  if (!ticket) return res.status(404).json({ error: `Ticket ${incNumber} not in inbox` });
+  if (!ticket.sys_id) return res.status(400).json({ error: 'inbox ticket is missing sys_id — cannot post' });
+
+  try {
+    // Rebuild the agent's extraction + reasoning so the worker has the
+    // current analysis to post. We pass last_scan_path when we know the
+    // rack-scan-id from the ticket so drift steps surface in the note.
+    const rackDir = ticket.cmdb?.rack_scan_id
+      ? path.join(outputsDir, ticket.cmdb.rack_scan_id)
+      : outputsDir;
+    const agentRes = await runAgentExtraction(ticket, rackDir);
+    if (!agentRes) return res.status(500).json({ error: 'agent extraction failed — try /api/analyze-for-ticket first' });
+
+    const richTicket = {
+      ...ticket,
+      extracted: agentRes.extraction,
+      reasoning: agentRes.reasoning,
+    };
+
+    const r = await pool.request('post_work_note', {
+      ticket:   richTicket,
+      sn_creds,
+      force:    !!req.body?.force,
+    });
+    if (!r.ok) return res.status(502).json({ error: r.error || 'post failed' });
+
+    audit.log({
+      req,
+      action: 'agent.post_work_note',
+      status: r.status || 'unknown',
+      targetType: 'incident',
+      targetId: incNumber,
+      payload: { status: r.status, hash: r.hash, reason: r.reason || null, confidence: agentRes.extraction?.confidence },
+    });
+    res.json({
+      ok: true,
+      status: r.status,
+      hash: r.hash || null,
+      reason: r.reason || null,
+      incident_number: incNumber,
+      preview: agentRes.work_note_preview,
+    });
+  } catch (err) {
+    logger.error('[post-work-note]', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -4460,18 +5088,137 @@ app.get('/api/specs/vendors', async (req, res) => {
 });
 
 // POST /api/specs  body: { vendor, model }
-// → resolves the vendor URL, searches the site, scrapes specs.
+// → Switch Spec Agent (Agent_scrap): SQLite cache (~1ms) with free
+//   multi-engine web fallback (~4s) for unknown models. The agent's record
+//   is transformed into the UI's existing { vendor, model, productUrl, specs }
+//   contract so callers don't have to change.
 app.post('/api/specs', async (req, res) => {
   const vendor = String(req.body?.vendor || '').trim();
   const model  = String(req.body?.model  || '').trim();
   if (!vendor || !model) {
     return res.status(400).json({ ok: false, error: 'vendor and model are required' });
   }
-  const result = await runPipelineModule('pipeline.all_vendor',
-    ['--json', '--vendor', vendor, '--model', model]);
-  if (!result.ok) return res.status(404).json(result);
-  res.json(result);
+  const { agentRes, matchedFrom, matchedTo } =
+    await resolveAgentWithOcrCorrection(vendor, model);
+  const payload = specPayloadFromAgent(agentRes, vendor, model);
+  if (matchedFrom) {
+    payload.matchedFrom = matchedFrom;
+    payload.matchedTo   = matchedTo;
+  }
+  res.status(payload.ok ? 200 : 404).json(payload);
 });
+
+// Score how similar two model strings are (0..1). Uses alphanumeric-only
+// comparison + longest-common-subsequence-lite + a strong bonus for shared
+// prefix, which matches how vendor SKUs work (the family stem is at the
+// front: "CRS326-...", "C9300-...", "EX4400-...").
+function _modelSimilarity(a, b) {
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const x = norm(a), y = norm(b);
+  if (!x || !y) return 0;
+  // Shared-prefix length (counted in chars; case-insensitive).
+  let pre = 0;
+  const minLen = Math.min(x.length, y.length);
+  while (pre < minLen && x[pre] === y[pre]) pre++;
+  // Common-chars-in-order over the longer string.
+  let common = 0, i = 0;
+  for (const ch of y) {
+    const idx = x.indexOf(ch, i);
+    if (idx >= 0) { common++; i = idx + 1; }
+  }
+  const longer = Math.max(x.length, y.length);
+  const lcsScore = common / longer;
+  const preScore = pre / minLen;
+  return 0.6 * preScore + 0.4 * lcsScore;
+}
+
+function _bestSuggestion(suggestions, originalModel) {
+  if (!Array.isArray(suggestions) || !suggestions.length) return null;
+  let best = null, bestScore = -1;
+  for (const s of suggestions) {
+    const score = _modelSimilarity(s, originalModel);
+    if (score > bestScore) { bestScore = score; best = s; }
+  }
+  // Threshold guards against picking a wildly different sibling (e.g.
+  // returning "CRS305" for a query about a novel "C9300" model that
+  // simply isn't in the DB). 0.5 lets "CRS326-246" → "CRS326-24G"
+  // through while rejecting unrelated picks.
+  return bestScore >= 0.5 ? best : null;
+}
+
+// Two-stage resolver: fast DB-only probe first, then live web fallback if
+// the DB-only probe found neither a direct hit nor a high-similarity
+// suggestion. This collapses the OCR-garbled case from ~16s
+// (live-deadline + retry) to ~1-2s (Python-startup + 0ms cache hit on the
+// retry), while still letting genuinely-novel models reach the live path.
+async function resolveAgentWithOcrCorrection(vendor, model) {
+  // Stage 1: DB-only probe. ~1-2s including py spawn.
+  const probe = await runAgentCli(['--no-live', `${vendor} ${model}`]);
+  if (probe.ok) {
+    return { agentRes: probe, matchedFrom: null, matchedTo: null };
+  }
+  const suggestions = probe?.response?.suggestions || [];
+  const best = _bestSuggestion(suggestions, model);
+  if (best && best.toLowerCase() !== model.toLowerCase()) {
+    const retry = await runAgentCli([`${vendor} ${best}`]);  // live=true here
+    if (retry.ok) {
+      return { agentRes: retry, matchedFrom: model, matchedTo: best };
+    }
+  }
+  // Stage 2: fall through to live lookup of the ORIGINAL query — for
+  // genuinely novel models the agent's multi-source web extractor may
+  // succeed even without a DB seed.
+  const live = await runAgentCli([`${vendor} ${model}`]);
+  return { agentRes: live, matchedFrom: null, matchedTo: null };
+}
+
+// Maps Agent_scrap's `answer()` response onto the UI's existing
+// /api/specs response contract: { ok, vendor, model, productUrl, specs }.
+// SPEC_KEY_LABELS lives next to this so a future spec field added to the
+// agent's DB shows up here without a code change on the React side.
+const SPEC_KEY_LABELS = {
+  family: 'Family', sku: 'SKU',
+  port_count: 'Ports', port_config: 'Port config', uplink_config: 'Uplinks',
+  port_speed_max_gbps: 'Max port speed (Gbps)',
+  switching_capacity_gbps: 'Switching capacity (Gbps)',
+  forwarding_rate_mpps: 'Forwarding rate (Mpps)',
+  buffer_mb: 'Buffer (MB)', latency_ns: 'Latency (ns)',
+  mac_table_size: 'MAC table',
+  poe_standard: 'PoE', poe_budget_w: 'PoE budget (W)',
+  power_typical_w: 'Power typical (W)', power_max_w: 'Power max (W)',
+  layer: 'Layer', features: 'Features', rack_units: 'Rack units',
+  nos: 'Network OS', status: 'Status', use_case: 'Typical use',
+};
+function specPayloadFromAgent(agentRes, reqVendor, reqModel) {
+  if (!agentRes || !agentRes.ok) {
+    return {
+      ok: false,
+      vendor: reqVendor,
+      model:  reqModel,
+      error: agentRes?.error
+        || `No spec match for "${reqVendor} ${reqModel}". The agent's web fallback may need 'pip install -r requirements.txt' in Agent/Agent_scrap.`,
+    };
+  }
+  const resp = agentRes.response || {};
+  const rec  = resp.result || (resp.results && resp.results[0]) || {};
+  const specs = {};
+  for (const [key, label] of Object.entries(SPEC_KEY_LABELS)) {
+    const v = rec[key];
+    if (v == null || v === '') continue;
+    specs[label] = Array.isArray(v) ? v.join(', ') : String(v);
+  }
+  return {
+    ok: true,
+    vendor:     rec.vendor || reqVendor,
+    model:      rec.model  || reqModel,
+    productUrl: rec.datasheet_url || rec.image_url || null,
+    imageUrl:   rec.image_url || null,
+    specs,
+    source: agentRes.elapsed_ms != null
+      ? `agent (${agentRes.elapsed_ms} ms)`
+      : 'agent',
+  };
+}
 
 // POST /api/sfp/analyze  body: { vendor, model, interfaces? }
 // → dynamically determines SFP slot type by scraping vendor datasheets,
@@ -4491,8 +5238,11 @@ app.post('/api/sfp/analyze', async (req, res) => {
 });
 
 // POST /api/firmware  body: { vendor, model, currentVersion }
-// → finds release notes / changelog on the vendor's site and queries
-//   NIST NVD for CVEs that mention the product. Best-effort by design.
+// → Pure Switch Spec Agent (Agent_scrap, clean branch). The agent's
+//   FirmwareAdvice now natively bundles version-compare, NIST NVD CVE data
+//   (security_advisories table populated by prefetch_firmware.py /
+//   nvd_fetcher), CISA KEV overlay, and vendor-level latest fallback. The
+//   Node side only re-shapes the response into the UI's existing contract.
 app.post('/api/firmware', async (req, res) => {
   const vendor         = String(req.body?.vendor || '').trim();
   const model          = String(req.body?.model  || '').trim();
@@ -4503,15 +5253,169 @@ app.post('/api/firmware', async (req, res) => {
       error: 'vendor, model, and currentVersion are required',
     });
   }
-  const result = await runPipelineModule('pipeline.firmware_check', [
-    '--json',
-    '--vendor', vendor,
-    '--model',  model,
-    '--current-version', currentVersion,
-  ]);
-  if (!result.ok) return res.status(404).json(result);
-  res.json(result);
+
+  // Resolve the canonical model via the shared OCR-correction probe so
+  // firmware_advise gets a real vendor + model (else it falls back to
+  // "Unknown" and skips the firmware DB / vendor-latest lookup entirely).
+  // The probe is fast (~1-2s for DB-only; only escalates to live for
+  // genuinely novel models).
+  const { matchedFrom, matchedTo } =
+    await resolveAgentWithOcrCorrection(vendor, model);
+  const firmwareModel = matchedTo || model;
+
+  const agentRes = await runAgentCli(
+    ['--firmware', `${vendor} ${firmwareModel}`, currentVersion]);
+  const payload = firmwarePayloadFromAgent(agentRes, {
+    vendor, model, currentVersion,
+  });
+  if (matchedFrom) {
+    payload.matchedFrom = matchedFrom;
+    payload.matchedTo = matchedTo;
+  }
+  res.status(payload.ok ? 200 : 404).json(payload);
 });
+
+// Maps the clean-branch agent's `{advice}` shape onto the UI's
+// /api/firmware contract: { ok, vendor, model, currentVersion,
+// latestVersion, upToDate, releaseNotesUrl, releaseNotesError, changelog,
+// cves, cvesKeywords, portalUrl? }.
+//
+// Agent natively returns:
+//   advice.diff.target.{version, release_notes_url, security_fixes,
+//                       bug_fixes, new_features, known_issues, deprecations}
+//   advice.advisories[]  ← {cve_id, severity, cvss_score, description,
+//                           references, actively_exploited, ...} from NIST NVD
+//   advice.portal_url, advice.release_notes_gated, advice.recommended_min_version
+function firmwarePayloadFromAgent(agentRes, req) {
+  if (!agentRes || !agentRes.ok) {
+    return {
+      ok: false,
+      vendor: req.vendor,
+      model:  req.model,
+      currentVersion: req.currentVersion,
+      error: agentRes?.error
+        || 'Agent failed to return a firmware response.',
+    };
+  }
+  const advice = agentRes.advice || {};
+  const target = (advice.diff && advice.diff.target) || null;
+  const agentLatest = (target && target.version) || null;
+
+  let upToDate = null;
+  if (agentLatest) {
+    upToDate = String(agentLatest).trim() === String(req.currentVersion).trim();
+  }
+
+  // Reshape advice.advisories[] (CVE rows from NVD) into the UI's CVE
+  // contract: { id, url, severity, score, description, matchesCurrentVersion }.
+  const cur = String(req.currentVersion || '').trim().toLowerCase();
+  const advisories = Array.isArray(advice.advisories) ? advice.advisories : [];
+  const cves = advisories.map(a => {
+    const refs = Array.isArray(a.references) ? a.references : [];
+    const firstRefUrl = refs.find(r => r && r.url)?.url;
+    const desc = a.description || '';
+    return {
+      id: a.cve_id,
+      url: firstRefUrl || `https://nvd.nist.gov/vuln/detail/${a.cve_id}`,
+      severity: a.severity,
+      score: a.cvss_score,
+      description: desc,
+      published: a.published,
+      matchesCurrentVersion: !!(cur && desc.toLowerCase().includes(cur)),
+      activelyExploited: !!a.actively_exploited,
+      kevDateAdded: a.kev_date_added || null,
+      fixedVersions: Array.isArray(a.fixed_versions) ? a.fixed_versions : [],
+    };
+  });
+
+  // Synthesize the changelog section from the target firmware's
+  // structured release-note fields — no extra web scrape needed since the
+  // agent's firmware DB already carries the diff breakdown.
+  const changelog = [];
+  if (target) {
+    const v = target.version || '';
+    const push = (label, list) => {
+      if (Array.isArray(list) && list.length) {
+        changelog.push({
+          section: v ? `${label} in ${v}` : label,
+          version: v || null,
+          text: list.join('\n'),
+        });
+      }
+    };
+    push('Security fixes', target.security_fixes);
+    push('Bug fixes',      target.bug_fixes);
+    push('New features',   target.new_features);
+    push('Known issues',   target.known_issues);
+    push('Deprecations',   target.deprecations);
+  }
+
+  return {
+    ok: true,
+    vendor:         agentRes.vendor || advice.vendor || req.vendor,
+    model:          agentRes.model  || req.model,
+    currentVersion: req.currentVersion,
+    latestVersion:  agentLatest,
+    upToDate,
+    releaseNotesUrl:   (target && target.release_notes_url) || null,
+    releaseNotesError: (!target && advice.message) ? advice.message : null,
+    releaseNotesGated: !!advice.release_notes_gated,
+    versionsFound: [],
+    changelog,
+    cves,
+    cvesKeywords: req.vendor || '',
+    portalUrl: advice.portal_url || null,
+    recommendedMinVersion: advice.recommended_min_version || null,
+    latestSource: `agent (${agentRes.elapsed_ms ?? '?'} ms)`,
+  };
+}
+
+// ── Switch Spec Agent (Agent_scrap) ───────────────────────────────────────
+// Wraps the standalone agent at Agent/Agent_scrap (cloned separately).
+// Cached DB hits return in ~1ms; unknown vendor/model falls back to a free
+// multi-engine web fetch + extraction in ~4s. No LLM, no API keys.
+const AGENT_DIR = path.join(PROJECT_ROOT, 'Agent', 'Agent_scrap');
+// Wall-clock budget per agent CLI invocation. Sized for the worst legit
+// case: Scan Results prefetches /api/specs for every unique (vendor, model)
+// in parallel, each spawning a fresh Python process (~1-2s on Windows) +
+// for unknown / OCR-garbled models the agent does a 4-9s live web fallback,
+// and concurrent search-engine fetches can compound under load. 60s lets
+// even pathological cases complete instead of surfacing as
+// "Agent lookup took too long" in the UI.
+const AGENT_TIMEOUT_MS = 60_000;
+
+function runAgentCli(extraArgs) {
+  return new Promise((resolve) => {
+    if (!fs.existsSync(path.join(AGENT_DIR, 'cli.py'))) {
+      return resolve({ ok: false, error: 'agent not installed at Agent/Agent_scrap' });
+    }
+    const child = spawnChild(pythonCmd, ['-u', 'cli.py', '--json', ...extraArgs], {
+      cwd: AGENT_DIR,
+      env: { ...process.env, PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' },
+    });
+    let stdout = '', stderr = '', settled = false;
+    const finish = (payload) => { if (settled) return; settled = true; resolve(payload); };
+    const killer = setTimeout(() => {
+      try { child.kill('SIGKILL'); } catch (_) {}
+      finish({ ok: false, error: 'Agent lookup took too long.', _stderr: stderr });
+    }, AGENT_TIMEOUT_MS);
+    child.stdout.on('data', c => { stdout += c.toString(); });
+    child.stderr.on('data', c => { stderr += c.toString(); });
+    child.on('error', (err) => {
+      clearTimeout(killer);
+      finish({ ok: false, error: 'Agent failed to start.', _spawnError: err.message });
+    });
+    child.on('close', () => {
+      clearTimeout(killer);
+      const lastLine = stdout.trim().split('\n').filter(Boolean).pop();
+      let parsed = null;
+      if (lastLine) { try { parsed = JSON.parse(lastLine); } catch (_) {} }
+      if (parsed) return finish(parsed);
+      finish({ ok: false, error: 'Agent returned no parsable JSON.',
+               _stderr: stderr.trim().slice(-500) });
+    });
+  });
+}
 
 // POST /api/scan/:rackId/ocr-devices
 // Runs pipeline.ocr_devices on a rack — per-device EasyOCR pass against

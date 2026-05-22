@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RackTrack Inspector</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #f4f6f9;
+      color: #1a2230;
+      margin: 0;
+      padding: 20px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 22px; }
+    .subtitle { color: #5b6878; font-size: 13px; margin-bottom: 20px; }
+
+    /* ── Section dividers ──────────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 30px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e3e8ef;
+    }
+    .section-header h2 { margin: 0; font-size: 18px; }
+    .section-desc { color: #5b6878; font-size: 13px; margin: -6px 0 14px; }
+
+    .panel {
+      background: white;
+      border: 1px solid #e3e8ef;
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 12px; font-size: 16px; }
+    .phase-label {
+      display: inline-block;
+      background: #1a2230;
+      color: white;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-right: 8px;
+      font-weight: 600;
+    }
+    .phase-label.green { background: #1f8a4c; }
+    .phase-label.blue  { background: #1a5fb4; }
+
+    label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 4px; color: #3a4658; }
+    select, input[type=file] {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid #d3dae3;
+      border-radius: 6px;
+      font-size: 13px;
+      background: white;
+    }
+    .controls { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; }
+    .controls > div { flex: 1; min-width: 180px; }
+    .controls > div.btn { flex: 0 0 auto; }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 6px;
+      background: #1f8a4c;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { background: #156b3a; }
+    button:disabled { background: #9bb1a4; cursor: not-allowed; }
+    .btn-refresh {
+      padding: 8px 18px;
+      background: #1a5fb4;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-refresh:hover { background: #154d96; }
+
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .full-width { grid-column: 1 / -1; }
+
+    .kv { font-size: 13px; line-height: 1.7; }
+    .kv .k { color: #5b6878; min-width: 130px; display: inline-block; }
+    .kv .v { color: #1a2230; font-weight: 500; }
+
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .badge.high   { background: #d4ecdc; color: #0e6630; }
+    .badge.medium { background: #fff1d6; color: #8a5a00; }
+    .badge.low    { background: #fde0e0; color: #8a1f1f; }
+
+    .signals { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .signal {
+      background: #eef3fb; color: #2b5278; padding: 3px 8px; border-radius: 10px;
+      font-size: 11px; font-family: "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    .step { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eef0f3; }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      flex: 0 0 24px; height: 24px; background: #1a2230; color: white;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .step-body { flex: 1; }
+    .step-name { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; color: #5b6878; margin-bottom: 3px; }
+    .step-evidence { font-size: 13px; color: #1a2230; line-height: 1.45; }
+    .step-conf { flex: 0 0 50px; text-align: right; font-size: 12px; font-family: "SF Mono", Menlo, Consolas, monospace; color: #5b6878; }
+    .conf-bar { height: 3px; background: #e3e8ef; border-radius: 2px; margin-top: 4px; overflow: hidden; }
+    .conf-bar-fill { height: 100%; background: #1f8a4c; }
+
+    .annotated-img { width: 100%; max-height: 500px; object-fit: contain; background: #1a2230; border-radius: 6px; display: block; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font-size: 12px; color: #3a4658; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+    .work-note {
+      background: #1a2230; color: #d4dfee; padding: 14px; border-radius: 6px;
+      font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; line-height: 1.55; white-space: pre-wrap;
+    }
+    .post-status { padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 10px; font-weight: 500; }
+    .post-status.will { background: #d4ecdc; color: #0e6630; }
+    .post-status.wont { background: #fde0e0; color: #8a1f1f; }
+
+    .ticket-detail {
+      background: #f8fafc; border-left: 3px solid #1f8a4c; padding: 10px 14px;
+      font-size: 13px; margin-top: 12px; line-height: 1.5; color: #3a4658; border-radius: 0 4px 4px 0;
+    }
+
+    .loading, .empty { text-align: center; padding: 40px; color: #5b6878; font-size: 14px; }
+    .error { background: #fde0e0; color: #8a1f1f; padding: 12px; border-radius: 6px; margin-top: 12px; font-size: 13px; }
+
+    /* ── Stat cards ────────────────────────────────────────── */
+    .stat-card {
+      background: white; border: 1px solid #e3e8ef; border-radius: 10px; padding: 16px; text-align: center;
+    }
+    .stat-card .stat-value { font-size: 32px; font-weight: 700; color: #1a2230; line-height: 1; }
+    .stat-card .stat-label { font-size: 12px; color: #5b6878; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .stat-value.green { color: #1f8a4c; }
+    .stat-card .stat-value.amber { color: #8a5a00; }
+    .stat-card .stat-value.red   { color: #8a1f1f; }
+
+    /* ── Insight cards ─────────────────────────────────────── */
+    .insight-card {
+      background: white; border: 1px solid #e3e8ef; border-left: 4px solid #1a5fb4;
+      border-radius: 0 8px 8px 0; padding: 14px 16px; margin-bottom: 10px;
+    }
+    .insight-card.warning  { border-left-color: #c97f00; }
+    .insight-card.critical { border-left-color: #8a1f1f; }
+    .insight-card.info     { border-left-color: #1a5fb4; }
+    .insight-title { font-weight: 600; font-size: 14px; color: #1a2230; margin-bottom: 4px; }
+    .insight-detail { font-size: 13px; color: #5b6878; line-height: 1.45; }
+    .insight-badge {
+      display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; padding: 2px 7px; border-radius: 3px; margin-bottom: 6px;
+    }
+    .insight-badge.warning  { background: #fff1d6; color: #8a5a00; }
+    .insight-badge.critical { background: #fde0e0; color: #8a1f1f; }
+    .insight-badge.info     { background: #eef3fb; color: #2b5278; }
+
+    /* ── Data tables ───────────────────────────────────────── */
+    table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.data-table th {
+      text-align: left; padding: 8px 10px; background: #f4f6f9; color: #5b6878;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e3e8ef;
+    }
+    table.data-table td { padding: 8px 10px; border-bottom: 1px solid #eef0f3; }
+
+    .rule-phrase {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      background: #eef3fb; padding: 2px 8px; border-radius: 4px; color: #2b5278;
+    }
+
+    /* ── Bar chart ─────────────────────────────────────────── */
+    .bar-chart { display: flex; align-items: end; gap: 6px; height: 120px; padding: 10px 0; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar-fill { width: 100%; max-width: 40px; border-radius: 3px 3px 0 0; min-height: 2px; }
+    .bar-label { font-size: 10px; color: #5b6878; text-align: center; }
+    .bar-value { font-size: 11px; font-weight: 600; color: #1a2230; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>RackTrack Inspector</h1>
+  <div class="subtitle">Incident analysis, feedback scoring, and proactive insights — all in one view.</div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 1: Inspector                                            -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div class="section-header">
+    <span class="phase-label">INSPECTOR</span>
+    <h2>Per-ticket analysis</h2>
+  </div>
+  <div class="section-desc">Pick an active incident, upload a rack photo, see what the agent and vision pipeline produce.</div>
+
+  <div class="panel">
+    <div class="controls">
+      <div>
+        <label for="incident">Active Incident</label>
+        <select id="incident"><option>Loading...</option></select>
+      </div>
+      <div>
+        <label for="image">Rack / Switch Image</label>
+        <input type="file" id="image" accept="image/*" />
+      </div>
+      <div class="btn">
+        <button id="run" disabled>Analyze</button>
+      </div>
+    </div>
+    <div id="ticketDetail" class="ticket-detail" style="display: none;"></div>
+    <div id="error" class="error" style="display: none;"></div>
+  </div>
+  <div id="results"></div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 2: Plan 5 — Feedback Loop                               -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div class="section-header">
+    <span class="phase-label green">PLAN 5</span>
+    <h2>Learn from what worked</h2>
+    <div style="margin-left:auto;">
+      <button class="btn-refresh" onclick="refreshFeedback()">Refresh from ServiceNow</button>
+    </div>
+  </div>
+  <div class="section-desc">Every resolved ticket is checked — did the agent guess the problem correctly? Scoreboard updates automatically.</div>
+  <div id="feedback-content"><div class="loading">Click "Refresh from ServiceNow" to load the scoreboard.</div></div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 3: Plan 6 — Proactive Scanner                           -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div class="section-header">
+    <span class="phase-label blue">PLAN 6</span>
+    <h2>Work between tickets</h2>
+    <div style="margin-left:auto;">
+      <button class="btn-refresh" onclick="refreshProactive()">Scan Now</button>
+    </div>
+  </div>
+  <div class="section-desc">The agent looks at your data center even when nothing is broken, and surfaces things humans haven't asked about.</div>
+  <div id="proactive-content"><div class="loading">Click "Scan Now" to generate proactive insights.</div></div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   Helpers
+   ═══════════════════════════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function confBadge(c) {
+  if (c >= 0.7) return `<span class="badge high">HIGH ${c.toFixed(2)}</span>`;
+  if (c >= 0.4) return `<span class="badge medium">MEDIUM ${c.toFixed(2)}</span>`;
+  return `<span class="badge low">LOW ${c.toFixed(2)}</span>`;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Inspector
+   ═══════════════════════════════════════════════════════════════════════ */
+const incSel    = document.getElementById('incident');
+const fileInput = document.getElementById('image');
+const runBtn    = document.getElementById('run');
+const detailDiv = document.getElementById('ticketDetail');
+const errorDiv  = document.getElementById('error');
+const resultsEl = document.getElementById('results');
+let incidentsCache = [];
+
+async function loadIncidents() {
+  try {
+    const res = await fetch('/api/incidents');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    incidentsCache = data;
+    incSel.innerHTML = '<option value="">-- select an incident --</option>' +
+      data.map(i => `<option value="${i.sys_id}">${i.number} -- ${i.short_description} [${i.priority}]</option>`).join('');
+  } catch (e) {
+    incSel.innerHTML = '<option>Error loading</option>';
+    showError('Could not load incidents: ' + e.message);
+  }
+}
+
+incSel.addEventListener('change', () => {
+  const sel = incidentsCache.find(i => i.sys_id === incSel.value);
+  if (sel) {
+    detailDiv.style.display = 'block';
+    detailDiv.textContent = `${sel.number} \u2022 ${sel.priority} \u2022 ${sel.state}\n${sel.short_description}`;
+  } else { detailDiv.style.display = 'none'; }
+  updateRunButton();
+});
+fileInput.addEventListener('change', updateRunButton);
+function updateRunButton() { runBtn.disabled = !(incSel.value && fileInput.files.length); }
+function showError(msg) { errorDiv.textContent = msg; errorDiv.style.display = 'block'; }
+function clearError() { errorDiv.style.display = 'none'; }
+
+runBtn.addEventListener('click', async () => {
+  clearError();
+  resultsEl.innerHTML = '<div class="panel loading">Running agent + vision pipeline...</div>';
+  runBtn.disabled = true;
+  const form = new FormData();
+  form.append('incident_sys_id', incSel.value);
+  form.append('image', fileInput.files[0]);
+  try {
+    const res = await fetch('/api/analyze', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+    renderInspector(data);
+  } catch (e) {
+    resultsEl.innerHTML = '';
+    showError('Analysis failed: ' + e.message);
+  } finally { runBtn.disabled = false; }
+});
+
+function renderInspector(d) {
+  const e = d.agent_extraction, r = d.agent_reasoning, v = d.vision || {}, w = d.work_note_preview;
+  const visionImg = v.annotated_image_b64
+    ? `<img class="annotated-img" src="data:image/jpeg;base64,${v.annotated_image_b64}" />`
+    : (v.error ? `<div class="error">Vision error: ${esc(v.error)}</div>` : `<div class="empty">No annotated image returned.</div>`);
+  const vd = v.device_identification || {}, vp = v.port_grid_detection || {}, vt = v.target_port_analysis || {};
+
+  resultsEl.innerHTML = `
+    <div class="grid-2col">
+      <div class="panel">
+        <h2><span class="phase-label">AGENT</span>Extraction</h2>
+        ${confBadge(e.confidence)}
+        <div class="kv" style="margin-top:12px;">
+          <div><span class="k">Failure mode:</span> <span class="v">${esc(e.failure_mode)}</span></div>
+          <div><span class="k">Device:</span> <span class="v">${esc(e.affected_device) || '<i style="color:#a0a8b3">none</i>'}</span></div>
+          <div><span class="k">Port:</span> <span class="v">${e.affected_port ?? '<i style="color:#a0a8b3">none</i>'}</span></div>
+          <div><span class="k">Role:</span> <span class="v">${esc(e.affected_role)}</span></div>
+          <div><span class="k">Urgency:</span> <span class="v">${esc(e.urgency_signal)}</span></div>
+          <div><span class="k">Summary:</span> <span class="v">${esc(e.one_line_summary)}</span></div>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="k" style="font-size:12px;margin-bottom:4px;">Signals (${e.signals_used.length}):</div>
+          <div class="signals">${e.signals_used.map(s => `<span class="signal">${esc(s)}</span>`).join('')}</div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2><span class="phase-label">VISION</span>Annotated Image</h2>
+        ${visionImg}
+        <div class="legend">
+          <div class="legend-item"><span class="swatch" style="background:rgb(0,120,255)"></span> Switch</div>
+          <div class="legend-item"><span class="swatch" style="background:rgb(0,200,255)"></span> Patch Panel</div>
+          <div class="legend-item"><span class="swatch" style="background:rgb(60,180,60)"></span> Server</div>
+          <div class="legend-item"><span class="swatch" style="background:rgb(220,220,0)"></span> Unit grid</div>
+          <div class="legend-item"><span class="swatch" style="background:rgb(200,0,200)"></span> Target device</div>
+          <div class="legend-item"><span class="swatch" style="background:rgb(220,0,0)"></span> Main ports</div>
+          <div class="legend-item"><span class="swatch" style="background:rgb(0,220,0)"></span> Target port</div>
+        </div>
+        <div class="kv" style="margin-top:12px;">
+          <div><span class="k">Devices detected:</span> <span class="v">${vd.devices_detected_count ?? '--'}</span></div>
+          <div><span class="k">Target class:</span> <span class="v">${esc(vd.target_class_expected)} ${vd.target_device_found ? 'found' : 'not found'}</span></div>
+          <div><span class="k">Main ports detected:</span> <span class="v">${vp.main_port_count ?? '--'}</span></div>
+          <div><span class="k">Target port visible:</span> <span class="v">${vt.target_port_visible ? 'yes' : 'no'}</span></div>
+          ${vt.target_port ? `
+            <div><span class="k">Port status:</span> <span class="v">${esc(vt.target_port.status)}</span></div>
+            <div><span class="k">Verdict:</span> <span class="v">${esc(vt.verdict)}</span></div>
+          ` : ''}
+        </div>
+      </div>
+      <div class="panel full-width">
+        <h2><span class="phase-label">AGENT</span>Reasoning chain</h2>
+        ${r.map((step, i) => `
+          <div class="step">
+            <div class="step-num">${i+1}</div>
+            <div class="step-body">
+              <div class="step-name">${esc(step.step)}</div>
+              <div class="step-evidence">${esc(step.evidence)}</div>
+              <div class="conf-bar"><div class="conf-bar-fill" style="width:${Math.round(step.confidence*100)}%"></div></div>
+            </div>
+            <div class="step-conf">${step.confidence.toFixed(2)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="panel full-width">
+        <h2><span class="phase-label">PREVIEW</span>Work note (not posted)</h2>
+        <div class="post-status ${w.would_post ? 'will' : 'wont'}">
+          ${w.would_post ? 'WOULD POST' : 'WOULD NOT POST'} - ${esc(w.status)}
+        </div>
+        <div class="kv" style="margin-bottom:10px;">
+          <div><span class="k">Analysis hash:</span> <span class="v" style="font-family:monospace;">${esc(w.hash)}</span></div>
+        </div>
+        <div class="work-note">${esc(w.text)}</div>
+      </div>
+    </div>`;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Plan 5 — Feedback Loop / Scoreboard
+   ═══════════════════════════════════════════════════════════════════════ */
+async function refreshFeedback() {
+  const el = document.getElementById('feedback-content');
+  el.innerHTML = '<div class="loading">Fetching resolved incidents and evaluating predictions...</div>';
+  try {
+    const res = await fetch('/api/feedback/refresh', { method: 'POST' });
+    const data = await res.json();
+    renderFeedback(data.scoreboard || data);
+  } catch (e) {
+    el.innerHTML = `<div class="error">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderFeedback(s) {
+  const el = document.getElementById('feedback-content');
+  const accClass = s.accuracy_pct >= 70 ? 'green' : s.accuracy_pct >= 50 ? 'amber' : 'red';
+
+  let monthBars = '';
+  if (s.monthly && s.monthly.length > 0) {
+    const maxTotal = Math.max(...s.monthly.map(m => m.total), 1);
+    monthBars = s.monthly.map(m => {
+      const h = Math.max(4, Math.round(m.total / maxTotal * 100));
+      return `<div class="bar-col">
+        <div class="bar-value">${m.accuracy_pct}%</div>
+        <div class="bar-fill" style="height:${h}px;background:${m.accuracy_pct>=70?'#1f8a4c':m.accuracy_pct>=50?'#c97f00':'#8a1f1f'}"></div>
+        <div class="bar-label">${m.month}</div>
+        <div class="bar-label">${m.correct}/${m.total}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const workedRows = (s.patterns_that_worked||[]).map(p =>
+    `<tr><td><span class="rule-phrase">${esc(p.pattern)}</span></td><td>${p.accuracy_pct}%</td><td>${p.count}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="color:#5b6878">No data yet</td></tr>';
+
+  const misledRows = (s.patterns_that_misled||[]).map(p =>
+    `<tr><td><span class="rule-phrase">${esc(p.pattern)}</span></td><td>${p.accuracy_pct}%</td><td>${p.count}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="color:#5b6878">No data yet</td></tr>';
+
+  const calRows = (s.calibration||[]).map(c =>
+    `<tr><td>${c.bin}</td><td>${c.correct}/${c.total}</td><td>${c.accuracy_pct}%</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="color:#5b6878">No data yet</td></tr>';
+
+  el.innerHTML = `
+    <div class="grid-3col" style="margin-bottom:14px">
+      <div class="stat-card">
+        <div class="stat-value ${accClass}">${s.accuracy_pct}%</div>
+        <div class="stat-label">Overall Accuracy</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${s.total_correct}</div>
+        <div class="stat-label">Correct Predictions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${s.total_evaluated}</div>
+        <div class="stat-label">Total Evaluated</div>
+      </div>
+    </div>
+    ${monthBars ? `<div class="panel">
+      <h2><span class="phase-label green">MONTHLY</span>Accuracy over time</h2>
+      <div class="bar-chart">${monthBars}</div>
+    </div>` : ''}
+    <div class="grid-2col">
+      <div class="panel">
+        <h2><span class="phase-label green">WORKED</span>Patterns that worked</h2>
+        <table class="data-table">
+          <thead><tr><th>Pattern</th><th>Accuracy</th><th>Count</th></tr></thead>
+          <tbody>${workedRows}</tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h2><span class="phase-label" style="background:#8a1f1f">MISLED</span>Patterns that misled</h2>
+        <table class="data-table">
+          <thead><tr><th>Pattern</th><th>Accuracy</th><th>Count</th></tr></thead>
+          <tbody>${misledRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span class="phase-label green">CALIBRATION</span>Confidence vs reality</h2>
+      <p style="color:#5b6878;font-size:12px;margin-bottom:10px;">Are high-confidence predictions actually correct more often?</p>
+      <table class="data-table">
+        <thead><tr><th>Confidence Bin</th><th>Correct / Total</th><th>Actual Accuracy</th></tr></thead>
+        <tbody>${calRows}</tbody>
+      </table>
+    </div>`;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Plan 6 — Proactive Scanner
+   ═══════════════════════════════════════════════════════════════════════ */
+async function refreshProactive() {
+  const el = document.getElementById('proactive-content');
+  el.innerHTML = '<div class="loading">Scanning CMDB and incident data for proactive insights...</div>';
+  try {
+    const res = await fetch('/api/proactive/refresh', { method: 'POST' });
+    const data = await res.json();
+    renderProactive(data);
+  } catch (e) {
+    el.innerHTML = `<div class="error">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderProactive(insights) {
+  const el = document.getElementById('proactive-content');
+  if (!insights || insights.length === 0) {
+    el.innerHTML = '<div class="panel empty">No proactive insights found. Your data center looks clean!</div>';
+    return;
+  }
+
+  const cards = insights.map(ins => `
+    <div class="insight-card ${esc(ins.severity||'info')}">
+      <span class="insight-badge ${esc(ins.severity||'info')}">${esc(ins.type||'insight')}</span>
+      <div class="insight-title">${esc(ins.title)}</div>
+      <div class="insight-detail">${esc(ins.detail)}</div>
+    </div>
+  `).join('');
+
+  const critCount = insights.filter(i => i.severity==='critical').length;
+  const warnCount = insights.filter(i => i.severity==='warning').length;
+  const infoCount = insights.filter(i => i.severity==='info').length;
+
+  el.innerHTML = `
+    <div class="grid-3col" style="margin-bottom:14px">
+      <div class="stat-card">
+        <div class="stat-value red">${critCount}</div>
+        <div class="stat-label">Critical</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value amber">${warnCount}</div>
+        <div class="stat-label">Warnings</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${infoCount}</div>
+        <div class="stat-label">Informational</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Daily insight cards</h2>
+      ${cards}
+    </div>`;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Init
+   ═══════════════════════════════════════════════════════════════════════ */
+loadIncidents();
+</script>
+</body>
+</html>

@@ -42,7 +42,7 @@ def emit(obj):
 
 log("importing pipeline modules (slow, one-time)")
 from pipeline import runner  # noqa: E402
-from pipeline.quality_check import check_tilt, check_letterbox, check_side_view  # noqa: E402
+from pipeline.quality_check import check_tilt, check_letterbox, check_side_view, check_occlusion  # noqa: E402
 from pipeline.detection import load_model, detect_devices_dual, normalize_class_name  # noqa: E402
 from pipeline.cable import load_cable_model, load_port_identify_model  # noqa: E402
 import cv2  # noqa: E402
@@ -104,11 +104,26 @@ def handle_quality_check(req):
         return tilt
     side = check_side_view(img)
 
+    # Occlusion check — image-based cable-clutter detector. May return a
+    # hard fail (ok=False, kind='occlusion') for severely cabled racks,
+    # in which case we surface it as a quality choice so the user can
+    # pick multi-angle capture or proceed-anyway.
+    occ = check_occlusion(img)
+    if not occ.get("ok"):
+        return occ
+
     merged = {}
     merged.update(tilt.get("metrics", {}))
     merged.update(side.get("metrics", {}))
+    merged.update(occ.get("metrics", {}))
     result = {"ok": True, "metrics": merged}
-    if side.get("warning"):
+    # side_view + occlusion can both emit soft warnings; prefer occlusion
+    # since it points to a remediable action (multi-angle), and side_view
+    # is more advisory.
+    if occ.get("warning"):
+        result["warning"] = occ["warning"]
+        result["warning_msg"] = occ["warning_msg"]
+    elif side.get("warning"):
         result["warning"] = side["warning"]
         result["warning_msg"] = side["error"]
     return result
@@ -430,6 +445,198 @@ def handle_pipeline(req):
         sys.argv = old_argv
 
 
+def handle_extract_ticket(req):
+    """Zero-LLM ticket-text extraction + reasoning chain + work-note preview.
+    Pure CPU/regex work — no model loads, so it's near-instant inside the
+    already-warm worker.
+
+    Also auto-records the prediction into the feedback-loop state file so
+    later resolution-feedback can score the agent's accuracy.
+    """
+    from pipeline.agent import (
+        extract_incident, build_reasoning, _format_work_note,
+        _analysis_hash, POST_CONFIDENCE_FLOOR,
+    )
+    from pipeline.agent_feedback import record_prediction
+    import json as _json
+
+    text = req.get("text") or ""
+    cmdb_facts = req.get("cmdb_facts") or {}
+    cmdb_device_list = req.get("cmdb_device_list")
+    last_scan_path = req.get("last_scan_path")
+
+    extracted = extract_incident(text, cmdb_device_list=cmdb_device_list)
+
+    # Auto-record prediction (best-effort; never fails the request).
+    inc_number = req.get("incident_number")
+    if inc_number:
+        try:
+            record_prediction(inc_number, extracted)
+        except Exception as exc:
+            log(f"feedback record_prediction failed: {exc}")
+
+    last_scan = None
+    if last_scan_path and os.path.exists(last_scan_path):
+        try:
+            with open(last_scan_path, encoding="utf-8") as f:
+                last_scan = _json.load(f)
+        except Exception:
+            last_scan = None
+
+    ticket = {
+        "incident_number":   inc_number,
+        "sys_id":            req.get("sys_id"),
+        "short_description": req.get("short_description"),
+        "priority":          req.get("priority"),
+        "cmdb":              cmdb_facts,
+        "extracted":         extracted,
+    }
+    reasoning = build_reasoning(ticket, extracted, cmdb_facts, last_scan=last_scan)
+    ticket["reasoning"] = reasoning
+
+    work_note = _format_work_note(ticket)
+    confidence = extracted.get("confidence", 0.0)
+    would_post = confidence >= POST_CONFIDENCE_FLOOR
+    status = (
+        f"would post (confidence >= {POST_CONFIDENCE_FLOOR:.1f})"
+        if would_post
+        else f"would NOT post (confidence {confidence:.2f} below floor {POST_CONFIDENCE_FLOOR:.1f})"
+    )
+
+    return {
+        "ok": True,
+        "extraction": extracted,
+        "reasoning":  reasoning,
+        "work_note_preview": {
+            "text":       work_note,
+            "would_post": bool(would_post),
+            "status":     status,
+            "hash":       _analysis_hash(extracted, reasoning),
+        },
+    }
+
+
+# ─────────────────────────────────────────── Agent dashboard handlers ───────
+# All ServiceNow-talking handlers expect sn_creds in the request body:
+#   { "sn_creds": { "instance": "...", "user": "...", "password": "..." } }
+# These are passed from the Node server (loaded from server/.env or
+# s_agent/.env). Worker never reads SN creds from env directly.
+
+def _sn_context(req):
+    """Returns (sn_base, sn_auth, sn_headers) or (None, None, None) when creds missing."""
+    creds = req.get("sn_creds") or {}
+    inst = creds.get("instance")
+    user = creds.get("user")
+    pw   = creds.get("password")
+    if not (inst and user and pw):
+        return None, None, None
+    base = f"https://{inst}.service-now.com/api/now"
+    return base, (user, pw), {"Accept": "application/json"}
+
+
+def handle_feedback_scoreboard(req):
+    """Return the agent accuracy scoreboard (no SN call — local state only)."""
+    from pipeline.agent_feedback import get_scoreboard
+    return {"ok": True, "scoreboard": get_scoreboard()}
+
+
+def handle_feedback_refresh(req):
+    """Fetch recently resolved incidents from SN, evaluate them, return both
+    the per-incident evaluations and the updated scoreboard."""
+    from pipeline.agent_feedback import process_resolved_incidents, get_scoreboard
+    sn_base, sn_auth, sn_headers = _sn_context(req)
+    if not sn_base:
+        return {"ok": False, "error": "ServiceNow credentials not configured (set SN_INSTANCE/SN_USER/SN_PASSWORD)"}
+    try:
+        evaluations = process_resolved_incidents(sn_base, sn_auth, sn_headers, limit=int(req.get("limit") or 50))
+    except Exception as exc:
+        return {"ok": False, "error": f"feedback refresh failed: {exc}"}
+    return {"ok": True, "evaluations": evaluations, "scoreboard": get_scoreboard()}
+
+
+def handle_proactive_cached(req):
+    """Return cached proactive insights (no SN call)."""
+    from pipeline.agent_proactive import get_cached_insights
+    return {"ok": True, "insights": get_cached_insights()}
+
+
+def handle_proactive_refresh(req):
+    """Regenerate proactive insights from live SN data + return them."""
+    from pipeline.agent_proactive import generate_proactive_insights
+    sn_base, sn_auth, sn_headers = _sn_context(req)
+    if not sn_base:
+        return {"ok": False, "error": "ServiceNow credentials not configured (set SN_INSTANCE/SN_USER/SN_PASSWORD)"}
+    try:
+        insights = generate_proactive_insights(sn_base, sn_auth, sn_headers)
+    except Exception as exc:
+        return {"ok": False, "error": f"proactive refresh failed: {exc}"}
+    return {"ok": True, "insights": insights}
+
+
+def handle_post_work_note(req):
+    """Actually POST the agent's work-note text to ServiceNow.
+
+    Request shape:
+      { "command": "post_work_note",
+        "ticket":  { incident_number, sys_id, cmdb, extracted, reasoning, ... },
+        "sn_creds": { instance, user, password },
+        "force":    bool   # optional — skip rate-limit + no-change guards }
+
+    Returns whatever auto_post_analysis returns:
+      { "ok": True, "status": "posted"|"skipped_low_confidence"|... }
+    """
+    from pipeline.agent import auto_post_analysis, POST_CONFIDENCE_FLOOR
+    sn_base, sn_auth, sn_headers = _sn_context(req)
+    if not sn_base:
+        return {"ok": False, "error": "ServiceNow credentials not configured"}
+
+    ticket = req.get("ticket") or {}
+    if not ticket.get("sys_id"):
+        return {"ok": False, "error": "ticket.sys_id is required"}
+    if not ticket.get("extracted") or not ticket.get("reasoning"):
+        return {"ok": False, "error": "ticket must include both 'extracted' and 'reasoning' (run extract_ticket first)"}
+
+    import requests as _rq
+
+    class _SnClient:
+        """Minimal SN client — only implements add_work_note() because
+        that's all auto_post_analysis() calls. Posts via PATCH to the
+        incident table with the `work_notes` field. Per SN convention,
+        any string written to work_notes is appended as a new note."""
+        def __init__(self, base, auth, headers):
+            self.base = base; self.auth = auth; self.headers = headers
+        def add_work_note(self, sys_id, note_text):
+            r = _rq.patch(
+                f"{self.base}/table/incident/{sys_id}",
+                params={"sysparm_input_display_value": "true"},
+                json={"work_notes": note_text},
+                auth=self.auth,
+                headers={**self.headers, "Content-Type": "application/json"},
+                timeout=20,
+            )
+            r.raise_for_status()
+            return r.json().get("result", {})
+
+    sn_client = _SnClient(sn_base, sn_auth, sn_headers)
+
+    # If force=True, bypass guards by temporarily ignoring posted-state.
+    # auto_post_analysis() checks hash + 24h rate limit; force unblocks
+    # both by deleting the posted record for this incident first.
+    if req.get("force"):
+        from pipeline.agent import _load_posted, _save_posted
+        inc = ticket.get("incident_number")
+        posted = _load_posted()
+        if inc in posted:
+            del posted[inc]
+            _save_posted(posted)
+
+    try:
+        result = auto_post_analysis(ticket, sn_client, related_in_batch=req.get("related"))
+    except Exception as exc:
+        return {"ok": False, "error": f"post failed: {exc}"}
+    return {"ok": True, **result}
+
+
 def handle_request(req):
     command = req.get("command")
     if command == "quality_check":
@@ -442,6 +649,18 @@ def handle_request(req):
         return handle_split_video_racks(req)
     if command == "relabel_port_count":
         return handle_relabel_port_count(req)
+    if command == "extract_ticket":
+        return handle_extract_ticket(req)
+    if command == "feedback_scoreboard":
+        return handle_feedback_scoreboard(req)
+    if command == "feedback_refresh":
+        return handle_feedback_refresh(req)
+    if command == "proactive_cached":
+        return handle_proactive_cached(req)
+    if command == "proactive_refresh":
+        return handle_proactive_refresh(req)
+    if command == "post_work_note":
+        return handle_post_work_note(req)
     if command in ("analyze", "select"):
         return handle_pipeline(req)
     return {"ok": False, "error": f"Unknown command: {command}"}

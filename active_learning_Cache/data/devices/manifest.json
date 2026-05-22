@@ -1,9 +1,9 @@
 {
   "model": "devices",
-  "pending": 708,
-  "total": 708,
+  "pending": 885,
+  "total": 885,
   "threshold": 200,
   "last_export": null,
   "history": [],
-  "refreshed_ts": "2026-05-14T06:25:44+00:00"
+  "refreshed_ts": "2026-05-22T09:17:42+00:00"
 }
