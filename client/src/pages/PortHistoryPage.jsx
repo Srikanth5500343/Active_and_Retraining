@@ -157,6 +157,32 @@ function operClass(oper) {
   if (oper === 'down') return styles.down;
   return styles.unknown;
 }
+// Collapse offset lookups that resolve to the same snapshot into one row.
+// Without this, a port whose only stored snapshot is from before all five
+// windows shows five identical rows (the same DB row returned five times,
+// since snapshots are written only on change).
+function dedupedOffsets(offsets) {
+  if (!offsets) return [];
+  const seen = new Map();
+  const order = [];
+  for (const k of OFFSET_KEYS) {
+    const s = offsets[k];
+    if (!s) continue;
+    const sig = s.id != null ? `id:${s.id}` : `ts:${s.ts}`;
+    if (seen.has(sig)) {
+      seen.get(sig).lastKey = k;
+    } else {
+      const entry = { sig, snap: s, firstKey: k, lastKey: k };
+      seen.set(sig, entry);
+      order.push(entry);
+    }
+  }
+  return order.map((e) => ({
+    sig: e.sig,
+    snap: e.snap,
+    label: e.firstKey === e.lastKey ? e.firstKey : `${e.firstKey}+`,
+  }));
+}
 // Time-axis tick formatter — short HH:MM for windows ≤ 1d, otherwise
 // includes the date so day-boundary transitions read correctly.
 function fmtTick(ms, windowSec) {
@@ -519,9 +545,8 @@ function InterfaceDetail({ deviceId, device, port, onClose }) {
         windowSec={windowSec}
       />
 
-      {/* Value at... — only rows that actually have a snapshot. Hides the
-          mostly-empty "—" rows that dominated the old layout. */}
-      {OFFSET_KEYS.some((k) => offsets[k]) && (
+      {/* Value at... — see dedupedOffsets() for why we collapse rows. */}
+      {dedupedOffsets(offsets).length > 0 && (
         <>
           <h3 className={styles.subTitle}>Value at</h3>
           <div className={styles.offsetTableWrap}>
@@ -530,11 +555,10 @@ function InterfaceDetail({ deviceId, device, port, onClose }) {
                 <tr><th>Ago</th><th>Oper</th><th>Admin</th><th>Speed</th><th>Recorded</th></tr>
               </thead>
               <tbody>
-                {OFFSET_KEYS.filter((k) => offsets[k]).map((k) => {
-                  const s = offsets[k];
+                {dedupedOffsets(offsets).map(({ sig, snap: s, label }) => {
                   return (
-                    <tr key={k}>
-                      <td>{k}</td>
+                    <tr key={sig}>
+                      <td>{label}</td>
                       <td className={operClass(s.oper)}>{s.oper ?? '—'}</td>
                       <td>{s.admin ?? '—'}</td>
                       <td>{fmtSpeed(s.speed_mbps)}</td>

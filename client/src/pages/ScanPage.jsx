@@ -1707,20 +1707,53 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Primary tabs */}
         <div className={styles.tabs}>
           {[
             { id:'upload', label:'Upload', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> },
             { id:'camera', label:'Camera', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> },
-            { id:'multi',  label:'Tall Rack', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1"/><rect x="3" y="17" width="18" height="5" rx="1"/></svg> },
-            { id:'cabled', label:'Cabled Rack', icon:<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="3" width="8" height="18" rx="1"/><path d="M2 12 L8 12"/><path d="M16 12 L22 12"/><path d="M4 9 L8 12 L4 15"/><path d="M20 9 L16 12 L20 15"/></svg> },
           ].map(t => (
-            <button key={t.id} className={`${styles.tab} ${tab===t.id ? styles.tabOn : ''}`}
-              onClick={() => { setTab(t.id); setFile(null); setMultiFiles([]); setCabledFiles([]); setError(null); setQualityChoice(null); }}>
+            <button
+              key={t.id}
+              className={`${styles.tab} ${(t.id === 'upload' ? tab !== 'camera' : tab === 'camera') ? styles.tabOn : ''}`}
+              onClick={() => {
+                setTab(t.id);
+                setFile(null);
+                setMultiFiles([]);
+                setCabledFiles([]);
+                setError(null);
+                setQualityChoice(null);
+              }}>
               {t.icon}{t.label}
             </button>
           ))}
         </div>
+
+        {tab !== 'camera' && (
+          <div className={styles.uploadModes}>
+            {[
+              { id:'upload', label:'SINGLE', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="3" width="12" height="18" rx="1.5"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="17" x2="15" y2="17"/></svg> },
+              { id:'multi', label:'MULTI', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1"/><rect x="3" y="17" width="18" height="5" rx="1"/></svg> },
+              { id:'cabled', label:'OCCULDED', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="3" width="8" height="18" rx="1"/><path d="M2 12 L8 12"/><path d="M16 12 L22 12"/><path d="M4 9 L8 12 L4 15"/><path d="M20 9 L16 12 L20 15"/></svg> },
+            ].map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`${styles.uploadModeBtn} ${tab === t.id ? styles.uploadModeOn : ''}`}
+                onClick={() => {
+                  setTab(t.id);
+                  setFile(null);
+                  setMultiFiles([]);
+                  setCabledFiles([]);
+                  setError(null);
+                  setQualityChoice(null);
+                }}>
+                {t.icon}
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Expected-rack banner — only shows in ticket mode when a CMDB rack
             record exists for the ticket. Tells the tech which physical rack

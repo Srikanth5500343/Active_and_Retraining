@@ -25,6 +25,7 @@ import PortHistoryPage from './pages/PortHistoryPage.jsx';
 import TenantMatPage from './pages/TenantMatPage.jsx';
 import BenchmarkPage from './pages/BenchmarkPage.jsx';
 import VRPage from './pages/VRPage.jsx';
+import VRInspectPage from './pages/VRInspectPage.jsx';
 import { ShutterProvider } from './ShutterContext.jsx';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 import { ThemeProvider } from './ThemeContext.jsx';
@@ -72,7 +73,7 @@ export default function App() {
             <AndroidBackHandler />
             <PointerGlow />
             <Routes>
-            <Route path="/" element={<><HomePage /><BottomNav /></>} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/benchmark" element={<BenchmarkPage />} />
             <Route path="/login"  element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
@@ -125,6 +126,9 @@ export default function App() {
             } />
             <Route path="/results/:rackId/vr" element={
               <ProtectedRoute><VRPage /></ProtectedRoute>
+            } />
+            <Route path="/results/:rackId/vr-inspect" element={
+              <ProtectedRoute><VRInspectPage /></ProtectedRoute>
             } />
             <Route path="/results/:rackId/topology" element={
               <ProtectedRoute><TopologyPage /></ProtectedRoute>

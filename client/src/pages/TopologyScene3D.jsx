@@ -367,18 +367,13 @@ function RackChassis({ totalU, chassisU, rackName, hasShelf, leftOpen, rightOpen
         })}
       </group>
 
-      {/* Back panel — dark tinted glass */}
+      {/* Back panel — solid metal */}
       <mesh position={[0, 0, -totalD/2 + 0.012]}>
-        <planeGeometry args={[totalW - 0.04, totalH - 0.04]} />
+        <boxGeometry args={[totalW - 0.04, totalH - 0.04, 0.03]} />
         <meshStandardMaterial
-          color="#0a1228"
-          metalness={0.4}
-          roughness={0.35}
-          transparent
-          opacity={0.55}
-          emissive="#0e1a3a"
-          emissiveIntensity={0.20}
-          side={THREE.DoubleSide}
+          color="#0c1428"
+          metalness={0.7}
+          roughness={0.45}
         />
       </mesh>
 

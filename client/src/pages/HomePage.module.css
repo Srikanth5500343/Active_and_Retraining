@@ -693,7 +693,7 @@
   align-items: center;
   justify-content: center;
   width: calc(100% + 32px);
-  height: 460px;
+  height: 700px;
   padding: 0;
   margin: -8px -16px 0;
   background: transparent;
@@ -730,9 +730,12 @@
 .rackHeroImg {
   position: relative;
   z-index: 1;
-  max-height: 100%;
-  max-width: 100%;
-  width: 100%;
+  width: 400px !important;
+  height: 400px !important;
+  max-height: unset !important;
+  max-width: unset !important;
+  min-width: 400px !important;
+  min-height: 400px !important;
   object-fit: contain;
   transform: translateY(60px);
   filter:

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiUrl, authFetch } from '../utils/api';
 import { getCached, setCached, cacheKey } from '../utils/scanPrefetch';
 import RackTabs from '../components/RackTabs.jsx';
+import { VRInspectContent } from './VRInspectPage.jsx';
 import styles from './TopologyPage.module.css';
 
 const TopologyScene3D = lazy(() => import('./TopologyScene3D.jsx'));
@@ -283,31 +284,28 @@ function TopologyInner({ rackId, embedded }) {
           rackId={rackId}
           onBack={() => navigate(-1)}
           stats={topo.stats}
-          view={view}
-          setView={(v) => { setView(v); setSelected(null); }}
           showCables={view === '2d'}
         />
       )}
-      <RackBanner
-        topo={topo}
-        view={embedded ? view : null}
-        setView={embedded ? ((v) => { setView(v); setSelected(null); }) : null}
-      />
+      <TopologyViewTabs view={view} setView={(v) => { setView(v); setSelected(null); }} />
+      <RackBanner topo={topo} />
 
-      <Toolbar
-        cableFilter={cableFilter}
-        setCableFilter={setCableFilter}
-        cableCounts={cableCounts}
-        heatmap={heatmap}
-        setHeatmap={setHeatmap}
-        traceMode={traceMode}
-        toggleTrace={() => {
-          setTraceMode(v => !v);
-          setTraceA(null); setTraceB(null);
-          setSelected(null);
-        }}
-      />
-      {traceMode && (
+      {view !== 'vr' && (
+        <Toolbar
+          cableFilter={cableFilter}
+          setCableFilter={setCableFilter}
+          cableCounts={cableCounts}
+          heatmap={heatmap}
+          setHeatmap={setHeatmap}
+          traceMode={traceMode}
+          toggleTrace={() => {
+            setTraceMode(v => !v);
+            setTraceA(null); setTraceB(null);
+            setSelected(null);
+          }}
+        />
+      )}
+      {view !== 'vr' && traceMode && (
         <TraceBanner
           traceA={traceA} traceB={traceB} tracePath={tracePath}
           clear={() => { setTraceA(null); setTraceB(null); }}
@@ -315,7 +313,11 @@ function TopologyInner({ rackId, embedded }) {
       )}
 
       <div className={styles.graphWrap}>
-        {view === '3d' ? (
+        {view === 'vr' ? (
+          <div className={styles.vrTopologyWrap}>
+            <VRInspectContent rackId={rackId} />
+          </div>
+        ) : view === '3d' ? (
           <Suspense fallback={<div className={styles.loading}>Initializing 3D scene…</div>}>
             <div className={styles.scene3dWrap}>
               <TopologyScene3D
@@ -352,12 +354,14 @@ function TopologyInner({ rackId, embedded }) {
           />
         )}
 
-        <BottomPanel
-          info={selectionInfo}
-          clear={() => setSelected(null)}
-          topo={filteredTopo}
-          aggEdges={aggEdges}
-        />
+        {view !== 'vr' && (
+          <BottomPanel
+            info={selectionInfo}
+            clear={() => setSelected(null)}
+            topo={filteredTopo}
+            aggEdges={aggEdges}
+          />
+        )}
       </div>
     </>
   );
@@ -366,11 +370,32 @@ function TopologyInner({ rackId, embedded }) {
   return <div className={styles.page}>{topoBody}</div>;
 }
 
-function RackBanner({ topo, view, setView }) {
+function TopologyViewTabs({ view, setView }) {
+  return (
+    <div className={styles.topologyViewTabs} role="tablist" aria-label="Topology view">
+      {[
+        ['2d', '2D'],
+        ['3d', '3D'],
+        ['vr', 'VR'],
+      ].map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          className={`${styles.topologyViewTab} ${view === id ? styles.topologyViewTabActive : ''}`}
+          onClick={() => setView(id)}
+          aria-pressed={view === id}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RackBanner({ topo }) {
   const switches = topo.devices.filter(d => d.in_rack && d.class === 'switch').length;
   const panels   = topo.devices.filter(d => d.in_rack && d.class === 'patch_panel').length;
   const servers  = topo.devices.filter(d => d.in_rack && d.class === 'server').length;
-  const showToggle = !!(view && setView);
   return (
     <div className={styles.rackBanner}>
       <div className={styles.rackBannerHead}>
@@ -379,22 +404,6 @@ function RackBanner({ topo, view, setView }) {
           <span className={styles.rackBannerName}>{topo.rackName}</span>
           <span className={styles.rackBannerId}>{topo.rackId}</span>
         </div>
-        {showToggle && (
-          <div className={styles.viewToggle} role="tablist" aria-label="Topology view">
-            <button
-              type="button"
-              className={`${styles.viewBtn} ${view === '2d' ? styles.viewBtnActive : ''}`}
-              onClick={() => setView('2d')}
-              aria-pressed={view === '2d'}
-            >2D</button>
-            <button
-              type="button"
-              className={`${styles.viewBtn} ${view === '3d' ? styles.viewBtnActive : ''}`}
-              onClick={() => setView('3d')}
-              aria-pressed={view === '3d'}
-            >3D</button>
-          </div>
-        )}
       </div>
       <div className={styles.rackBannerStats}>
         <Stat label="size"     value={`${topo.u_size}U`}        tone="size" />
@@ -417,7 +426,7 @@ function Stat({ label, value, tone }) {
   );
 }
 
-function PageHeader({ rackId, onBack, stats, view, setView, showCables = true }) {
+function PageHeader({ rackId, onBack, stats, showCables = true }) {
   const subtitle = stats
     ? `${rackId} · ${stats.device_count_in_rack} devices${showCables ? ` · ${stats.edge_count} cables` : ''}`
     : rackId;
@@ -429,24 +438,7 @@ function PageHeader({ rackId, onBack, stats, view, setView, showCables = true })
           <h2>Rack Topology</h2>
           <span className={styles.headerMono}>{subtitle}</span>
         </div>
-        {view ? (
-          <div className={styles.viewToggle} role="tablist" aria-label="Topology view">
-            <button
-              type="button"
-              className={`${styles.viewBtn} ${view === '2d' ? styles.viewBtnActive : ''}`}
-              onClick={() => setView('2d')}
-              aria-pressed={view === '2d'}
-            >2D</button>
-            <button
-              type="button"
-              className={`${styles.viewBtn} ${view === '3d' ? styles.viewBtnActive : ''}`}
-              onClick={() => setView('3d')}
-              aria-pressed={view === '3d'}
-            >3D</button>
-          </div>
-        ) : (
-          <div style={{ width: 64 }} />
-        )}
+        <div style={{ width: 64 }} />
       </header>
       <RackTabs rackId={rackId} />
     </>

@@ -64,8 +64,8 @@
   display: grid; place-items: center; margin: 4px 0; }
 .rackArt {
   width: 100%;
-  height: clamp(150px, 32vh, 300px);
-  max-width: 360px;
+  height: clamp(280px, 50vh, 500px);
+  max-width: 480px;
   margin: 0 auto;
   display: block;
   touch-action: none;   /* drag-to-orbit on touch */
