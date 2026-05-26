@@ -27,6 +27,42 @@ function scanToTopo(scan) {
   };
 }
 
+// ── VR Support Banner (enter-VR button) ──────────────────────────────────
+function VRSupportBanner({ onEnterVR }) {
+  const [supported, setSupported] = useState(null);
+  useEffect(() => {
+    if (!navigator.xr) { setSupported(false); return; }
+    navigator.xr.isSessionSupported('immersive-vr')
+      .then(ok => setSupported(ok))
+      .catch(() => setSupported(false));
+  }, []);
+
+  if (supported === null) return null;
+  if (!supported) return null;
+
+  return (
+    <button
+      onClick={onEnterVR}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '7px 14px', borderRadius: 999,
+        border: '1px solid rgba(99,102,241,0.4)',
+        background: 'rgba(99,102,241,0.15)',
+        color: '#a5b4fc', fontSize: 12, fontWeight: 700,
+        letterSpacing: '0.06em', textTransform: 'uppercase',
+        cursor: 'pointer',
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 8a4 4 0 014-4h12a4 4 0 014 4v6a4 4 0 01-4 4h-2l-2 2-2-2H6a4 4 0 01-4-4V8z"/>
+        <circle cx="8" cy="11" r="2"/><circle cx="16" cy="11" r="2"/>
+      </svg>
+      Enter VR
+    </button>
+  );
+}
+
 // ── Embeddable content (for ResultsPage tab) ────────────────────────────
 export function VRInspectContent({ rackId }) {
   const canvasRef = useRef(null);
@@ -90,6 +126,9 @@ export function VRInspectContent({ rackId }) {
     <div className={styles.embedded}>
       <div className={styles.header}>
         <span className={styles.title}>VR Inspect</span>
+        <div className={styles.vrBtn}>
+          <VRSupportBanner onEnterVR={() => canvasRef.current?.enterVR()} />
+        </div>
       </div>
       <div className={styles.canvasWrap}>
         <Suspense fallback={<div style={msgStyle}><p>Initializing 3D...</p></div>}>
@@ -159,7 +198,9 @@ export default function VRInspectPage() {
           </svg>
         </button>
         <span className={styles.title}>VR Inspect &middot; {rackId}</span>
-        <div style={{ width: 40 }} />
+        <div className={styles.vrBtn}>
+          <VRSupportBanner onEnterVR={() => canvasRef.current?.enterVR()} />
+        </div>
       </div>
       <div className={styles.canvasWrap}>
         {loading && <div style={msgStyle}><p>Loading VR scene...</p></div>}

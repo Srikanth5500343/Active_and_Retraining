@@ -10,6 +10,7 @@ import { TopologyContent } from './TopologyPage.jsx';
 import { NetdiscoContent } from './NetdiscoPage.jsx';
 import { SwitchInfoContent } from './SwitchInformationPage.jsx';
 import { PortHistoryContent } from './PortHistoryPage.jsx';
+import { VRInspectContent } from './VRInspectPage.jsx';
 
 // ── Naming convention ─────────────────────────────────────────
 const CLASS_CODE = {
@@ -4212,6 +4213,13 @@ export default function ResultsPage() {
       {tab === 'topology' && (
         <div className={styles.tabContent}>
           <TopologyContent rackId={rackId || scanId} />
+        </div>
+      )}
+
+      {/* ── Tab: VR Inspect ── */}
+      {tab === 'vr' && (
+        <div className={styles.tabContent} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <VRInspectContent rackId={rackId || scanId} />
         </div>
       )}
 

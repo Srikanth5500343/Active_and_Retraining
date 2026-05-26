@@ -73,7 +73,7 @@ export default function App() {
             <AndroidBackHandler />
             <PointerGlow />
             <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<><HomePage /><BottomNav /></>} />
             <Route path="/benchmark" element={<BenchmarkPage />} />
             <Route path="/login"  element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />

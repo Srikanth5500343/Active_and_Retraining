@@ -30,13 +30,13 @@ function colorFor(cls) {
 
 // ── exported helper: compute a good camera for this rack ────────────────
 export function computeVRCamera(aspect) {
-  const d = RACK_HEIGHT * 2.62;
+  const d = RACK_HEIGHT * 0.95;
   return {
-    position: [-RACK_HEIGHT * 0.68, RACK_HEIGHT * 0.54, d],
-    fov: 34,
-    target: [0, RACK_HEIGHT * 0.50, 0],
-    minDist: RACK_HEIGHT * 0.55,
-    maxDist: d * 2.4,
+    position: [0, RACK_HEIGHT * 0.45, d],
+    fov: 42,
+    target: [0, RACK_HEIGHT * 0.45, 0],
+    minDist: 2,
+    maxDist: d * 3,
   };
 }
 
@@ -223,7 +223,6 @@ function FitToViewport({ rackW, rackH }) {
   useEffect(() => {
     const cam = computeVRCamera();
     camera.position.set(...cam.position);
-    camera.lookAt(...cam.target);
     camera.fov = cam.fov;
     camera.updateProjectionMatrix();
   }, [camera, rackW, rackH]);

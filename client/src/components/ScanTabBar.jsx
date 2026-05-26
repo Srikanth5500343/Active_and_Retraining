@@ -4,6 +4,7 @@ const TABS = [
   { key: 'overview',  label: 'Overview',  icon: <IconRack /> },
   { key: 'ports',     label: 'Ports',     icon: <IconPorts /> },
   { key: 'topology',  label: 'Topology',  icon: <IconTopology /> },
+  { key: 'vr',        label: 'VR Inspect', icon: <IconVR /> },
   { key: 'network',   label: 'Network',   icon: <IconNetwork /> },
   { key: 'switches',  label: 'Switches',  icon: <IconSwitch /> },
   { key: 'drift',     label: 'Drift',     icon: <IconDrift /> },
@@ -125,3 +126,12 @@ function IconDrift() {
   );
 }
 
+function IconVR() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 8a4 4 0 014-4h12a4 4 0 014 4v6a4 4 0 01-4 4h-2l-2 2-2-2H6a4 4 0 01-4-4V8z"/>
+      <circle cx="8" cy="11" r="2"/>
+      <circle cx="16" cy="11" r="2"/>
+    </svg>
+  );
+}

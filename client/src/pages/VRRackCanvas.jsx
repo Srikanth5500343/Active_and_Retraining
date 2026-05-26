@@ -30,7 +30,7 @@ function FallbackControls() {
 // ── Canvas wrapper ──────────────────────────────────────────────────────
 const VRRackCanvas = forwardRef(function VRRackCanvas({ topo, scanData, style }, ref) {
   const store = useMemo(
-    () => createXRStore({ foveation: 1, hand: { model: false }, emulate: false }),
+    () => createXRStore({ foveation: 1, hand: { model: false } }),
     []
   );
 

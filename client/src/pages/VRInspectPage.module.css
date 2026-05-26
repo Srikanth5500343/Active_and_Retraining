@@ -47,6 +47,10 @@
   text-overflow: ellipsis;
 }
 
+.vrBtn {
+  margin-left: auto;
+}
+
 .canvasWrap {
   flex: 1;
   position: relative;
@@ -64,20 +68,6 @@
 }
 
 .embedded .header {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 20;
-  display: flex;
-  justify-content: flex-end;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-.embedded .title {
   display: none;
 }
 
