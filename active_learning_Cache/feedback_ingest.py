@@ -110,8 +110,8 @@ def _normalize(row: dict, model: str) -> dict:
         })
 
     elif model == "devices":
-        base["predicted"] = {"class": row.get("predicted_class")}
-        base["actual"]    = {"class": row.get("actual_class")}
+        base["predicted"] = {"class": row.get("predicted_device_class")}
+        base["actual"]    = {"class": row.get("actual_device_class")}
 
     return base
 

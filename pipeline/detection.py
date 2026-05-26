@@ -170,6 +170,41 @@ def _normalize_label_dual(raw: str) -> str:
     return titled if titled in _VALID_LABELS_DUAL else "Empty"
 
 
+def _apply_device_active_learning(img, detections):
+    """Overlay user-learned device-class corrections on detected crops."""
+    if img is None or not detections:
+        return detections
+    try:
+        from pipeline.device_al import get_device_correction
+    except Exception as exc:
+        print(f"[device AL] lookup unavailable: {exc}")
+        return detections
+
+    h, w = img.shape[:2]
+    for det in detections:
+        try:
+            x1, y1, x2, y2 = [int(v) for v in det.get("box", [])]
+            x1 = max(0, min(w - 1, x1))
+            y1 = max(0, min(h - 1, y1))
+            x2 = max(x1 + 1, min(w, x2))
+            y2 = max(y1 + 1, min(h, y2))
+            crop = img[y1:y2, x1:x2]
+            correction = get_device_correction(crop, det.get("class_name"))
+            if not correction:
+                continue
+            corrected, method = correction
+            if corrected and corrected != det.get("class_name"):
+                det["model_class_name"] = det.get("class_name")
+                det["class_name"] = corrected
+                det["active_learning"] = {
+                    "method": method,
+                    "source": "user_feedback",
+                }
+        except Exception as exc:
+            print(f"[device AL] correction skipped: {exc}")
+    return detections
+
+
 def detect_devices_dual(img, model_server, model_general,
                         conf_server=0.25, conf_general=0.2, iou_thresh=0.5):
     """Dual-model device detection — mirrors device_detection.py.
@@ -258,7 +293,7 @@ def detect_devices_dual(img, model_server, model_general,
                 "source":     "general_model",
             })
 
-    return detections
+    return _apply_device_active_learning(img, detections)
 
 
 def shift_boxes(detections, dx, dy):

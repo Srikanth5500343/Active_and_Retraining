@@ -1,4 +1,4 @@
-const path     = require('path');
+﻿const path     = require('path');
 const fs       = require('fs');
 
 // Load server/.env into process.env so SMTP_* (and anything else downstream
@@ -34,7 +34,8 @@ const orphanGC = require('./lib/orphan_gc');
 const jwt = require('jsonwebtoken');
 const sshCreds = require('./lib/ssh-creds');
 const { uploadLimiter } = require('./lib/rate_limit');
-// Central observability — must be required before anything that wants to
+const ActiveLearningManager = require('./lib/active-learning');
+// Central observability â€” must be required before anything that wants to
 // log structured events. Provides logger + metrics + middleware + helpers.
 const o11y = require('./lib/observability');
 const { logger, withSpan, recordEvent } = o11y;
@@ -84,8 +85,13 @@ const outputsDir   = path.join(PROJECT_ROOT, 'outputs');
 
 [uploadsDir, outputsDir].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
+// Initialize active learning manager for cable color and device-class corrections
+const alDataDir = path.join(__dirname, 'data', 'active_learning');
+const alManager = new ActiveLearningManager(alDataDir);
+logger.info(`[AL] Initialized active learning at ${alDataDir}`);
+
 // Windows sometimes keeps a lingering handle on files sharp just wrote,
-// causing transient EPERM on unlink. Retry briefly, then give up — a
+// causing transient EPERM on unlink. Retry briefly, then give up â€” a
 // leftover tmp file is harmless.
 function safeUnlink(p) {
   if (!p || !fs.existsSync(p)) return;
@@ -93,23 +99,23 @@ function safeUnlink(p) {
     try { fs.unlinkSync(p); return; }
     catch (err) {
       if (err.code !== 'EPERM' && err.code !== 'EBUSY') return;
-      // tight synchronous retry — usually clears within ~50ms
+      // tight synchronous retry â€” usually clears within ~50ms
       const until = Date.now() + 50;
       while (Date.now() < until) {}
     }
   }
 }
 
-// ── Tenant guard for any route that takes :rackId ────────────────────
+// â”€â”€ Tenant guard for any route that takes :rackId â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Express's `app.param` callback fires whenever a route definition has
 // `:rackId` in its path, just before the handler runs. This means EVERY
 // scan/topology/ocr/share endpoint that takes a rackId is automatically
-// gated by tenant ownership — no per-route wiring needed.
+// gated by tenant ownership â€” no per-route wiring needed.
 //
 // Behavior:
-//   * Authenticated request whose tenant doesn't own this rack → 404
-//     (404 not 403 — don't reveal that the rack exists in another tenant)
-//   * Unauthenticated request → falls through (preserves legacy
+//   * Authenticated request whose tenant doesn't own this rack â†’ 404
+//     (404 not 403 â€” don't reveal that the rack exists in another tenant)
+//   * Unauthenticated request â†’ falls through (preserves legacy
 //     dev/test access; the routes themselves can require auth if they want)
 app.param('rackId', (req, res, next, rackId) => {
   const auth = softAuthPayload(req);
@@ -124,10 +130,10 @@ app.param('rackId', (req, res, next, rackId) => {
   next();
 });
 
-// ── Observability middleware (must be installed before any routes) ───
-// Order matters: requestId first (so other middleware can read req.id) →
-// httpLogger (logs each request, inherits requestId) → httpMetrics
-// (records duration histogram) → cors/json/static → routes.
+// â”€â”€ Observability middleware (must be installed before any routes) â”€â”€â”€
+// Order matters: requestId first (so other middleware can read req.id) â†’
+// httpLogger (logs each request, inherits requestId) â†’ httpMetrics
+// (records duration histogram) â†’ cors/json/static â†’ routes.
 app.use(o11y.requestId);
 app.use(o11y.httpLogger);
 app.use(o11y.httpMetrics);
@@ -150,12 +156,12 @@ app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 app.use('/outputs', express.static(outputsDir));
 
-// Health + metrics — placed early so they bypass auth/static/etc and
+// Health + metrics â€” placed early so they bypass auth/static/etc and
 // stay reachable even if the main app is degraded.
 app.get('/healthz', o11y.healthHandler);
 app.get('/metrics', o11y.metricsHandler);
 
-// Netdisco integration — read-only proxy onto the local Netdisco docker
+// Netdisco integration â€” read-only proxy onto the local Netdisco docker
 // stack so the UI can join scan output with live-network truth (LLDP
 // neighbours, learned MACs, etc). All routes under /api/netdisco/*.
 try {
@@ -166,7 +172,7 @@ try {
     'netdisco proxy not loaded');
 }
 
-// Port-history / drift API — backed by the SSH poller. All routes under
+// Port-history / drift API â€” backed by the SSH poller. All routes under
 // /api/ports/*. The poller itself is started later, inside the listen()
 // callback, so the SSH runner export below is already in place.
 try {
@@ -177,7 +183,7 @@ try {
     'port history router not loaded');
 }
 
-// Demo tenant-mat — isolated, no-auth, file-backed dataset used by the
+// Demo tenant-mat â€” isolated, no-auth, file-backed dataset used by the
 // /demo/topology UI to prototype the unified rack-layout view. Reads
 // server/data/demo_tenant.json; touches no real tenant data.
 try {
@@ -188,7 +194,7 @@ try {
     'demo tenant-mat router not loaded');
 }
 
-// CMDB-ticket integration — every CMDB write is gated behind an SR
+// CMDB-ticket integration â€” every CMDB write is gated behind an SR
 // (sc_request) approval. Routes under /api/cmdb/ticket/*; the poller
 // runs every 5 min.
 let _cmdbTicketProxy = null;
@@ -240,7 +246,7 @@ const upload = multer({
 // available so multiple techs behind one NAT aren't starved by each other.
 const scanLimit = uploadLimiter();
 
-// ── Image normalization ───────────────────────────────────────
+// â”€â”€ Image normalization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Converts HEIC/HEIF to JPEG and applies EXIF rotation so downstream
 // code (cv2, pipeline) always sees an upright standard JPEG.
 async function normalizeImage(inputPath) {
@@ -272,8 +278,8 @@ async function normalizeImage(inputPath) {
   return outputPath;
 }
 
-// ── Rack ID ───────────────────────────────────────────────────
-// Derived from SHA-256 of file contents → stable for the same physical rack image
+// â”€â”€ Rack ID â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Derived from SHA-256 of file contents â†’ stable for the same physical rack image
 function computeRackId(filePath) {
   const hash = crypto
     .createHash('sha256')
@@ -282,11 +288,11 @@ function computeRackId(filePath) {
   return `RK-${hash.slice(0, 8).toUpperCase()}`;
 }
 
-// ── Persistent Python worker pool ─────────────────────────────
+// â”€â”€ Persistent Python worker pool â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const pythonCmd = process.env.PYTHON_PATH || (process.platform === 'win32' ? 'py' : 'python3');
 const WORKER_COUNT = Math.max(1, parseInt(process.env.RACKTRACK_WORKERS, 10) || 1);
 
-// In test/smoke mode we skip spawning the Python worker pool — it would
+// In test/smoke mode we skip spawning the Python worker pool â€” it would
 // otherwise fork subprocesses that keep the event loop alive past the
 // last test and (in CI) noisily fail on missing pipeline deps. Routes
 // that need the pool will throw if hit, which is fine for smoke tests
@@ -331,7 +337,7 @@ async function runPipelineAnalyze(imagePath, outputDir) {
 
 // Zero-LLM ticket-text extraction + reasoning chain + work-note preview.
 // Runs in the warm Python worker (no model loads), so this is near-instant.
-// Best-effort — never throws; on failure returns null so ticket-mode flows
+// Best-effort â€” never throws; on failure returns null so ticket-mode flows
 // still complete with their primary payload.
 async function runAgentExtraction(ticket, rackDir) {
   try {
@@ -394,7 +400,7 @@ async function runRelabelPortCount(rackDir, deviceIndex, targetCount) {
   });
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function readMeta(rackId) {
   const p = path.join(outputsDir, rackId, 'scan_meta.json');
   return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
@@ -424,6 +430,7 @@ async function ensurePortCounts(rackId) {
 function buildResponse(rackId, cached) {
   const rackDir  = path.join(outputsDir, rackId);
   const jsonPath = path.join(rackDir, 'device_unit_map.json');
+  applyDeviceFeedbackOverridesToMap(rackId);
   const data     = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
   const meta     = readMeta(rackId);
   // Prefer 2_devices_only.png; fall back to the combined render if it's missing.
@@ -462,12 +469,12 @@ function buildResponse(rackId, cached) {
   };
 }
 
-// ── Report generation ─────────────────────────────────────────
+// â”€â”€ Report generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Single source of truth:
-//   buildScanReportData(rackId)  → pure structured object (canonical content)
-//   renderHTMLReport(data, ...)  → standalone HTML (the file saved to disk)
-//   renderJSONReport(data)       → JSON string
-//   renderCSVReport(data)        → CSV string (Excel-friendly)
+//   buildScanReportData(rackId)  â†’ pure structured object (canonical content)
+//   renderHTMLReport(data, ...)  â†’ standalone HTML (the file saved to disk)
+//   renderJSONReport(data)       â†’ JSON string
+//   renderCSVReport(data)        â†’ CSV string (Excel-friendly)
 // HTML is self-contained: CSS + images inline as base64, so the file is
 // shareable as a single attachment (Slack, email, disk).
 const CLASS_CODE_SRV = {
@@ -476,6 +483,70 @@ const CLASS_CODE_SRV = {
   'Controller': 'CTRL', 'Recorder': 'REC', 'Amplifier': 'AMP', 'Gateway': 'GT',
   'PDU': 'PDU', 'PSU': 'PSU', 'UPS': 'UPS', 'Empty': 'EMP', 'Closed Unit': 'CL',
 };
+
+function _rebuildDeviceMapping(devices = []) {
+  const mapping = {};
+  for (const dev of devices) {
+    const cls = dev?.class_name || 'Unknown';
+    const units = Array.isArray(dev?.units) ? dev.units : [];
+    if (!mapping[cls]) mapping[cls] = [];
+    for (const unit of units) {
+      if (!mapping[cls].includes(unit)) mapping[cls].push(unit);
+    }
+  }
+  return mapping;
+}
+
+function applyDeviceFeedbackOverridesToMap(rackId) {
+  const rackDir = path.join(outputsDir, rackId);
+  const jsonPath = path.join(rackDir, 'device_unit_map.json');
+  if (!fs.existsSync(jsonPath)) return false;
+
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  } catch (err) {
+    logger.warn(`[device_feedback_overlay] device_unit_map parse failed for ${rackId}: ${err.message}`);
+    return false;
+  }
+  if (!Array.isArray(data.devices)) return false;
+
+  const latest = new Map();
+  for (const row of _readFeedbackForScan(rackId)) {
+    if (row.feedback_type !== 'device' || !row.actual_device_class || row.device_index == null) continue;
+    const key = Number(row.device_index);
+    const prev = latest.get(key);
+    if (!prev || (row.timestamp || '') > (prev.timestamp || '')) latest.set(key, row);
+  }
+  if (!latest.size) return false;
+
+  let changed = false;
+  for (const [deviceIndex, row] of latest.entries()) {
+    const dev = data.devices[deviceIndex - 1];
+    if (!dev || dev.class_name === row.actual_device_class) continue;
+    dev.model_class_name = dev.model_class_name || dev.class_name;
+    dev._correction = {
+      applied_at: row.timestamp,
+      source: 'user_feedback',
+      fields: ['class_name'],
+      original: { class_name: dev.class_name },
+    };
+    dev.class_name = row.actual_device_class;
+    changed = true;
+  }
+
+  if (!changed) return false;
+  data.device_mapping = _rebuildDeviceMapping(data.devices);
+  try {
+    const tmpPath = jsonPath + '.tmp';
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, jsonPath);
+    return true;
+  } catch (err) {
+    logger.warn(`[device_feedback_overlay] write failed for ${rackId}: ${err.message}`);
+    return false;
+  }
+}
 
 function formatUnitsRangeSrv(units = []) {
   const nums = [...new Set((units || [])
@@ -525,7 +596,7 @@ function buildScanReportData(rackId) {
     };
   });
 
-  // Latest port identification only — walk newest-first and take the first valid line
+  // Latest port identification only â€” walk newest-first and take the first valid line
   const idsPath = path.join(rackDir, 'port_identifications.jsonl');
   const portIdentifications = [];
   if (fs.existsSync(idsPath)) {
@@ -670,7 +741,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
       consoleHtml = `
   <div class="consoleWrap">
     <div class="consoleHead">
-      <span class="consoleKey">Console · ${htmlEscape(p.console.host || '—')}${p.console.interface ? ` · ${htmlEscape(p.console.interface)}` : ''}</span>
+      <span class="consoleKey">Console Â· ${htmlEscape(p.console.host || 'â€”')}${p.console.interface ? ` Â· ${htmlEscape(p.console.interface)}` : ''}</span>
     </div>
     ${entryBlocks}
   </div>`;
@@ -682,7 +753,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
     <div class="portBadge" style="background:${a};box-shadow:0 0 14px ${a}90">Port ${htmlEscape(p.port)}</div>
     <div class="portCardTitle">
       <div class="portDevice">${htmlEscape(p.device_label || `Device ${p.device_index}`)}</div>
-      <div class="portDeviceSub">${htmlEscape(p.device_class || '')}${p.device_position ? ` · ${htmlEscape(p.device_position)}` : ''}</div>
+      <div class="portDeviceSub">${htmlEscape(p.device_class || '')}${p.device_position ? ` Â· ${htmlEscape(p.device_position)}` : ''}</div>
     </div>
   </div>
   ${imgs ? `<div class="portImgs">${imgs}</div>` : ''}
@@ -695,9 +766,9 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Rack Scan Report — ${htmlEscape(d.rackId)}</title>
+<title>Rack Scan Report â€” ${htmlEscape(d.rackId)}</title>
 <style>
-  /* Light theme — clean, attractive, looks the same on screen and in PDF */
+  /* Light theme â€” clean, attractive, looks the same on screen and in PDF */
   :root {
     --bg:#f6f8fc; --bg2:#eef2fa;
     --card:#ffffff;
@@ -720,7 +791,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
   }
   .wrap{max-width:1080px;margin:0 auto;padding:24px 22px 48px}
 
-  /* ── Hero ── */
+  /* â”€â”€ Hero â”€â”€ */
   .hero{
     position:relative;
     padding:30px 30px 26px;
@@ -758,7 +829,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
     color:#fff;border:1px solid rgba(255,255,255,0.28);
   }
 
-  /* ── Stat cards ── */
+  /* â”€â”€ Stat cards â”€â”€ */
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 8px}
   .stat{
     position:relative;
@@ -780,7 +851,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
     -webkit-background-clip:text;background-clip:text;
   }
 
-  /* ── Section heading ── */
+  /* â”€â”€ Section heading â”€â”€ */
   .section{margin-top:32px}
   .sectionTitle{
     display:flex;align-items:center;gap:10px;margin:0 0 14px;
@@ -790,7 +861,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
   .sectionTitle::before{content:'';width:22px;height:2px;border-radius:2px;background:linear-gradient(90deg, var(--accent), var(--accent2))}
   .sectionTitle::after{content:'';flex:1;height:1px;background:linear-gradient(90deg, var(--border), transparent)}
 
-  /* ── Port identification cards ── */
+  /* â”€â”€ Port identification cards â”€â”€ */
   .portCard{
     position:relative;margin-top:14px;
     padding:18px 20px 20px;border-radius:16px;
@@ -831,7 +902,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
     background:var(--card);border:1px dashed var(--border);border-radius:12px;
   }
 
-  /* ── Console transcript inside port card ── */
+  /* â”€â”€ Console transcript inside port card â”€â”€ */
   .consoleWrap{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)}
   .consoleHead{margin-bottom:8px}
   .consoleKey{font-size:.68rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
@@ -862,7 +933,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
     .portCardHead{flex-wrap:wrap}
   }
 
-  /* ── Sticky top bar (PDF download button) ── */
+  /* â”€â”€ Sticky top bar (PDF download button) â”€â”€ */
   .topBar{
     position:sticky; top:0; z-index:20;
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -885,7 +956,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
   .pdfBtn:hover{transform:translateY(-1px); box-shadow:0 6px 20px rgba(8,145,178,0.4);}
   .pdfBtn svg{width:14px;height:14px}
 
-  /* ── PDF / print niceties ── */
+  /* â”€â”€ PDF / print niceties â”€â”€ */
   /* Hide the sticky bar in print and html2pdf snapshots. */
   body.pdfMode .topBar, @media print { .topBar{display:none} }
   body.pdfMode .cmdOut, body.pdfMode .cmdErr,
@@ -915,7 +986,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
 </head><body>
 
 <div class="topBar">
-  <span class="topBarTitle">Rack Scan Report · ${htmlEscape(d.rackId)}</span>
+  <span class="topBarTitle">Rack Scan Report Â· ${htmlEscape(d.rackId)}</span>
   <button class="pdfBtn" id="pdfBtn" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -934,13 +1005,13 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
 
   btn.addEventListener('click', async () => {
     if (typeof html2pdf === 'undefined') {
-      // Library failed to load (offline?) — fall back to the print dialog.
+      // Library failed to load (offline?) â€” fall back to the print dialog.
       window.print();
       return;
     }
     btn.disabled = true;
     const original = label.textContent;
-    label.textContent = 'Generating…';
+    label.textContent = 'Generatingâ€¦';
     document.body.classList.add('pdfMode');
     try {
       await html2pdf().set({
@@ -949,7 +1020,7 @@ function renderHTMLReport(data, { inlineImages = true } = {}) {
         image: { type: 'jpeg', quality: 0.92 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        // Let content flow naturally — only honor explicit CSS hints, no
+        // Let content flow naturally â€” only honor explicit CSS hints, no
         // global "avoid" that creates half-empty pages.
         pagebreak: { mode: ['css'] },
       }).from(document.querySelector('.wrap')).save();
@@ -1094,9 +1165,9 @@ function buildScanReport(rackId, { inlineImages = true } = {}) {
 
 const SCAN_RESULT_SCHEMA = 'scan_result.v1';
 
-// Writes outputs/<rackId>/scan_result.json — the single canonical merged view
+// Writes outputs/<rackId>/scan_result.json â€” the single canonical merged view
 // of one scan: metadata + devices + units + ports + selection + console +
-// feedback. Atomic (write tmp → rename) so partial writes can't be observed.
+// feedback. Atomic (write tmp â†’ rename) so partial writes can't be observed.
 //
 // Pass `prebuiltData` when you already have the result of buildScanReportData
 // to avoid re-reading the source files; otherwise we build it ourselves.
@@ -1152,7 +1223,7 @@ function writeCanonicalScanResult(rackId, prebuiltData) {
 
 // Schedule a canonical-result refresh for after the response is sent. Used by
 // mutation endpoints that don't already build the report inline. Also kicks
-// off per-device OCR in the background — fully silent, the user never sees
+// off per-device OCR in the background â€” fully silent, the user never sees
 // it; the result lands in outputs/<rackId>/ocr_devices.json and synth.py
 // picks it up the next time CMDB is built.
 function scheduleCanonicalRefresh(rackId) {
@@ -1167,8 +1238,8 @@ function scheduleCanonicalRefresh(rackId) {
 // (scheduleOcrDevices) only sees the crop YOLO produced, so when the detector
 // misses a device or boxes it tight enough to clip its faceplate label, the
 // per-device pass returns empty text. Running label OCR on the whole rack
-// photo recovers brand badges (PLANAR, TRIPP-LITE, AUDIOCODES, SONY, …) and
-// rack-applied labels that fall outside any single device's bbox — the GET
+// photo recovers brand badges (PLANAR, TRIPP-LITE, AUDIOCODES, SONY, â€¦) and
+// rack-applied labels that fall outside any single device's bbox â€” the GET
 // /api/ocr/labels/:rackId endpoint then maps those tokens back to devices by
 // Y-overlap and surfaces a brand-token reclassification for the client.
 const _ocrLabelsRunning = new Set();
@@ -1194,7 +1265,7 @@ function scheduleOcrLabels(rackId) {
 }
 
 // Fire-and-forget per-device OCR after a scan finishes. Runs only when
-// outputs/<rackId>/ocr_devices.json doesn't already exist — re-running OCR
+// outputs/<rackId>/ocr_devices.json doesn't already exist â€” re-running OCR
 // on every canonical refresh would be wasteful (1-2 min on CPU). The user
 // can still trigger a re-run via POST /api/scan/:rackId/ocr-devices.
 //
@@ -1225,7 +1296,7 @@ function scheduleOcrDevices(rackId) {
       logger.warn(`[ocr_devices] ${rackId} produced no output: ${stderr.slice(-300)}`);
       return;
     }
-    // OCR ran — re-sync downstream consumers so they pick up the real
+    // OCR ran â€” re-sync downstream consumers so they pick up the real
     // make/model. All silent / fire-and-forget; the user never sees this.
     try { writeCanonicalScanResult(rackId); } catch (_) {}
     try {
@@ -1234,7 +1305,7 @@ function scheduleOcrDevices(rackId) {
         ndProxy.scheduleNetdiscoSync(rackId);
       }
     } catch (e) {
-      logger.warn(`[ocr_devices→netdisco] resync skipped for ${rackId}: ${e.message}`);
+      logger.warn(`[ocr_devicesâ†’netdisco] resync skipped for ${rackId}: ${e.message}`);
     }
   });
   child.on('error', err => {
@@ -1278,7 +1349,7 @@ function resolvePythonBin() {
   return _resolvedPython;
 }
 
-// Background topology snapshot regeneration — runs servicenow/topology_generate.py
+// Background topology snapshot regeneration â€” runs servicenow/topology_generate.py
 // after every canonical refresh so the topology view works for any scanned
 // rack without a manual bootstrap step. Pure file I/O on the Python side
 // (no ServiceNow API calls), so failure here is non-fatal and doesn't block
@@ -1311,7 +1382,7 @@ function scheduleTopologyRegen(rackId) {
       recordEvent('topology.regen_failed', { rackId, exit: code });
     }
     // Whether topology regen succeeded or not, push the scan into Netdisco
-    // so its DB stays in lock-step with what's on disk. Best-effort —
+    // so its DB stays in lock-step with what's on disk. Best-effort â€”
     // failure is logged inside the proxy module and never blocks the response.
     try {
       const ndProxy = require('./netdisco_proxy');
@@ -1370,7 +1441,7 @@ async function buildScanReportPDF(rackId) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
-    // Block external network requests — the report HTML embeds an html2pdf
+    // Block external network requests â€” the report HTML embeds an html2pdf
     // CDN script we don't need server-side, and we don't want PDF generation
     // to hang if the host is offline or behind a firewall.
     await page.setRequestInterception(true);
@@ -1394,7 +1465,7 @@ async function buildScanReportPDF(rackId) {
   return { ...built, pdfPath };
 }
 
-// ── Routes ────────────────────────────────────────────────────
+// â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '3.0.0', service: 'RackTrack API' });
@@ -1403,21 +1474,21 @@ app.get('/api/health', (req, res) => {
 // Auth endpoints (signup, verify, login, resend, me)
 auth.registerRoutes(app);
 
-// ── Audit log query (auth-required) ───────────────────────────
+// â”€â”€ Audit log query (auth-required) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //
 // GET /api/audit?action=&targetType=&targetId=&status=&since=&until=&limit=&offset=
 //
 // By default returns ONLY the calling user's events. Pass `?scope=all` to see
-// every event — but only if the caller's username appears in the
+// every event â€” but only if the caller's username appears in the
 // AUDIT_ADMINS env var (comma-separated). Without admin status, scope=all is
 // silently downgraded to scope=self so we never leak other users' actions.
 app.get('/api/audit', auth.requireAuth, (req, res) => {
   const adminUsers = String(process.env.AUDIT_ADMINS || '')
     .split(',').map(s => s.trim()).filter(Boolean);
   const isAdmin = adminUsers.includes(req.user.username);
-  // scope=self  → only this user's events
-  // scope=tenant → every event in this user's tenant (admin-gated)
-  // scope=all   → cross-tenant view (super-admin; downgraded to tenant
+  // scope=self  â†’ only this user's events
+  // scope=tenant â†’ every event in this user's tenant (admin-gated)
+  // scope=all   â†’ cross-tenant view (super-admin; downgraded to tenant
   //               for non-admins so we never leak across tenants)
   let scope = req.query.scope || 'self';
   if (scope === 'all' && !isAdmin) scope = 'tenant';
@@ -1443,8 +1514,8 @@ app.get('/api/audit', auth.requireAuth, (req, res) => {
   }
 });
 
-// ── Active-learning loop ─────────────────────────────────────────────
-// POST /api/admin/active-learning/cycle  → fire one ingest+retrain cycle.
+// â”€â”€ Active-learning loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// POST /api/admin/active-learning/cycle  â†’ fire one ingest+retrain cycle.
 // Heavy job: spawned as a detached subprocess so the HTTP request returns
 // immediately. Caller polls GET /api/admin/active-learning/status for state.
 //
@@ -1513,7 +1584,7 @@ app.get('/api/admin/active-learning/status', auth.requireAuth, (req, res) => {
   res.json({ ok: true, ..._alState });
 });
 
-// ── Orphan GC (admin-only) ──────────────────────────────────────────
+// â”€â”€ Orphan GC (admin-only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // POST /api/admin/orphan-gc/run  body: { dryRun?: bool, retentionDays?: int }
 // Lists outputs/<rackId>/ folders with no rack_owners row + (when
 // dryRun=false) deletes them. Default dryRun=true so it never destroys
@@ -1568,7 +1639,7 @@ setInterval(() => {
 
 /**
  * POST /api/detect
- * Stateless live-overlay detection — runs only YOLO bbox classification on
+ * Stateless live-overlay detection â€” runs only YOLO bbox classification on
  * the uploaded JPEG. NO rack folder, NO OCR, NO port detection, NO audit
  * log, NO image renders. Used by the Camera viewfinder's per-frame loop.
  *
@@ -1600,8 +1671,8 @@ app.post('/api/detect', scanLimit, upload.single('image'), async (req, res) => {
 
 /**
  * POST /api/analyze
- * 1. Hash the uploaded image → RK-XXXXXXXX
- * 2. If outputs/RK-XXXXXXXX/device_unit_map.json exists → return cached result
+ * 1. Hash the uploaded image â†’ RK-XXXXXXXX
+ * 2. If outputs/RK-XXXXXXXX/device_unit_map.json exists â†’ return cached result
  * 3. Otherwise run pipeline --detect_only, save outputs, return fresh result
  */
 app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => {
@@ -1620,14 +1691,14 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
     const jsonPath  = path.join(rackDir, 'device_unit_map.json');
 
     // Tenant ownership: anyone scanning an image (cached or fresh) is
-    // making a tenant-scoped claim on this rack. Idempotent — multiple
+    // making a tenant-scoped claim on this rack. Idempotent â€” multiple
     // tenants can co-own the same RK-id when they scan the same image.
     const _authPayload = softAuthPayload(req);
     const _scanTenantId = _authPayload?.tenantId || null;
     const _scanUserId = _authPayload?.sub || null;
     if (_scanTenantId) tenant.claimRack(_scanTenantId, rackId, _scanUserId);
 
-    // ── Cache hit ──────────────────────────────────────────
+    // â”€â”€ Cache hit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (fs.existsSync(jsonPath)) {
       safeUnlink(tmpPath); // discard duplicate upload
       logger.info({ event: 'scan.cache_hit', rackId, tenantId: _scanTenantId }, `cache hit ${rackId}`);
@@ -1640,7 +1711,7 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
       return res.json({ ...buildResponse(rackId, true), timings });
     }
 
-    // ── Quality pre-check (tilt) ───────────────────────────
+    // â”€â”€ Quality pre-check (tilt) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const skipQualityCheck = req.body?.skipQualityCheck === '1' || req.body?.skipQualityCheck === 'true';
     const tQualStart = Date.now();
     const quality = skipQualityCheck
@@ -1657,7 +1728,7 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
       });
     }
 
-    // ── Cache miss — run pipeline ──────────────────────────
+    // â”€â”€ Cache miss â€” run pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     fs.mkdirSync(rackDir, { recursive: true });
 
     // Persist image inside the rack folder so /api/select always finds it.
@@ -1683,20 +1754,20 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
     await runPipelineAnalyze(imagePath, rackDir);
     timings.pipeline_ms = Date.now() - tPipeStart;
 
-    // ── Front-of-rack + framing check (post-pipeline) ──────
+    // â”€â”€ Front-of-rack + framing check (post-pipeline) â”€â”€â”€â”€â”€â”€
     const mapData = fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : {};
     const deviceCount = Array.isArray(mapData.devices) ? mapData.devices.length : 0;
     const unitCount = Array.isArray(mapData.units_detected) ? mapData.units_detected.length : 0;
 
     // When the user clicked "Proceed" on the quality warning, they have
     // explicitly asked us to accept whatever the pipeline produces. Don't
-    // re-gate on deviceCount / unitCount in that case — the pipeline ran,
+    // re-gate on deviceCount / unitCount in that case â€” the pipeline ran,
     // so whatever it found is what they'll see.
     if (!skipQualityCheck) {
       if (deviceCount === 0) {
         fs.rmSync(rackDir, { recursive: true, force: true });
         return res.status(400).json({
-          error: 'Please take the photo from the front of the rack — we need to see the devices and ports face-on.',
+          error: 'Please take the photo from the front of the rack â€” we need to see the devices and ports face-on.',
           retryable: true,
           kind: 'quality',
         });
@@ -1712,7 +1783,7 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
         const ratio = deviceCount / unitCount;
         if (ratio < 0.35) {
           return res.status(400).json({
-            error: ('This rack appears to be heavily covered by cables — we can see '
+            error: ('This rack appears to be heavily covered by cables â€” we can see '
                   + `${unitCount} U-slots but only ${deviceCount} device${deviceCount===1?'':'s'} `
                   + 'were detectable. For better accuracy, take additional photos from the '
                   + 'left and right sides of the rack so we can see behind the cable bundles, '
@@ -1728,7 +1799,7 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
       if (unitCount < 3) {
         fs.rmSync(rackDir, { recursive: true, force: true });
         return res.status(400).json({
-          error: 'Please upload a clearer photo of the rack — keep the camera steady and make sure the full rack fits in the frame.',
+          error: 'Please upload a clearer photo of the rack â€” keep the camera steady and make sure the full rack fits in the frame.',
           retryable: true,
           kind: 'quality',
         });
@@ -1757,7 +1828,7 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
     logger.error(err.message);
     audit.log({ req, action: 'scan.create', status: 'fail', error: err.message });
     res.status(400).json({
-      error: 'Please upload a clearer photo of the rack — keep the camera steady and make sure the full rack fits in the frame.',
+      error: 'Please upload a clearer photo of the rack â€” keep the camera steady and make sure the full rack fits in the frame.',
       retryable: true,
       kind: 'quality',
     });
@@ -1766,16 +1837,16 @@ app.post('/api/analyze', scanLimit, upload.single('image'), async (req, res) => 
 
 /**
  * POST /api/stitch
- * Multi-image upload for tall racks. Accepts 2–8 photos (top-to-bottom),
+ * Multi-image upload for tall racks. Accepts 2â€“8 photos (top-to-bottom),
  * normalizes each, runs pipeline/rack_stitch.py to produce a single
  * stitched panorama, then funnels the result through the SAME analyze
- * path as /api/analyze and returns the same shape — plus a `stitch`
+ * path as /api/analyze and returns the same shape â€” plus a `stitch`
  * sub-object describing the seams (so the client can warn the user
  * when an overlap fell back to "butt-flush").
  *
  * Form fields:
- *   images (file[], required) — 2–8 image files, ORDER MATTERS (top→bottom)
- *   skipQualityCheck (string, optional) — same as /api/analyze
+ *   images (file[], required) â€” 2â€“8 image files, ORDER MATTERS (topâ†’bottom)
+ *   skipQualityCheck (string, optional) â€” same as /api/analyze
  */
 function runStitcher(inputPaths, outputPath) {
   return new Promise((resolve, reject) => {
@@ -1844,10 +1915,10 @@ app.post('/api/stitch', scanLimit, upload.array('images', 8), async (req, res) =
       });
     }
 
-    // Inputs no longer needed — only the stitched output goes downstream.
+    // Inputs no longer needed â€” only the stitched output goes downstream.
     tmpPaths.forEach(safeUnlink);
 
-    // ── Now mirror /api/analyze flow on the stitched image ───────
+    // â”€â”€ Now mirror /api/analyze flow on the stitched image â”€â”€â”€â”€â”€â”€â”€
     const rackId   = computeRackId(stitchedPath);
     const rackDir  = path.join(outputsDir, rackId);
     const jsonPath = path.join(rackDir, 'device_unit_map.json');
@@ -1857,7 +1928,7 @@ app.post('/api/stitch', scanLimit, upload.array('images', 8), async (req, res) =
     const _scanUserId = _authPayload?.sub || null;
     if (_scanTenantId) tenant.claimRack(_scanTenantId, rackId, _scanUserId);
 
-    // Cache hit — same stitched image was scanned before.
+    // Cache hit â€” same stitched image was scanned before.
     if (fs.existsSync(jsonPath)) {
       safeUnlink(stitchedPath);
       logger.info({ event: 'scan.cache_hit', rackId, tenantId: _scanTenantId, stitched: true }, `stitch cache hit ${rackId}`);
@@ -1922,7 +1993,7 @@ app.post('/api/stitch', scanLimit, upload.array('images', 8), async (req, res) =
     await runPipelineAnalyze(imagePath, rackDir);
     timings.pipeline_ms = Date.now() - tPipeStart;
 
-    // Post-pipeline framing check (looser than /api/analyze — the user
+    // Post-pipeline framing check (looser than /api/analyze â€” the user
     // explicitly stitched a tall rack, so we expect more units, but be
     // forgiving about per-tile detection quality).
     const mapData = fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : {};
@@ -1930,7 +2001,7 @@ app.post('/api/stitch', scanLimit, upload.array('images', 8), async (req, res) =
     if (!skipQualityCheck && deviceCount === 0) {
       fs.rmSync(rackDir, { recursive: true, force: true });
       return res.status(400).json({
-        error: 'No devices were detected on the stitched rack — make sure each photo shows the front of the rack and the shots overlap.',
+        error: 'No devices were detected on the stitched rack â€” make sure each photo shows the front of the rack and the shots overlap.',
         retryable: true,
         kind: 'quality',
         stitch: { seams: stitchResult.seams, uncertain: stitchResult.uncertain },
@@ -1970,7 +2041,7 @@ app.post('/api/stitch', scanLimit, upload.array('images', 8), async (req, res) =
     logger.error(err.message);
     audit.log({ req, action: 'scan.create', status: 'fail', error: err.message, payload: { stitched: true } });
     res.status(400).json({
-      error: 'Could not stitch and analyze the rack. Make sure each photo shows the rack front and adjacent shots overlap by ~20–40%.',
+      error: 'Could not stitch and analyze the rack. Make sure each photo shows the rack front and adjacent shots overlap by ~20â€“40%.',
       retryable: true,
       kind: 'stitch',
     });
@@ -1986,7 +2057,7 @@ app.post('/api/stitch', scanLimit, upload.array('images', 8), async (req, res) =
  * visible from the left side gets added to the unified device list.
  *
  * The merged result is written into a NEW rack folder (the "primary"
- * angle's rackId — the angle with the most detected devices wins) and
+ * angle's rackId â€” the angle with the most detected devices wins) and
  * returned with the same shape as /api/analyze, plus a `multi_angle`
  * sub-object describing which angle contributed each device.
  */
@@ -2002,7 +2073,7 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
   const perAngle = [];   // [{ rackId, deviceCount, unitCount, mapData, imagePath }, ...]
 
   try {
-    // STEP 1 — normalize + analyze each angle. We DO NOT run the quality
+    // STEP 1 â€” normalize + analyze each angle. We DO NOT run the quality
     // gate here (skipQualityCheck implicitly true): the user already saw
     // the occlusion warning and chose multi-angle, so we trust their
     // intent. Each analyze runs sequentially through the warm worker.
@@ -2027,7 +2098,7 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
           await runPipelineAnalyze(imagePath, rackDir);
           mapData = fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : null;
         } catch (e) {
-          // One angle failing isn't fatal — skip it and continue.
+          // One angle failing isn't fatal â€” skip it and continue.
           logger.warn(`[multi-angle] analyze failed for ${rackId}: ${e.message}`);
           continue;
         }
@@ -2048,13 +2119,13 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
 
     if (perAngle.length < 2) {
       return res.status(400).json({
-        error: 'At least 2 angles needed to merge — some analyses failed. Please retake clearer shots.',
+        error: 'At least 2 angles needed to merge â€” some analyses failed. Please retake clearer shots.',
         retryable: true,
         kind: 'multi_angle',
       });
     }
 
-    // STEP 2 — pick the "primary" angle: the one with the most devices
+    // STEP 2 â€” pick the "primary" angle: the one with the most devices
     // detected. Its image becomes the canonical hero, and its rackId is
     // the one we return to the client. Other angles' devices get merged
     // into it by U-position.
@@ -2062,7 +2133,7 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
     const primary = perAngle[0];
     const supports = perAngle.slice(1);
 
-    // STEP 3 — merge devices by U-position. For each U-slot, keep the
+    // STEP 3 â€” merge devices by U-position. For each U-slot, keep the
     // detection from the angle with the highest confidence. Tracks which
     // angle contributed each device for transparency.
     const devicesByU = new Map();  // unitKey -> { device, source_angle_idx }
@@ -2093,7 +2164,7 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
         return Number(bu) - Number(au);  // descending U-number (top of rack first)
       });
 
-    // Union of unit-detections — same logic as devices, take superset
+    // Union of unit-detections â€” same logic as devices, take superset
     const mergedUnits = new Set();
     for (const angle of allAngles) {
       for (const u of angle.mapData.units_detected || []) {
@@ -2101,7 +2172,7 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
       }
     }
 
-    // STEP 4 — write the merged device_unit_map back to the primary's
+    // STEP 4 â€” write the merged device_unit_map back to the primary's
     // rackDir. Annotate with multi_angle provenance.
     const mergedMap = {
       ...primary.mapData,
@@ -2129,7 +2200,7 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
 
     timings.total_ms = Date.now() - reqStart;
     logger.info({ event: 'scan.multi_angle_created', primaryRackId: primary.rackId, angles: perAngle.length, mergedDevices: mergedDevices.length, timings },
-      `multi-angle merge: ${perAngle.length} angles → ${mergedDevices.length} devices on ${primary.rackId}`);
+      `multi-angle merge: ${perAngle.length} angles â†’ ${mergedDevices.length} devices on ${primary.rackId}`);
     recordEvent('scan.multi_angle_created', { primaryRackId: primary.rackId, angles: perAngle.length });
     audit.log({
       req, action: 'scan.create', status: 'ok',
@@ -2162,9 +2233,9 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
  * in the analyze flow when physical labels exist on the rack/devices.
  *
  * Body (multipart/form-data):
- *   image  (file, required)         — JPEG/PNG of the rack
- *   side   ('front' | 'rear')       — which face this image is (default: front)
- *   rackId (string, optional)       — if provided, labels are cached under
+ *   image  (file, required)         â€” JPEG/PNG of the rack
+ *   side   ('front' | 'rear')       â€” which face this image is (default: front)
+ *   rackId (string, optional)       â€” if provided, labels are cached under
  *                                     outputs/<rackId>/labels-<side>.json so
  *                                     they can be mapped to detected devices.
  *
@@ -2176,7 +2247,7 @@ app.post('/api/analyze-multi-angle', scanLimit, upload.array('images', 4), async
  *     summary:    { count, highConfCount, hasLabels }
  *   }
  *
- * "hasLabels" is true when ≥3 detections exceed conf 0.6 — the threshold the
+ * "hasLabels" is true when â‰¥3 detections exceed conf 0.6 â€” the threshold the
  * client uses to decide whether to prompt the user for a rear-of-rack image.
  */
 function runOcrLabels(imagePath) {
@@ -2256,7 +2327,7 @@ app.post('/api/ocr/labels', scanLimit, upload.single('image'), async (req, res) 
  * Returns the cached OCR labels for a rack (front + rear, if both exist) and
  * maps each label to its best-matching detected device by vertical bbox
  * overlap with the device's U-slot region. Falls back to ocr_devices.json
- * (per-device crop OCR) when no front/rear label files are present — so any
+ * (per-device crop OCR) when no front/rear label files are present â€” so any
  * physical label captured during the analyze flow is surfaced as a candidate
  * name. When at least one label is detected, also infers the pattern
  * (prefix-CODE-NN) so the client can mint matching names for unlabeled
@@ -2274,7 +2345,7 @@ app.post('/api/ocr/labels', scanLimit, upload.single('image'), async (req, res) 
  *   }
  */
 // Pull the first identifier-shaped token out of raw OCR text. Repairs the
-// most common EasyOCR confusions (O↔0, I↔1) when they sit next to digits, so
+// most common EasyOCR confusions (Oâ†”0, Iâ†”1) when they sit next to digits, so
 // "RVEW-CORE-SWO1 STACK MEMBER 2" yields "RVEW-CORE-SW01".
 function normalizeOcrLabelText(rawText) {
   if (!rawText) return null;
@@ -2289,13 +2360,13 @@ function normalizeOcrLabelText(rawText) {
       .toUpperCase();
     // Require at least one separator and a letters-then-digits final segment,
     // e.g. RVEW-CORE-SW01 or RACK01_PDU3. Bare tokens like "SW01" don't
-    // qualify on their own — they're ambiguous without a site/rack prefix.
+    // qualify on their own â€” they're ambiguous without a site/rack prefix.
     if (/^[A-Z][A-Z0-9]*(?:[-_][A-Z0-9]+)*[-_][A-Z]+\d+$/.test(fixed)) return fixed;
   }
   return null;
 }
 
-// Parse RVEW-CORE-SW01 → { prefix:'RVEW-CORE', sep:'-', classTok:'SW', padding:2 }
+// Parse RVEW-CORE-SW01 â†’ { prefix:'RVEW-CORE', sep:'-', classTok:'SW', padding:2 }
 function inferLabelPattern(label) {
   if (!label) return null;
   const m = label.match(/^(.+)([-_])([A-Z]+)(\d+)$/);
@@ -2303,9 +2374,9 @@ function inferLabelPattern(label) {
   return { prefix: m[1], sep: m[2], classTok: m[3], padding: m[4].length };
 }
 
-// Brand → class-name lookup. The YOLO detector can't see vendor badges, so
+// Brand â†’ class-name lookup. The YOLO detector can't see vendor badges, so
 // when OCR catches a known brand inside (or adjacent to) a device's bbox we
-// upgrade the class. Order matters — more specific brands first so e.g.
+// upgrade the class. Order matters â€” more specific brands first so e.g.
 // "Cisco Catalyst" hits CATALYST before CISCO.
 const BRAND_CLASS = [
   ['MEDIAPACK',  'Gateway'],
@@ -2345,7 +2416,7 @@ function classifyByBrand(text) {
   if (/\bMEDIA\s*PACK\b/.test(s)) return { brand: 'MEDIAPACK', class_name: 'Gateway' };
   if (/\bMEDLA\s*PACK\b/.test(s)) return { brand: 'MEDIAPACK', class_name: 'Gateway' };
   // TRIPP-LITE OCR variants seen in the wild: TRIPPLITE, TRIPP-LITE,
-  // TRIPPLME (l→m), TRIPPLE (dropped suffix), TRIPP_LITE, TRIPPL!TE, etc.
+  // TRIPPLME (lâ†’m), TRIPPLE (dropped suffix), TRIPP_LITE, TRIPPL!TE, etc.
   // The TRIPP prefix is distinctive enough that any token starting with it
   // and continuing as letters is safely Tripp-Lite.
   if (/\bTRIPP[A-Z]{1,8}\b/.test(s)) return { brand: 'TRIPP-LITE', class_name: 'PDU' };
@@ -2379,15 +2450,15 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
 
   const deviceLabels = [];
   if (dum && Array.isArray(dum.devices)) {
-    // For each device, find the best-matching label by Y-overlap (front → rear fallback).
+    // For each device, find the best-matching label by Y-overlap (front â†’ rear fallback).
     // device_unit_map.json stores boxes as `box: [x1,y1,x2,y2]` in pixel
     // coords; label bboxes are also pixel-absolute. Compare Y centers directly
-    // rather than going through percentages — dum has no image_size field,
+    // rather than going through percentages â€” dum has no image_size field,
     // and the percentages from labels-front are tied to their own image_size.
     //
     // matchSide only considers identifier-shaped labels (RVEW-CORE-SW01,
-    // RACK01-PDU3, …) for naming. Brand badges (PLANAR, TRIPPLME) and
-    // descriptive chatter (STACK MEMBER 2, 1044248) are ignored here —
+    // RACK01-PDU3, â€¦) for naming. Brand badges (PLANAR, TRIPPLME) and
+    // descriptive chatter (STACK MEMBER 2, 1044248) are ignored here â€”
     // they're still consumed by mapFullImageLabels below for reclassification.
     // Without this filter the device chip would show "PLANAR" as its name,
     // and inferLabelPattern would pick a non-pattern token as the template.
@@ -2420,7 +2491,7 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
     for (const m of frontMatches) matched.set(m.idx, m);
     for (const m of rearMatches) if (!matched.has(m.idx)) matched.set(m.idx, m);
 
-    // Find a "stack member N" hint near a device's Y-band — captured as a
+    // Find a "stack member N" hint near a device's Y-band â€” captured as a
     // separate OCR label, e.g. "STACK MEMBER 2". Used to differentiate two
     // physically distinct switches that share the same hostname sticker.
     const findStackMember = (sideData, dy, dh) => {
@@ -2461,14 +2532,14 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
     // Per-device crop OCR fills any slot still missing a label. We match by
     // U-slot since ocr_devices.json and device_unit_map.json are generated
     // from the same detection pass. Two relaxations from the front/rear path:
-    //   - Threshold 0.4 instead of 0.6 — Cisco stack members often produce
+    //   - Threshold 0.4 instead of 0.6 â€” Cisco stack members often produce
     //     mid-confidence OCR on the second/third stack switch because cables
     //     partially occlude the label, but the text is still recognizable.
     //   - Duplicate labels are kept (with a /N stack-member suffix when the
     //     raw text contains "STACK MEMBER N") so two physical switches with
     //     identical hostnames don't collapse to a single chip.
     if (perDev && Array.isArray(perDev.devices)) {
-      const seenLabels = new Map(); // normalized label → count assigned
+      const seenLabels = new Map(); // normalized label â†’ count assigned
       for (const od of perDev.devices) {
         if (!od.raw_text || (od.ocr_conf || 0) < 0.4) continue;
         const norm = normalizeOcrLabelText(od.raw_text);
@@ -2499,7 +2570,7 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
 
   // Post-pass: symmetric stack-member suffixing. When two+ devices share the
   // same stack_base (e.g. two switches both labelled RVEW-CORE-SW01 because
-  // they form a Cisco stack), suffix every member with /N — not just the
+  // they form a Cisco stack), suffix every member with /N â€” not just the
   // duplicates after the first. That way the UI doesn't visually merge the
   // primary into a single chip and leave the others looking like /2, /3.
   if (dum && Array.isArray(dum.devices)) {
@@ -2529,7 +2600,7 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
     .sort((a, b) => (b.conf || 0) - (a.conf || 0))[0];
   const pattern = bestLabeled ? inferLabelPattern(bestLabeled.stack_base || bestLabeled.label) : null;
 
-  // Brand-token reclassification — read every OCR'd token we have (front
+  // Brand-token reclassification â€” read every OCR'd token we have (front
   // image labels + per-device crop text) and, when a known brand name lands
   // inside or atop a device's bbox, upgrade that device's class. This
   // recovers Planar/Sony/Audiocodes/Tripp-Lite/CEdge etc. that YOLO
@@ -2549,7 +2620,7 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
   };
 
   if (dum && Array.isArray(dum.devices)) {
-    // Per-device crop text — direct device-to-text mapping.
+    // Per-device crop text â€” direct device-to-text mapping.
     if (perDev && Array.isArray(perDev.devices)) {
       for (const od of perDev.devices) {
         const hit = classifyByBrand(od.raw_text);
@@ -2559,7 +2630,7 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
         noteReclass(idx, hit, od.raw_text, od.ocr_conf);
       }
     }
-    // Full-image OCR labels — match to the device whose bbox vertically
+    // Full-image OCR labels â€” match to the device whose bbox vertically
     // contains the label's center. Front side first; rear is a fallback for
     // racks where the brand badge is only visible on the back. Pixel-absolute
     // comparison; dum has no image_size and dev uses `box: [x1,y1,x2,y2]`.
@@ -2589,7 +2660,7 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
 
     // Label-driven reclassification: when YOLO marked a device Unidentified
     // (or Empty) but OCR captured an identifier-shaped label whose class
-    // token names a known class — e.g. "RVEW-CORE-SW01" → SW → Switch — use
+    // token names a known class â€” e.g. "RVEW-CORE-SW01" â†’ SW â†’ Switch â€” use
     // the label's own evidence to upgrade the class. Only applies to
     // low-confidence YOLO classes so we don't overrule strong detections.
     const CLASS_FROM_CODE = {
@@ -2628,7 +2699,7 @@ app.get('/api/ocr/labels/:rackId', (req, res) => {
 /**
  * POST /api/select
  * Runs full pipeline with --device_index and --port on the cached rack image.
- * Reads imagePath from scan_meta.json — no in-memory state required.
+ * Reads imagePath from scan_meta.json â€” no in-memory state required.
  */
 app.post('/api/select', async (req, res) => {
   const { scanId, device_index, port, port_category } = req.body;
@@ -2650,7 +2721,7 @@ app.post('/api/select', async (req, res) => {
 
   // meta.imagePath may be a stale absolute path from another machine
   // (e.g. scans copied between systems). Fall back to scanning the rack
-  // folder for original_image.{jpg,jpeg,png} — same pattern as the
+  // folder for original_image.{jpg,jpeg,png} â€” same pattern as the
   // ticket-mode select route below.
   const rackDir = path.join(outputsDir, rackId);
   let imagePath = meta.imagePath && fs.existsSync(meta.imagePath) ? meta.imagePath : null;
@@ -2707,6 +2778,15 @@ app.post('/api/select', async (req, res) => {
       fs.appendFileSync(idsPath, JSON.stringify(idEntry) + '\n');
     } catch (e) { logger.error('port id log failed:', e.message); }
 
+    const responsePayload = {
+      selectedPort: {
+        device_index: Number(device_index),
+        port_info: { ...portInfo },
+      },
+    };
+    applyFeedbackOverrides(rackId, responsePayload);
+    const responsePortInfo = responsePayload.selectedPort?.port_info || portInfo;
+
     timings.total_ms = Date.now() - reqStart;
     audit.log({
       req,
@@ -2720,7 +2800,7 @@ app.post('/api/select', async (req, res) => {
     res.json({
       resultImageUrl: `/outputs/${rackId}/${rackImageUrlPath(rackDir, '5_selected_device_with_port.png')}`,
       rackImageUrl:   `/outputs/${rackId}/${rackImageUrlPath(rackDir, '6_full_rack_selected_port.png')}`,
-      portInfo,
+      portInfo: responsePortInfo,
       portClassification: fullData.port_classification || null,
       timings,
     });
@@ -2739,7 +2819,7 @@ app.post('/api/select', async (req, res) => {
   }
 });
 
-// ── ServiceNow incident integration ────────────────────────────
+// â”€â”€ ServiceNow incident integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Poller writes tickets into ../servicenow_inbox/. Scan page reads them
 // via /api/incidents/active and targets the specific port without any
 // manual device/port selection.
@@ -2762,11 +2842,11 @@ function readTicketByNumber(inc) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
 }
 
-// ── Rack identity (CMDB) ─────────────────────────────────────
+// â”€â”€ Rack identity (CMDB) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Manually-seeded canonical rack records live in cmdb_racks/<rack_name>.json.
 // Each carries the expected label pattern + the device labels we expect to
 // see on the front of that rack. Used by verifyRackIdentity() to gate
-// ticket-driven uploads — i.e. "you said this is RACK-RVEW-CORE-01; the
+// ticket-driven uploads â€” i.e. "you said this is RACK-RVEW-CORE-01; the
 // labels in this photo say otherwise; please upload the correct rack."
 const CMDB_RACKS_DIR = path.join(__dirname, '..', 'cmdb_racks');
 
@@ -2803,16 +2883,16 @@ function collectIdentifierTokens(rackDir) {
   return [...tokens];
 }
 
-// Verify that an uploaded rack image (already analyzed → rackDir populated)
+// Verify that an uploaded rack image (already analyzed â†’ rackDir populated)
 // is the rack the ticket says it is. Returns { ok, reason, detected,
 // expected, matches, missing, pattern_ok }. The caller decides what to do
 // on a `false` result (typically 409 + ask user to upload the correct rack).
 //
-// Match rule (soft mode, default): accept if ≥ min_label_matches expected
+// Match rule (soft mode, default): accept if â‰¥ min_label_matches expected
 // labels appear in the upload's OCR tokens, OR if the upload's label pattern
 // (prefix-CODE-NN) matches the CMDB rack's pattern AND we read at least one
 // identifier token. Soft mode also accepts when no labels were detected at
-// all — that's a "no signal either way" case, surfaced to the client with
+// all â€” that's a "no signal either way" case, surfaced to the client with
 // `reason: 'no_labels_detected'` so the UI can prompt for a manual confirm.
 //
 // Strict mode (when cmdbRack.verification.mode === 'strict'): rejects on
@@ -2821,7 +2901,7 @@ function verifyRackIdentity(rackDir, ticket) {
   const rackName = ticket?.cmdb?.rack_name;
   const cmdbRack = readCmdbRack(rackName);
   if (!cmdbRack) {
-    // No CMDB record for this rack → can't verify, fall through (open by default).
+    // No CMDB record for this rack â†’ can't verify, fall through (open by default).
     return { ok: true, reason: 'no_cmdb_record', detected: [], expected: [], matches: [] };
   }
   const detected = collectIdentifierTokens(rackDir);
@@ -2831,7 +2911,7 @@ function verifyRackIdentity(rackDir, ticket) {
   const min = cmdbRack.verification?.min_label_matches ?? 1;
   const mode = cmdbRack.verification?.mode || 'soft';
 
-  // Pattern check — RVEW-CORE-* style. Useful when a label is OCR'd that
+  // Pattern check â€” RVEW-CORE-* style. Useful when a label is OCR'd that
   // *isn't* in the expected list (e.g. a new device added to this rack)
   // but still clearly belongs to this rack's naming scheme.
   const pat = cmdbRack.label_pattern;
@@ -2846,7 +2926,7 @@ function verifyRackIdentity(rackDir, ticket) {
     return { ok: true, reason: 'pattern_match_only', detected, expected, matches, pattern_ok: true };
   }
   if (detected.length === 0) {
-    // No legible labels — soft mode accepts and falls back to the
+    // No legible labels â€” soft mode accepts and falls back to the
     // synthesized U-prefixed pattern downstream; strict mode rejects.
     return {
       ok: mode === 'soft' ? true : false,
@@ -2867,8 +2947,8 @@ function verifyRackIdentity(rackDir, ticket) {
 /**
  * Map a CMDB device name (e.g. SW-U10) to a device_index inside a scan's
  * device_unit_map.json. Matching rule: class matches the name prefix
- * (SW→Switch, PP→Patch Panel, SRV→Server) AND the scan lists the device at
- * the same U position that the name encodes (U10 → "u10" in units).
+ * (SWâ†’Switch, PPâ†’Patch Panel, SRVâ†’Server) AND the scan lists the device at
+ * the same U position that the name encodes (U10 â†’ "u10" in units).
  */
 function deviceIndexFromTicket(rackDir, cmdbDeviceName) {
   const r = resolveTicketDevice(rackDir, cmdbDeviceName);
@@ -2887,7 +2967,7 @@ function deviceIndexFromTicket(rackDir, cmdbDeviceName) {
  *     detections_at_u: [{class_name, confidence}],  // everything the scan sees at expected_u
  *   }
  */
-// Map of class codes used in device names (RVEW-CORE-SW01, SW-U10, …) to
+// Map of class codes used in device names (RVEW-CORE-SW01, SW-U10, â€¦) to
 // canonical class_name values from the YOLO detector. Lets us derive the
 // expected class from a CMDB device name regardless of which naming
 // convention the site uses.
@@ -2913,7 +2993,7 @@ function resolveTicketDevice(rackDir, cmdbDeviceName, cmdbHint = null) {
   const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
   const name = String(cmdbDeviceName || '').toUpperCase();
 
-  // Strategy A — legacy "<CODE>-U<NN>" names (SW-U10, PP-U08, SRV-U02).
+  // Strategy A â€” legacy "<CODE>-U<NN>" names (SW-U10, PP-U08, SRV-U02).
   // Class comes from the prefix, U-position from the suffix.
   const legacyPrefix = { 'SW-':'Switch', 'PP-':'Patch Panel', 'SRV-':'Server' };
   const lp = Object.keys(legacyPrefix).find(p => name.startsWith(p));
@@ -2924,7 +3004,7 @@ function resolveTicketDevice(rackDir, cmdbDeviceName, cmdbHint = null) {
     if (m) uNum = parseInt(m[1], 10);
   }
 
-  // Strategy B — pattern-style names like RVEW-CORE-SW01. The last segment
+  // Strategy B â€” pattern-style names like RVEW-CORE-SW01. The last segment
   // (split on - or _) is "<CLASS_CODE><digits>"; class is the code,
   // U-position comes from the ticket's cmdb.u_position (the name itself
   // doesn't encode U). Anything that resolves a class here is preferred
@@ -2987,9 +3067,9 @@ function resolveTicketDevice(rackDir, cmdbDeviceName, cmdbHint = null) {
  * racks. The server:
  *   1. Saves the video, computes a stable hash (group key).
  *   2. Splits the video into N best-frames via the worker
- *      (`split_video_racks` command → pipeline.multi_rack_split).
+ *      (`split_video_racks` command â†’ pipeline.multi_rack_split).
  *   3. For each best-frame, runs the same /api/analyze flow that single
- *      images use — produces a normal RK-XXXXXXXX scan with full output
+ *      images use â€” produces a normal RK-XXXXXXXX scan with full output
  *      directory, port detection, etc. So every per-rack feature
  *      (Ports / Topology / SFP advisor / Firmware) works as-is.
  *   4. Records the parent group (rack_groups) + members so the UI can
@@ -3005,7 +3085,7 @@ app.post('/api/analyze-video', scanLimit, upload.single('video'), async (req, re
   const reqStart = Date.now();
   const videoPath = req.file.path;
 
-  // Tenant required — multi-rack scans always go into someone's tenant.
+  // Tenant required â€” multi-rack scans always go into someone's tenant.
   const authPayload = softAuthPayload(req);
   const tenantId = authPayload?.tenantId;
   const userId   = authPayload?.sub || null;
@@ -3053,11 +3133,11 @@ app.post('/api/analyze-video', scanLimit, upload.single('video'), async (req, re
 
         let cached = false;
         if (fs.existsSync(jsonPath)) {
-          // Cache hit — just record group membership, no re-analysis.
+          // Cache hit â€” just record group membership, no re-analysis.
           cached = true;
           await ensurePortCounts(rackId);
         } else {
-          // Fresh analysis — same path /api/analyze takes. We save the
+          // Fresh analysis â€” same path /api/analyze takes. We save the
           // file under the same name single-rack scans use ("original_image")
           // so:
           //   * the Results-page hero image URL (/outputs/<rackId>/original_image.<ext>) resolves
@@ -3139,7 +3219,7 @@ app.get('/api/rack-group/:groupId', auth.requireAuth, (req, res) => {
   const data = rackGroups.get(req.params.groupId);
   if (!data) return res.status(404).json({ error: 'Group not found' });
   if (data.group.tenant_id !== req.user.tenant_id) {
-    // 404 not 403 — don't reveal cross-tenant existence
+    // 404 not 403 â€” don't reveal cross-tenant existence
     return res.status(404).json({ error: 'Group not found' });
   }
   res.json({ ok: true, ...data });
@@ -3192,8 +3272,8 @@ app.get('/api/incidents/active', (req, res) => {
 
 /**
  * GET /api/incidents/:inc/expected-rack
- * Returns what the field tech should photograph for this incident — the
- * site/row/position breadcrumb and the rack's expected labels — so the
+ * Returns what the field tech should photograph for this incident â€” the
+ * site/row/position breadcrumb and the rack's expected labels â€” so the
  * client can render a clear "upload THIS rack" prompt before the user
  * picks an image. No upload required.
  */
@@ -3227,13 +3307,13 @@ app.get('/api/incidents/:inc/expected-rack', (req, res) => {
  * Runs analyze + label OCR on the upload, then checks the detected
  * identifier-shaped labels against the ticket's CMDB rack record. Three
  * outcomes:
- *   - 200 {ok:true}                       → rack identity confirmed, proceed
+ *   - 200 {ok:true}                       â†’ rack identity confirmed, proceed
  *   - 409 {ok:false, reason:'rack_mismatch', detected, expected, missing}
- *                                         → wrong rack — tell the tech to
+ *                                         â†’ wrong rack â€” tell the tech to
  *                                           upload the correct one
  *   - 200 {ok:null, reason:'no_labels_detected'}
- *                                         → soft mode, couldn't verify either
- *                                           way — UI prompts for manual confirm
+ *                                         â†’ soft mode, couldn't verify either
+ *                                           way â€” UI prompts for manual confirm
  *
  * Always returns `detected` and `expected` so the client can show a diff.
  */
@@ -3261,7 +3341,7 @@ app.post('/api/incidents/:inc/verify-rack', scanLimit, upload.single('image'), a
     safeUnlink(tmpPath);
 
     // Make sure both OCR passes have run so verification has every signal
-    // available — per-device crops (ocr_devices.json) AND full-image labels
+    // available â€” per-device crops (ocr_devices.json) AND full-image labels
     // (labels-front.json). Per-device is part of runPipelineAnalyze; the
     // full-image pass we trigger here so verification isn't racing the
     // background scheduler.
@@ -3314,7 +3394,7 @@ app.post('/api/incidents/:inc/verify-rack', scanLimit, upload.single('image'), a
  * POST /api/analyze-for-ticket
  * Scan-page one-shot: upload image + incident_number. Server does:
  *   1. Normal analyze (or cache hit)
- *   2. Resolve ticket → device_index via CMDB u_position + class
+ *   2. Resolve ticket â†’ device_index via CMDB u_position + class
  *   3. Run the port-select pipeline for that device+port
  *   4. Try LLDP over SSH to the switch's mgmt_ip for the interface
  * Returns the bundled payload so the client has one round trip.
@@ -3337,7 +3417,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
   const timings = {};
 
   try {
-    // STEP 1 — analyze the rack (reuse logic from /api/analyze inline)
+    // STEP 1 â€” analyze the rack (reuse logic from /api/analyze inline)
     let tmpPath = req.file.path;
     tmpPath = await normalizeImage(tmpPath);
     const rackId   = computeRackId(tmpPath);
@@ -3355,7 +3435,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
       logger.info({ event: 'ticket.cache_hit', rackId }, `ticket cache hit ${rackId}`);
       recordEvent('ticket.cache_hit', { rackId });
     } else {
-      // Skip quality check in ticket mode — the tech is directed to a specific
+      // Skip quality check in ticket mode â€” the tech is directed to a specific
       // rack by the ticket, we don't want to gate on tilt/lighting.
       fs.mkdirSync(rackDir, { recursive: true });
       const ext = path.extname(tmpPath) || '.jpg';
@@ -3367,7 +3447,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
       timings.analyze_ms = Date.now() - tPipeStart;
     }
 
-    // STEP 1b — rack identity verification. Refuse to proceed if the OCR'd
+    // STEP 1b â€” rack identity verification. Refuse to proceed if the OCR'd
     // labels on this image don't match the ticket's expected rack. This is
     // the "did the tech upload the right physical rack?" guard. Skipped
     // when the upload caller has explicitly waived verification (e.g. an
@@ -3375,7 +3455,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
     // override) via `verified=1` in the form body.
     const verifyWaived = req.body?.verified === '1' || req.body?.verified === 'true';
     if (!verifyWaived) {
-      // Ensure full-image labels exist before verifying — per-device OCR
+      // Ensure full-image labels exist before verifying â€” per-device OCR
       // (run by analyze above) is sometimes too narrowly cropped.
       const frontPath = path.join(rackDir, 'labels-front.json');
       if (!fs.existsSync(frontPath)) {
@@ -3415,13 +3495,13 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
       // 'no_labels_detected' case downstream if it wants a manual confirm.
     }
 
-    // STEP 2 — resolve ticket device to a scan device_index, and in the same
+    // STEP 2 â€” resolve ticket device to a scan device_index, and in the same
     // call gather "what is physically there at the expected U" for drift reporting.
     // Pass the CMDB block so the resolver can use u_position and sys_class_name
     // when the device name itself (e.g. RVEW-CORE-SW01) doesn't encode them.
     const resolved = resolveTicketDevice(rackDir, target.device, cmdb);
     if (resolved.device_index == null) {
-      // PHYSICAL DRIFT — CMDB says there should be a `expected_class` at U`expected_u`,
+      // PHYSICAL DRIFT â€” CMDB says there should be a `expected_class` at U`expected_u`,
       // but the scan sees something else (or nothing). Return a drift payload with
       // enough context for the client to render a "something is wrong" view.
       const analyzeResp = buildResponse(rackId, fs.existsSync(jsonPath));
@@ -3462,7 +3542,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
     }
     const device_index = resolved.device_index;
 
-    // STEP 3 — run port-select for this device + port. Find the cached image:
+    // STEP 3 â€” run port-select for this device + port. Find the cached image:
     // readMeta() may miss it (demo folders shipped without scan_meta.json), so
     // fall back to scanning rackDir for original_image.{jpg,jpeg,png}.
     const meta = readMeta(rackId);
@@ -3500,7 +3580,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
       if (fs.existsSync(srcFull))   fs.copyFileSync(srcFull, dstFull);
     } catch (e) { logger.error('port image archive failed:', e.message); }
 
-    // STEP 4 — LLDP / SSH (best-effort; network is often unreachable in demo)
+    // STEP 4 â€” LLDP / SSH (best-effort; network is often unreachable in demo)
     let lldp = null;
     const host  = cmdb.mgmt_ip;
     const iface = cmdb.interface_alias;
@@ -3564,7 +3644,7 @@ app.post('/api/analyze-for-ticket', scanLimit, upload.single('image'), async (re
   }
 });
 
-// ── Agent dashboard routes ───────────────────────────────────────────────
+// â”€â”€ Agent dashboard routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // SN credentials are read once at module load from either server/.env (if
 // they live there) or s_agent/.env (where the agent was originally tested).
 // Never log the password.
@@ -3593,7 +3673,7 @@ function getSnCreds() {
           if (k === 'SN_USER'     && !user)     user     = v;
           if (k === 'SN_PASSWORD' && !password) password = v;
         }
-      } catch (_) { /* swallow — caller handles missing creds */ }
+      } catch (_) { /* swallow â€” caller handles missing creds */ }
     }
   }
   _snCredsCache = (instance && user && password) ? { instance, user, password } : null;
@@ -3608,7 +3688,7 @@ function getSnCreds() {
 
 /**
  * GET /api/agent/feedback/scoreboard
- * Returns the agent accuracy scoreboard (local state — no SN call).
+ * Returns the agent accuracy scoreboard (local state â€” no SN call).
  */
 app.get('/api/agent/feedback/scoreboard', async (req, res) => {
   try {
@@ -3691,7 +3771,7 @@ app.post('/api/incidents/:inc/post-work-note', async (req, res) => {
 
   const ticket = readTicketByNumber(incNumber);
   if (!ticket) return res.status(404).json({ error: `Ticket ${incNumber} not in inbox` });
-  if (!ticket.sys_id) return res.status(400).json({ error: 'inbox ticket is missing sys_id — cannot post' });
+  if (!ticket.sys_id) return res.status(400).json({ error: 'inbox ticket is missing sys_id â€” cannot post' });
 
   try {
     // Rebuild the agent's extraction + reasoning so the worker has the
@@ -3701,7 +3781,7 @@ app.post('/api/incidents/:inc/post-work-note', async (req, res) => {
       ? path.join(outputsDir, ticket.cmdb.rack_scan_id)
       : outputsDir;
     const agentRes = await runAgentExtraction(ticket, rackDir);
-    if (!agentRes) return res.status(500).json({ error: 'agent extraction failed — try /api/analyze-for-ticket first' });
+    if (!agentRes) return res.status(500).json({ error: 'agent extraction failed â€” try /api/analyze-for-ticket first' });
 
     const richTicket = {
       ...ticket,
@@ -3753,7 +3833,7 @@ app.get('/api/racks', (req, res) => {
       allowed = tenant.tenantRackIds(tid);
     } else {
       logger.warn({ event: 'racks.unauthenticated' },
-        'GET /api/racks served without auth — returning unfiltered list');
+        'GET /api/racks served without auth â€” returning unfiltered list');
       allowed = null; // unfiltered (legacy)
     }
     const racks = fs.readdirSync(outputsDir)
@@ -3770,7 +3850,7 @@ app.get('/api/racks', (req, res) => {
   }
 });
 
-// ── Per-user scan history ────────────────────────────────────
+// â”€â”€ Per-user scan history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Returns the rich list of scans owned by the authenticated user, with
 // device/unit counts and the timestamp of the latest port identification.
 // Used by the Profile page's history list.
@@ -3828,13 +3908,13 @@ app.get('/api/scans', auth.requireAuth, (req, res) => {
   }
 });
 
-// ── Report endpoints ──────────────────────────────────────────
+// â”€â”€ Report endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // One source of truth (buildScanReportData), four output formats:
-//   GET /api/scan/:rackId/report                 → JSON metadata (no file written)
-//   GET /api/scan/:rackId/report?format=html     → standalone HTML (regenerates + saves to disk)
-//   GET /api/scan/:rackId/report?format=json     → JSON data
-//   GET /api/scan/:rackId/report?format=csv      → CSV (Excel opens this directly)
-//   POST /api/scan/:rackId/report                → regenerates HTML file and returns metadata
+//   GET /api/scan/:rackId/report                 â†’ JSON metadata (no file written)
+//   GET /api/scan/:rackId/report?format=html     â†’ standalone HTML (regenerates + saves to disk)
+//   GET /api/scan/:rackId/report?format=json     â†’ JSON data
+//   GET /api/scan/:rackId/report?format=csv      â†’ CSV (Excel opens this directly)
+//   POST /api/scan/:rackId/report                â†’ regenerates HTML file and returns metadata
 // The HTML file lives at outputs/<rackId>/report.html (single self-contained file with inline images).
 app.get('/api/scan/:rackId/report', (req, res) => {
   const { rackId } = req.params;
@@ -3906,8 +3986,8 @@ app.post('/api/scan/:rackId/report', (req, res) => {
 // Returns { rack, switches: [{ name, serial_number, model_number, ip_address, mac_address, os_version, manufacturer, position }] }.
 // Spawns servicenow/list_rack_switches.py which queries cmdb_ci_rack by
 // u_racktrack_scan_id and walks Contains-relations to its switch children.
-// Empty switches[] when SN env vars aren't set or the rack isn't in CMDB —
-// the UI just shows "—" for serials in that case.
+// Empty switches[] when SN env vars aren't set or the rack isn't in CMDB â€”
+// the UI just shows "â€”" for serials in that case.
 const _cmdbCache = new Map(); // rackId -> { at, payload }
 app.get('/api/cmdb/rack/:rackId/switches', (req, res) => {
   const { rackId } = req.params;
@@ -3943,7 +4023,7 @@ app.get('/api/cmdb/rack/:rackId/switches', (req, res) => {
 
 // GET /api/topology/:rackId
 // Serves the topology snapshot written by servicenow/bootstrap_cmdb_full.py
-// (mirror of CMDB rack→device→port tree + Connects-to cable edges).
+// (mirror of CMDB rackâ†’deviceâ†’port tree + Connects-to cable edges).
 // Snapshot lives at outputs/<rackId>/topology.json.
 app.get('/api/topology/:rackId', (req, res) => {
   const { rackId } = req.params;
@@ -3963,7 +4043,7 @@ app.get('/api/topology/:rackId', (req, res) => {
 });
 
 // GET /api/scan/:rackId
-// Returns the same shape as POST /api/analyze (cached) — devices array with
+// Returns the same shape as POST /api/analyze (cached) â€” devices array with
 // per-port arrays, units_detected, originalExt, etc. The All Components and
 // Topology pages call this on mount so port counts stay in sync with the
 // underlying device_unit_map.json after re-detection runs.
@@ -4001,11 +4081,11 @@ app.get('/api/scan/:rackId/result', (req, res) => {
   }
 });
 
-// ── Switch LLDP neighbor lookup ───────────────────────────────
+// â”€â”€ Switch LLDP neighbor lookup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // SSH into a Cisco-IOS-style switch, run
 //   show lldp neighbors <interface> detail
 // and parse the output for the neighbor on the other end of the cable.
-// Credentials come per-request — never stored on the server.
+// Credentials come per-request â€” never stored on the server.
 const { Client: SSHClient } = require('ssh2');
 
 function runSwitchCommand({ host, port = 22, username, password, command, timeoutMs = 20000, pagingOff = 'terminal length 0', enable = null, enablePassword = null }) {
@@ -4036,7 +4116,7 @@ function runSwitchCommand({ host, port = 22, username, password, command, timeou
       })
       .on('ready', () => {
         // Advertise a tall, wide PTY so vendor pagers don't kick in mid-output.
-        // ssh2 defaults to 24×80 — TP-Link JetStream then paginates `show interface
+        // ssh2 defaults to 24Ã—80 â€” TP-Link JetStream then paginates `show interface
         // status` on a 28-port switch, dropping rows around the page boundary even
         // with `disable pager` set. Real terminals (PuTTY etc.) send their actual
         // window size and the switch fits everything in one page.
@@ -4132,7 +4212,7 @@ function runSwitchCommand({ host, port = 22, username, password, command, timeou
         tryKeyboard: true, // fall back to keyboard-interactive if password auth fails
         readyTimeout: timeoutMs,
         // Legacy-friendly algorithm set. Only include names that node's `ssh2`
-        // library actually supports — passing unknown strings throws
+        // library actually supports â€” passing unknown strings throws
         // "Unsupported algorithm: <name>" even if the switch asks for them.
         algorithms: {
           kex: [
@@ -4208,7 +4288,7 @@ function runSwitchCommandsSequential({
       .on('error', (err) => { clearTimeout(overallTimer); settle(err); })
       .on('ready', () => {
         // Advertise a tall, wide PTY so vendor pagers don't kick in mid-output.
-        // ssh2 defaults to 24×80 — TP-Link JetStream then paginates `show interface
+        // ssh2 defaults to 24Ã—80 â€” TP-Link JetStream then paginates `show interface
         // status` on a 28-port switch, dropping rows around the page boundary even
         // with `disable pager` set. Real terminals (PuTTY etc.) send their actual
         // window size and the switch fits everything in one page.
@@ -4339,7 +4419,7 @@ function runSwitchCommandsSequential({
   });
 }
 
-// ── Vendor configuration ──────────────────────────────────────
+// â”€â”€ Vendor configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Each vendor defines the CLI commands it speaks for LLDP / CDP / MAC / ARP,
 // the paging-off command to disable "--More--" prompts, and how a port
 // number maps to an interface name in its CLI.
@@ -4354,7 +4434,7 @@ const VENDORS = {
       arp:       'show arp | include {mac}',
     },
     // The console's auto-command list is sourced from console_commands.json
-    // (per-vendor section). Edit that file to change commands — no code edit needed.
+    // (per-vendor section). Edit that file to change commands â€” no code edit needed.
     derive_interface: (p) => `Gi1/0/${p}`,
   },
   'dlink': {
@@ -4371,7 +4451,7 @@ const VENDORS = {
   'tplink': {
     label: 'TP-Link',
     // TP-Link JetStream `show lldp neighbor-information` etc. require
-    // privileged (enable) mode — user-mode prompt `>` rejects them.
+    // privileged (enable) mode â€” user-mode prompt `>` rejects them.
     enable: 'enable',
     paging_off: 'disable pager',
     commands: {
@@ -4386,10 +4466,10 @@ const VENDORS = {
   },
 };
 
-// ── Vendor-agnostic "loose" parsers ───────────────────────────
+// â”€â”€ Vendor-agnostic "loose" parsers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // These extract common fields (system name, port id, MAC, IP, VLAN, etc.)
 // from LLDP/CDP output across Cisco, D-Link, TP-Link, Aruba, Juniper, etc.
-// They trade precision for breadth — good enough for reporting a neighbor.
+// They trade precision for breadth â€” good enough for reporting a neighbor.
 function parseLooseNeighbor(raw) {
   const text = (raw || '').replace(/\r/g, '');
   const pick = (re) => { const m = text.match(re); return m ? m[1].trim() : null; };
@@ -4432,7 +4512,7 @@ function rackImagePath(rackDir, fname) {
 function rackImageUrlPath(rackDir, fname) {
   return fs.existsSync(path.join(rackDir, 'images', fname)) ? `images/${fname}` : fname;
 }
-// Per-port artifacts (5/6 PNG copies) — new layout: <rack>/ports/<base>.png
+// Per-port artifacts (5/6 PNG copies) â€” new layout: <rack>/ports/<base>.png
 function rackPortPath(rackDir, baseName) {
   const dir = path.join(rackDir, 'ports');
   fs.mkdirSync(dir, { recursive: true });
@@ -4460,7 +4540,7 @@ function resolveRelativeArtifact(rackDir, rel) {
 
 // Read console_commands.json and return the auto-command list for the given
 // vendor. Falls back to the top-level `auto_commands` list if the vendor has
-// no section — keeps legacy installs working.
+// no section â€” keeps legacy installs working.
 function loadConsoleCommandsForVendor(vendor) {
   const raw = loadConsoleCommands();
   const vlist = raw?.vendors?.[vendor]?.auto_commands;
@@ -4518,10 +4598,10 @@ function cleanShellOutput(raw, cmd) {
   // Replace null bytes (TP-Link inserts them after paging prompts) with a
   // newline so the data that follows the prompt becomes its own line. If we
   // strip them outright the next regex eats the prompt PLUS the next port row
-  // up to the next \n — that was the "27 of 28 ports" bug (Gi1/0/23 vanished).
+  // up to the next \n â€” that was the "27 of 28 ports" bug (Gi1/0/23 vanished).
   out = out.replace(/\x00/g, '\n');
   // Strip paging prompts: "Press any key to continue (Q to quit)", "--More--", etc.
-  // Only consume the prompt text (and trailing spaces/tabs) — never the data
+  // Only consume the prompt text (and trailing spaces/tabs) â€” never the data
   // that may follow it on the same line. The "(Q to quit)" suffix is optional
   // because some firmware revisions omit it.
   out = out.replace(/Press any key to continue(?:\s*\(Q to quit\))?[ \t]*/gi, '');
@@ -4547,7 +4627,7 @@ app.get('/api/switch/console/intents', (req, res) => {
 });
 
 // GET /api/switch/creds-status?vendor=X
-// Booleans only — never returns the actual secret values. Lets the client
+// Booleans only â€” never returns the actual secret values. Lets the client
 // know whether the encrypted env store already has username / password /
 // enable for this vendor, so the login modal can hide those fields and ask
 // the user for only the switch IP.
@@ -4565,7 +4645,7 @@ app.get('/api/switch/creds-status', (req, res) => {
 // GET /api/switch/default-host
 // Suggests a switch IP without asking the user. Two sources, in order:
 //   1. The current user's last successful SSH host (kept in scan_meta of the
-//      most recent scan they own — small read, no extra storage).
+//      most recent scan they own â€” small read, no extra storage).
 //   2. The server machine's default gateway (on most LANs the gateway IS
 //      the switch, or one hop away). Best-effort, may be null.
 // Always responds with JSON; missing values come back as null instead of
@@ -4588,7 +4668,7 @@ function detectDefaultGateway() {
 let _gatewayCache = null;
 let _gatewayCachedAt = 0;
 function defaultGateway() {
-  // Cache for 60s — gateway rarely changes and shelling out per-request is wasteful.
+  // Cache for 60s â€” gateway rarely changes and shelling out per-request is wasteful.
   const now = Date.now();
   if (_gatewayCache !== null && (now - _gatewayCachedAt) < 60_000) return _gatewayCache;
   _gatewayCache = detectDefaultGateway();
@@ -4596,7 +4676,7 @@ function defaultGateway() {
   return _gatewayCache;
 }
 
-// Path of a per-user "last host" file — keyed by userId so each account
+// Path of a per-user "last host" file â€” keyed by userId so each account
 // keeps its own most-recent switch IP separately.
 const lastHostDir = path.join(__dirname, 'data', 'last-hosts');
 function readLastHost(userId) {
@@ -4618,7 +4698,7 @@ app.get('/api/switch/default-host', (req, res) => {
   const userId = softAuthUserId(req);
   const last    = readLastHost(userId);
   const gateway = defaultGateway();
-  // Suggested = last (preferred) → gateway (fallback). Either may be null.
+  // Suggested = last (preferred) â†’ gateway (fallback). Either may be null.
   res.json({
     suggested: last || gateway || null,
     last_host: last,
@@ -4728,7 +4808,7 @@ app.post('/api/switch/console/run-auto-stream', async (req, res) => {
       pagingOff: vconf.paging_off,
       enable: vconf.enable,
       enablePassword,
-      // Don't short-circuit on `cancelled` — earlier attempts did this and a
+      // Don't short-circuit on `cancelled` â€” earlier attempts did this and a
       // false-positive close signal on some Node versions aborted the loop
       // before ANY command ran, leaving the UI with an empty terminal.
       isCancelled: () => false,
@@ -4879,7 +4959,7 @@ async function findNeighborChain({ host, port, username, password, enablePasswor
   // Truncate raw shell output so the response stays small but the UI can still diagnose.
   const tail = (s) => (s || '').slice(-1200);
 
-  // 1. LLDP — supported by every major managed switch vendor
+  // 1. LLDP â€” supported by every major managed switch vendor
   if (vconf.commands.lldp) {
     try {
       const cmd = subst(vconf.commands.lldp);
@@ -4892,7 +4972,7 @@ async function findNeighborChain({ host, port, username, password, enablePasswor
     }
   }
 
-  // 2. CDP — Cisco only (vendor config has cdp=null for others)
+  // 2. CDP â€” Cisco only (vendor config has cdp=null for others)
   if (vconf.commands.cdp) {
     try {
       const cmd = subst(vconf.commands.cdp);
@@ -4905,7 +4985,7 @@ async function findNeighborChain({ host, port, username, password, enablePasswor
     }
   }
 
-  // 3. MAC address table — last resort, gives us the remote MAC
+  // 3. MAC address table â€” last resort, gives us the remote MAC
   let macResult = null;
   if (vconf.commands.mac_table) {
     try {
@@ -4920,7 +5000,7 @@ async function findNeighborChain({ host, port, username, password, enablePasswor
 
   if (!macResult?.found) return { method: 'none', neighbor: { found: false }, chain };
 
-  // 4. ARP lookup — MAC → IP
+  // 4. ARP lookup â€” MAC â†’ IP
   let arpResult = null;
   if (vconf.commands.arp) {
     try {
@@ -4933,7 +5013,7 @@ async function findNeighborChain({ host, port, username, password, enablePasswor
     }
   }
 
-  // 5. Reverse DNS — IP → hostname (runs on the Node server, not the switch)
+  // 5. Reverse DNS â€” IP â†’ hostname (runs on the Node server, not the switch)
   let hostname = null;
   if (arpResult?.found && arpResult.ip) {
     hostname = await reverseDnsLookup(arpResult.ip);
@@ -4972,7 +5052,7 @@ async function findNeighborChain({ host, port, username, password, enablePasswor
  *   link_active: bool,             // has_neighbor || mac_count > 0
  * }
  *
- * We reuse findNeighborChain() + the existing VENDORS.mac_table command —
+ * We reuse findNeighborChain() + the existing VENDORS.mac_table command â€”
  * no new vendor-specific parsers needed. One SSH roundtrip, ~1-3s per poll.
  */
 app.post('/api/switch/port-status', async (req, res) => {
@@ -5051,14 +5131,14 @@ app.post('/api/switch/lldp-neighbor', async (req, res) => {
   }
 });
 
-// GET /api/vendors — list supported switch vendors for the UI picker.
+// GET /api/vendors â€” list supported switch vendors for the UI picker.
 app.get('/api/vendors', (req, res) => {
   res.json({
     vendors: Object.entries(VENDORS).map(([key, v]) => ({ key, label: v.label })),
   });
 });
 
-// ── Spec sheet & firmware lookup ──────────────────────────────
+// â”€â”€ Spec sheet & firmware lookup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Spawns a python module under pipeline/ with --json. The module reads
 // Switch_Vendors_Websites.xlsx, picks the vendor URL, searches the vendor
 // site, and scrapes the relevant block (specs, release notes, CVEs).
@@ -5102,7 +5182,7 @@ function runPipelineModule(moduleName, extraArgs) {
       if (parsed) return finish(parsed);
       finish({
         ok: false,
-        error: 'Lookup didn’t return a usable result. Try again.',
+        error: 'Lookup didnâ€™t return a usable result. Try again.',
         _exitCode: code,
         _stderr: stderr.trim().slice(-500),
       });
@@ -5110,7 +5190,7 @@ function runPipelineModule(moduleName, extraArgs) {
   });
 }
 
-// GET /api/specs/vendors — vendor names from the Excel sheet.
+// GET /api/specs/vendors â€” vendor names from the Excel sheet.
 app.get('/api/specs/vendors', async (req, res) => {
   const result = await runPipelineModule('pipeline.all_vendor', ['--list-vendors']);
   if (!result.ok) return res.status(500).json(result);
@@ -5118,7 +5198,7 @@ app.get('/api/specs/vendors', async (req, res) => {
 });
 
 // POST /api/specs  body: { vendor, model }
-// → Switch Spec Agent (Agent_scrap): SQLite cache (~1ms) with free
+// â†’ Switch Spec Agent (Agent_scrap): SQLite cache (~1ms) with free
 //   multi-engine web fallback (~4s) for unknown models. The agent's record
 //   is transformed into the UI's existing { vendor, model, productUrl, specs }
 //   contract so callers don't have to change.
@@ -5182,7 +5262,7 @@ function _bestSuggestion(suggestions, originalModel) {
   }
   // Threshold guards against picking a wildly different sibling (e.g.
   // returning "CRS305" for a query about a novel "C9300" model that
-  // simply isn't in the DB). 0.5 lets "CRS326-246" → "CRS326-24G"
+  // simply isn't in the DB). 0.5 lets "CRS326-246" â†’ "CRS326-24G"
   // through while rejecting unrelated picks.
   return bestScore >= 0.5 ? best : null;
 }
@@ -5206,7 +5286,7 @@ async function resolveAgentWithOcrCorrection(vendor, model) {
       return { agentRes: retry, matchedFrom: model, matchedTo: best };
     }
   }
-  // Stage 2: fall through to live lookup of the ORIGINAL query — for
+  // Stage 2: fall through to live lookup of the ORIGINAL query â€” for
   // genuinely novel models the agent's multi-source web extractor may
   // succeed even without a DB seed.
   const live = await runAgentCli([`${vendor} ${model}`]);
@@ -5277,9 +5357,9 @@ function specPayloadFromAgent(agentRes, reqVendor, reqModel) {
 }
 
 // POST /api/sfp/analyze  body: { vendor, model, interfaces? }
-// → dynamically determines SFP slot type by scraping vendor datasheets,
+// â†’ dynamically determines SFP slot type by scraping vendor datasheets,
 //   then searches the web for compatible transceiver modules.
-//   No hardcoded switch database — everything is inferred from live data.
+//   No hardcoded switch database â€” everything is inferred from live data.
 app.post('/api/sfp/analyze', async (req, res) => {
   const vendor     = String(req.body?.vendor || '').trim();
   const model      = String(req.body?.model  || '').trim();
@@ -5294,7 +5374,7 @@ app.post('/api/sfp/analyze', async (req, res) => {
 });
 
 // POST /api/firmware  body: { vendor, model, currentVersion }
-// → Pure Switch Spec Agent (Agent_scrap, clean branch). The agent's
+// â†’ Pure Switch Spec Agent (Agent_scrap, clean branch). The agent's
 //   FirmwareAdvice now natively bundles version-compare, NIST NVD CVE data
 //   (security_advisories table populated by prefetch_firmware.py /
 //   nvd_fetcher), CISA KEV overlay, and vendor-level latest fallback. The
@@ -5343,7 +5423,7 @@ app.post('/api/firmware', async (req, res) => {
 // Agent natively returns:
 //   advice.diff.target.{version, release_notes_url, security_fixes,
 //                       bug_fixes, new_features, known_issues, deprecations}
-//   advice.advisories[]  ← {cve_id, severity, cvss_score, description,
+//   advice.advisories[]  â† {cve_id, severity, cvss_score, description,
 //                           references, actively_exploited, ...} from NIST NVD
 //   advice.portal_url, advice.release_notes_gated, advice.recommended_min_version
 function firmwarePayloadFromAgent(agentRes, req) {
@@ -5389,7 +5469,7 @@ function firmwarePayloadFromAgent(agentRes, req) {
   });
 
   // Synthesize the changelog section from the target firmware's
-  // structured release-note fields — no extra web scrape needed since the
+  // structured release-note fields â€” no extra web scrape needed since the
   // agent's firmware DB already carries the diff breakdown.
   const changelog = [];
   if (target) {
@@ -5439,7 +5519,7 @@ function firmwarePayloadFromAgent(agentRes, req) {
   };
 }
 
-// ── Switch Spec Agent (Agent_scrap) ───────────────────────────────────────
+// â”€â”€ Switch Spec Agent (Agent_scrap) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Wraps the standalone agent at Agent/Agent_scrap (cloned separately).
 // Cached DB hits return in ~1ms; unknown vendor/model falls back to a free
 // multi-engine web fetch + extraction in ~4s. No LLM, no API keys.
@@ -5487,7 +5567,7 @@ function runAgentCli(extraArgs) {
 }
 
 // POST /api/scan/:rackId/ocr-devices
-// Runs pipeline.ocr_devices on a rack — per-device EasyOCR pass against
+// Runs pipeline.ocr_devices on a rack â€” per-device EasyOCR pass against
 // each detected device's chassis crop, parsing make/model/firmware. Writes
 // outputs/<rackId>/ocr_devices.json which servicenow/synth.py picks up on
 // the next CMDB build to populate real (instead of synthesized) make/model.
@@ -5542,7 +5622,7 @@ app.post('/api/scan/:rackId/ocr-devices', (req, res) => {
 });
 
 // GET /api/scan/:rackId/ocr-devices
-// Returns the cached ocr_devices.json if it exists. No SSH, no scrape — just
+// Returns the cached ocr_devices.json if it exists. No SSH, no scrape â€” just
 // reads the file written by the POST endpoint above. Used by the Switch
 // Information page to know whether OCR has been run for this rack.
 app.get('/api/scan/:rackId/ocr-devices', (req, res) => {
@@ -5560,15 +5640,15 @@ app.get('/api/scan/:rackId/ocr-devices', (req, res) => {
 });
 
 // POST /api/scan/:rackId/side-labels
-// Runs pipeline.side_labels — extracts identifier-shaped text from the
+// Runs pipeline.side_labels â€” extracts identifier-shaped text from the
 // LEFT and RIGHT margins of the rack photo (the green "SWHOME / SWFIBRA1"
 // chips techs apply to rack rails). This is independent of the CV
 // detector: even when YOLO misses a device with an unusual fascia, the
 // side label is still readable. The client uses the result to surface
-// recall gaps ("5 labels found, 3 switches identified — confirm the
+// recall gaps ("5 labels found, 3 switches identified â€” confirm the
 // missing 2") instead of silently under-counting.
 //
-// Same spawn pattern as ocr-devices (synchronous, generous timeout —
+// Same spawn pattern as ocr-devices (synchronous, generous timeout â€”
 // EasyOCR on CPU). Cheaper than the full-image pass because we only OCR
 // ~24% of the pixels (12% on each margin).
 const SIDE_LABELS_TIMEOUT_MS = 3 * 60_000;
@@ -5647,7 +5727,7 @@ app.get('/api/scan/:rackId/side-labels', (req, res) => {
 // forward it to the client.
 const { spawn: spawnChild } = require('child_process');
 
-// No hardcoded recipient — the client must supply one (env vars below are an ops override).
+// No hardcoded recipient â€” the client must supply one (env vars below are an ops override).
 const SHARE_PDF_TIMEOUT_MS = 120_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -5777,20 +5857,20 @@ module.exports.renderCSVReport         = renderCSVReport;
 module.exports.runSwitchCommandsSequential = runSwitchCommandsSequential;
 module.exports.app                       = app;
 
-// ── User feedback on port identification ──────────────────────
+// â”€â”€ User feedback on port identification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const feedbackDir      = path.join(__dirname, 'feedback');
 const feedbackWrongDir = path.join(feedbackDir, 'wrong');
 const feedbackLogPath  = path.join(__dirname, 'feedback.jsonl');
 [feedbackDir, feedbackWrongDir].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
-// ── Feedback override layer ──────────────────────────────────
+// â”€â”€ Feedback override layer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Reads server/feedback.jsonl for a given scan and overlays the user's
 // `actual_*` corrections on top of the model's predictions in the scan
 // result. Keeps a `_correction` audit trail so the original prediction
 // is never lost.
 //
 // Applied during writeCanonicalScanResult, so the corrected values land
-// in scan_result.json — every consumer (UI, exports, ServiceNow) sees
+// in scan_result.json â€” every consumer (UI, exports, ServiceNow) sees
 // the same overlaid view. Re-runs after every feedback POST because
 // scheduleCanonicalRefresh fires after the audit.log success.
 function _readFeedbackForScan(scanId) {
@@ -5815,7 +5895,7 @@ function _readFeedbackForScan(scanId) {
 // Re-derive cable_type when the color changes. Heuristic: replace any
 // known color word in the existing cable_type string. If we can't
 // detect a color word, leave cable_type unchanged.
-const _CABLE_COLOR_WORD = /\b(?:White|Black|Blue|Red|Green|Yellow|Grey|Gray|Brown|Orange|Purple|Pink)\b/i;
+const _CABLE_COLOR_WORD = /\b(?:White|Black|Blue|Red|Green|Yellow|Grey|Gray|Brown|Orange|Purple|Violet|Pink|Aqua)\b/i;
 function _swapCableTypeColor(cableType, newColor) {
   if (!cableType || !newColor) return cableType;
   if (!_CABLE_COLOR_WORD.test(cableType)) return cableType;
@@ -5829,6 +5909,7 @@ function applyFeedbackOverrides(scanId, payload) {
 
   // Latest correction wins per (key). Keys differ by feedback_type:
   //  - port:       device_index + port_location signature
+  //  - cable_color: device_index + port_location signature
   //  - device:     device_index
   //  - port_count: device_index
   const latest = new Map();
@@ -5836,6 +5917,7 @@ function applyFeedbackOverrides(scanId, payload) {
     const ft = r.feedback_type;
     let key = null;
     if (ft === 'port') key = `port:${r.device_index}:${(r.port_location || []).join(',')}`;
+    else if (ft === 'cable_color') key = `cable_color:${r.device_index}:${(r.port_location || []).join(',')}`;
     else if (ft === 'device') key = `device:${r.device_index}`;
     else if (ft === 'port_count') key = `count:${r.device_index}`;
     if (!key) continue;
@@ -5843,25 +5925,28 @@ function applyFeedbackOverrides(scanId, payload) {
     if (!prev || (r.timestamp || '') > (prev.timestamp || '')) latest.set(key, r);
   }
 
-  // 1) selectedPort.port_info — the "Port Located" card the UI renders.
+  // 1) selectedPort.port_info â€” the "Port Located" card the UI renders.
   const sp = payload.selectedPort;
   if (sp && sp.device_index != null && sp.port_info) {
     const pi = sp.port_info;
     const k = `port:${sp.device_index}:${(pi.location || []).join(',')}`;
+    const ck = `cable_color:${sp.device_index}:${(pi.location || []).join(',')}`;
     const fb = latest.get(k);
-    if (fb) {
+    const colorFb = latest.get(ck);
+    const selectedFb = (!fb || (colorFb && (colorFb.timestamp || '') > (fb.timestamp || ''))) ? colorFb : fb;
+    if (selectedFb) {
       const fields = [];
       const original = {};
-      if (fb.actual_port != null && fb.actual_port !== pi.port_number) {
+      if (selectedFb.actual_port != null && selectedFb.actual_port !== pi.port_number) {
         original.port_number = pi.port_number;
-        pi.port_number = fb.actual_port;
+        pi.port_number = selectedFb.actual_port;
         fields.push('port_number');
       }
-      if (fb.actual_cable_color && fb.actual_cable_color !== pi.cable_color) {
+      if (selectedFb.actual_cable_color && selectedFb.actual_cable_color !== pi.cable_color) {
         original.cable_color = pi.cable_color;
-        pi.cable_color = fb.actual_cable_color;
+        pi.cable_color = selectedFb.actual_cable_color;
         fields.push('cable_color');
-        const newType = _swapCableTypeColor(pi.cable_type, fb.actual_cable_color);
+        const newType = _swapCableTypeColor(pi.cable_type, selectedFb.actual_cable_color);
         if (newType && newType !== pi.cable_type) {
           original.cable_type = pi.cable_type;
           pi.cable_type = newType;
@@ -5869,7 +5954,7 @@ function applyFeedbackOverrides(scanId, payload) {
         }
       }
       if (fields.length) {
-        pi._correction = { applied_at: fb.timestamp, source: 'user_feedback', fields, original };
+        pi._correction = { applied_at: selectedFb.timestamp, source: 'user_feedback', fields, original };
       }
     }
 
@@ -5887,7 +5972,7 @@ function applyFeedbackOverrides(scanId, payload) {
     }
   }
 
-  // 2) devices[] — class_name (device feedback) + port_count (port-count feedback)
+  // 2) devices[] â€” class_name (device feedback) + port_count (port-count feedback)
   for (const dev of payload.devices || []) {
     if (!dev || dev.index == null) continue;
 
@@ -5919,10 +6004,10 @@ function applyFeedbackOverrides(scanId, payload) {
   //
   //   shift = actual_port - predicted_port
   //
-  // Positive shift  → model missed `shift` ports at the start of the row.
+  // Positive shift  â†’ model missed `shift` ports at the start of the row.
   //                   Every detection bumps up by `shift`. Device's
   //                   port_count grows by `shift` to make room.
-  // Negative shift  → model emitted spurious detections before the actual
+  // Negative shift  â†’ model emitted spurious detections before the actual
   //                   start of the port row. Drop the leading |shift|
   //                   detections; lower port_count by |shift|.
   //
@@ -5952,7 +6037,7 @@ function applyFeedbackOverrides(scanId, payload) {
     const ds = deviceShifts.get(ident.device_index);
     if (!ds || !ds.shift) { newIdents.push(ident); continue; }
     const newPort = ident.port + ds.shift;
-    if (newPort <= 0) continue; // before actual start of port row — drop
+    if (newPort <= 0) continue; // before actual start of port row â€” drop
     const fields = ['port'];
     const original = { port: ident.port };
     const shifted = { ...ident, port: newPort };
@@ -6005,7 +6090,7 @@ function applyFeedbackOverrides(scanId, payload) {
   return payload;
 }
 
-// ── Active-learning trigger ───────────────────────────────────
+// â”€â”€ Active-learning trigger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Each feedback POST kicks off a fire-and-forget run_loop --once:
 // ingest (cursor-tracked, idempotent) + threshold-check + retrain
 // when ready. Deduped so a burst of feedback doesn't fan out into
@@ -6019,7 +6104,7 @@ function triggerActiveLearning(reason) {
   if (_activeLearningRunning) {
     // Coalesce: if a cycle is already running, mark that another
     // pass should kick off when the current one finishes. New rows
-    // arriving mid-cycle aren't lost — they'll be picked up next.
+    // arriving mid-cycle aren't lost â€” they'll be picked up next.
     _activeLearningPending = true;
     return;
   }
@@ -6054,6 +6139,137 @@ function triggerActiveLearning(reason) {
   child.unref();
 }
 
+// â”€â”€ Devices_Retraining auto-trigger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// When the user submits a device-class correction via the React UI and we
+// save a new sample into retraining_learning/Devices_Retraining/review_dataset/,
+// kick off the standalone retraining pipeline (createdataset.py + train.py).
+// Coalesces concurrent triggers the same way triggerActiveLearning does.
+// Output goes to retraining_learning/Devices_Retraining/runs/retrain_<ts>.log
+// â€” tail it from a separate terminal to watch training progress.
+// Disable with DEVICES_RETRAIN_AUTO=0 in the server env.
+let _devicesRetrainRunning = false;
+let _devicesRetrainPending = false;
+function triggerDevicesRetraining(reason) {
+  if (process.env.DEVICES_RETRAIN_AUTO === '0') return;
+  if (_devicesRetrainRunning) {
+    _devicesRetrainPending = true;
+    return;
+  }
+  _devicesRetrainRunning = true;
+  _devicesRetrainPending = false;
+
+  const devDir = path.join(PROJECT_ROOT, 'retraining_learning', 'Devices_Retraining');
+  const runsDir = path.join(devDir, 'runs');
+  try { fs.mkdirSync(runsDir, { recursive: true }); } catch (_) {}
+  const logPath = path.join(runsDir,
+    `retrain_${new Date().toISOString().replace(/[:.]/g, '-')}.log`);
+
+  let logFd;
+  try {
+    logFd = fs.openSync(logPath, 'a');
+  } catch (err) {
+    _devicesRetrainRunning = false;
+    logger.warn(`[devices_retrain] cannot open log ${logPath}: ${err.message}`);
+    return;
+  }
+
+  let child;
+  try {
+    child = require('child_process').spawn(
+      pythonCmd,
+      ['main.py', '--once'],
+      { cwd: devDir, detached: true, stdio: ['ignore', logFd, logFd], windowsHide: true }
+    );
+  } catch (err) {
+    fs.closeSync(logFd);
+    _devicesRetrainRunning = false;
+    logger.warn(`[devices_retrain] spawn threw: ${err.message}`);
+    return;
+  }
+  logger.info(`[devices_retrain] cycle started (reason=${reason}, pid=${child.pid}, log=${logPath})`);
+  child.on('exit', (code) => {
+    try { fs.closeSync(logFd); } catch (_) {}
+    _devicesRetrainRunning = false;
+    logger.info(`[devices_retrain] cycle done (exit ${code}, log=${logPath})`);
+    if (_devicesRetrainPending) {
+      _devicesRetrainPending = false;
+      setImmediate(() => triggerDevicesRetraining('coalesced'));
+    }
+  });
+  child.on('error', (err) => {
+    try { fs.closeSync(logFd); } catch (_) {}
+    _devicesRetrainRunning = false;
+    logger.warn(`[devices_retrain] failed to spawn: ${err.message}`);
+  });
+  child.unref();
+}
+
+// â”€â”€ Cable_retraining auto-trigger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Mirror of triggerDevicesRetraining for the cable-color classifier. When
+// the user marks a cable color wrong and we save a fresh crop into
+// retraining_learning/Cable_retraining/review_dataset/<class>/, kick the
+// standalone retraining pipeline. main.py --once checks the threshold
+// (>=THRESHOLD images in every one of the 14 class folders) and runs
+// dataset.py + train2.py only when met. Coalesces concurrent triggers.
+// Output goes to retraining_learning/Cable_retraining/runs/retrain_<ts>.log.
+// Disable with CABLE_RETRAIN_AUTO=0 in the server env.
+let _cableRetrainRunning = false;
+let _cableRetrainPending = false;
+function triggerCableRetraining(reason) {
+  if (process.env.CABLE_RETRAIN_AUTO === '0') return;
+  if (_cableRetrainRunning) {
+    _cableRetrainPending = true;
+    return;
+  }
+  _cableRetrainRunning = true;
+  _cableRetrainPending = false;
+
+  const cableDir = path.join(PROJECT_ROOT, 'retraining_learning', 'Cable_retraining');
+  const runsDir  = path.join(cableDir, 'runs');
+  try { fs.mkdirSync(runsDir, { recursive: true }); } catch (_) {}
+  const logPath = path.join(runsDir,
+    `retrain_${new Date().toISOString().replace(/[:.]/g, '-')}.log`);
+
+  let logFd;
+  try {
+    logFd = fs.openSync(logPath, 'a');
+  } catch (err) {
+    _cableRetrainRunning = false;
+    logger.warn(`[cable_retrain] cannot open log ${logPath}: ${err.message}`);
+    return;
+  }
+
+  let child;
+  try {
+    child = require('child_process').spawn(
+      pythonCmd,
+      ['main.py', '--once'],
+      { cwd: cableDir, detached: true, stdio: ['ignore', logFd, logFd], windowsHide: true }
+    );
+  } catch (err) {
+    fs.closeSync(logFd);
+    _cableRetrainRunning = false;
+    logger.warn(`[cable_retrain] spawn threw: ${err.message}`);
+    return;
+  }
+  logger.info(`[cable_retrain] cycle started (reason=${reason}, pid=${child.pid}, log=${logPath})`);
+  child.on('exit', (code) => {
+    try { fs.closeSync(logFd); } catch (_) {}
+    _cableRetrainRunning = false;
+    logger.info(`[cable_retrain] cycle done (exit ${code}, log=${logPath})`);
+    if (_cableRetrainPending) {
+      _cableRetrainPending = false;
+      setImmediate(() => triggerCableRetraining('coalesced'));
+    }
+  });
+  child.on('error', (err) => {
+    try { fs.closeSync(logFd); } catch (_) {}
+    _cableRetrainRunning = false;
+    logger.warn(`[cable_retrain] failed to spawn: ${err.message}`);
+  });
+  child.unref();
+}
+
 async function cropBoxImage(rackId, box, destPath, padRatio = 0.25, minPad = 6) {
   if (!Array.isArray(box) || box.length !== 4) return false;
   const meta = readMeta(rackId);
@@ -6071,10 +6287,13 @@ async function cropBoxImage(rackId, box, destPath, padRatio = 0.25, minPad = 6) 
     const top    = Math.max(0, y1 - pad);
     const right  = Math.min(imgW, x2 + pad);
     const bottom = Math.min(imgH, y2 + pad);
-    await image
-      .extract({ left, top, width: right - left, height: bottom - top })
-      .png()
-      .toFile(destPath);
+    const pipeline = image.extract({ left, top, width: right - left, height: bottom - top });
+    const ext = path.extname(destPath).toLowerCase();
+    if (ext === '.jpg' || ext === '.jpeg') {
+      await pipeline.jpeg({ quality: 92 }).toFile(destPath);
+    } else {
+      await pipeline.png().toFile(destPath);
+    }
     return true;
   } catch (err) {
     logger.error('cropBoxImage failed:', err.message);
@@ -6192,7 +6411,7 @@ app.post('/api/feedback', async (req, res) => {
   res.json({ ok: true, port_crop_image: portCropSavedAs, device_crop_image: deviceCropSavedAs });
 });
 
-// ── Device-only feedback ──────────────────────────────────────
+// â”€â”€ Device-only feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Independent of port/cable feedback. The user looks at a device's
 // predicted class and either confirms it or supplies the actual class.
 app.post('/api/feedback/device', async (req, res) => {
@@ -6218,17 +6437,22 @@ app.post('/api/feedback/device', async (req, res) => {
 
   let predictedClass = null;
   let deviceBox = null;
+  let allDevices = [];   // full device list for the scan (needed below to
+                         // write a complete YOLO label file â€” not just the
+                         // single corrected box)
   try {
     const mapPath = path.join(rackDir, 'device_unit_map.json');
     if (fs.existsSync(mapPath)) {
       const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-      const dev = (map.devices || [])[Number(device_index) - 1];
+      allDevices = Array.isArray(map.devices) ? map.devices : [];
+      const dev = allDevices[Number(device_index) - 1];
       predictedClass = dev?.class_name || null;
       deviceBox      = dev?.box || null;
     }
   } catch (_) {}
 
   let deviceCropSavedAs = null;
+  let deviceAlHash = null;
   if (!is_correct) {
     const safeActual = String(actual_device_class).replace(/[^A-Za-z0-9_-]+/g, '_');
     const safePred   = String(predictedClass || 'Unknown').replace(/[^A-Za-z0-9_-]+/g, '_');
@@ -6236,6 +6460,103 @@ app.post('/api/feedback/device', async (req, res) => {
     const devDest = path.join(feedbackWrongDir, `${base}_device.png`);
     if (await cropBoxImage(scanId, deviceBox, devDest, 0.05, 4)) {
       deviceCropSavedAs = `${base}_device.png`;
+    }
+    if (Array.isArray(deviceBox) && deviceBox.length === 4 && meta?.imagePath && fs.existsSync(meta.imagePath)) {
+      try {
+        const [x1, y1, x2, y2] = deviceBox.map(v => Number(v));
+        if (x2 > x1 && y2 > y1) {
+          const img = sharp(meta.imagePath);
+          const { width: imgW, height: imgH } = await img.metadata();
+          const left = Math.max(0, Math.min(imgW - 1, Math.floor(x1)));
+          const top = Math.max(0, Math.min(imgH - 1, Math.floor(y1)));
+          const right = Math.max(left + 1, Math.min(imgW, Math.ceil(x2)));
+          const bottom = Math.max(top + 1, Math.min(imgH, Math.ceil(y2)));
+          const cropBuffer = await sharp(meta.imagePath)
+            .extract({ left, top, width: right - left, height: bottom - top })
+            .jpeg({ quality: 92 })
+            .toBuffer();
+          deviceAlHash = await alManager.storeDeviceCorrection(
+            cropBuffer,
+            actual_device_class,
+            predictedClass || null,
+            {
+              scanId,
+              device_index: Number(device_index),
+              device_box: deviceBox,
+              source: 'ui_feedback',
+            }
+          );
+          if (deviceAlHash) {
+            logger.info(`[AL/device] stored correction: ${predictedClass || 'Unknown'} -> ${actual_device_class} (hash=${deviceAlHash.substring(0, 8)}...)`);
+          }
+        }
+      } catch (alErr) {
+        logger.warn(`[AL/device] failed to store device correction: ${alErr.message}`);
+      }
+    }
+  }
+
+  // When the user CORRECTS the device class (Wrong â†’ picks actual type),
+  // stage a full-image YOLO sample into the standalone Devices_Retraining
+  // pipeline's review_dataset/. createdataset.py reads from there directly.
+  // We save the COMPLETE original scan image, plus a multi-line YOLO label
+  // (one row per device â€” corrected one swapped to actual_device_class).
+  // YOLO class IDs MUST stay in lockstep with createdataset.py:CLASSES.
+  // This is the UI's 14-class order (matches DEVICE_CLASS_OPTIONS in the
+  // React client).
+  const YOLO_CLASSES = {
+    'Switch': 0, 'Patch Panel': 1, 'Firewall': 2, 'Router': 3,
+    'Server': 4, 'Load Balancer': 5, 'Modem': 6, 'Controller': 7,
+    'Recorder': 8, 'Amplifier': 9, 'Gateway': 10, 'PDU': 11,
+    'PSU': 12, 'UPS': 13,
+  };
+  let reviewSavedAs = null;
+  if (!is_correct
+      && actual_device_class
+      && YOLO_CLASSES[actual_device_class] !== undefined
+      && Array.isArray(deviceBox) && deviceBox.length === 4
+      && meta?.imagePath && fs.existsSync(meta.imagePath)) {
+    try {
+      const reviewBase   = path.join(PROJECT_ROOT, 'retraining_learning', 'Devices_Retraining', 'review_dataset');
+      const reviewImgDir = path.join(reviewBase, 'images');
+      const reviewLblDir = path.join(reviewBase, 'labels');
+      fs.mkdirSync(reviewImgDir, { recursive: true });
+      fs.mkdirSync(reviewLblDir, { recursive: true });
+
+      const safeClass = String(actual_device_class).replace(/[^A-Za-z0-9_-]+/g, '_');
+      const stem    = `${scanId}_dev${device_index}_${safeClass}_${Date.now()}`;
+      const imgDest = path.join(reviewImgDir, `${stem}.jpg`);
+      const lblDest = path.join(reviewLblDir, `${stem}.txt`);
+
+      const img = sharp(meta.imagePath);
+      const { width: imgW, height: imgH } = await img.metadata();
+      await img.jpeg({ quality: 92 }).toFile(imgDest);
+
+      // Write one YOLO line PER device in the scan â€” not just the corrected
+      // one. A partial label file (single box) would teach YOLO that every
+      // other detected device in the image is background, actively degrading
+      // the model. Devices whose class isn't in YOLO_CLASSES are dropped.
+      const correctedIdx = Number(device_index) - 1;
+      const lines = [];
+      let skipped = 0;
+      allDevices.forEach((dev, i) => {
+        const cls = (i === correctedIdx) ? actual_device_class : dev?.class_name;
+        const box = dev?.box;
+        if (!cls || YOLO_CLASSES[cls] === undefined
+            || !Array.isArray(box) || box.length !== 4) { skipped++; return; }
+        const [x1, y1, x2, y2] = box.map(v => Number(v));
+        if (!(x2 > x1) || !(y2 > y1)) { skipped++; return; }
+        const xc = ((x1 + x2) / 2) / imgW;
+        const yc = ((y1 + y2) / 2) / imgH;
+        const bw = (x2 - x1) / imgW;
+        const bh = (y2 - y1) / imgH;
+        lines.push(`${YOLO_CLASSES[cls]} ${xc.toFixed(6)} ${yc.toFixed(6)} ${bw.toFixed(6)} ${bh.toFixed(6)}`);
+      });
+      fs.writeFileSync(lblDest, lines.join('\n') + (lines.length ? '\n' : ''));
+      reviewSavedAs = `${stem}.jpg`;
+      logger.info(`[feedback/device] review_dataset saved: ${reviewSavedAs} â€” ${lines.length} labels (${skipped} skipped), corrected dev${device_index} â†’ ${actual_device_class}`);
+    } catch (err) {
+      logger.error(`[feedback/device] review_dataset save failed: ${err.message}`);
     }
   }
 
@@ -6249,6 +6570,8 @@ app.post('/api/feedback/device', async (req, res) => {
     actual_device_class: is_correct ? null : actual_device_class,
     device_box: deviceBox,
     device_crop_image: deviceCropSavedAs,
+    device_al_hash: deviceAlHash,
+    review_dataset_image: reviewSavedAs,
   };
   const line = JSON.stringify(entry) + '\n';
 
@@ -6264,12 +6587,180 @@ app.post('/api/feedback/device', async (req, res) => {
 
   audit.log({ req, action: 'feedback.submit', status: 'ok', targetType: 'rack', targetId: scanId,
               payload: { feedback_type: 'device', device_index: Number(device_index), is_correct } });
+  applyDeviceFeedbackOverridesToMap(scanId);
   scheduleCanonicalRefresh(scanId);
   triggerActiveLearning('device-feedback');
-  res.json({ ok: true, device_crop_image: deviceCropSavedAs });
+  // If we staged a sample into review_dataset/, kick the Devices_Retraining
+  // pipeline (it'll no-op unless the threshold is now met).
+  if (reviewSavedAs) triggerDevicesRetraining('device-feedback');
+  res.json({ ok: true, device_crop_image: deviceCropSavedAs, review_dataset_image: reviewSavedAs });
 });
 
-// ── Port-count feedback (main ports detected per device) ──────
+// â”€â”€ Cable-color feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Independent of port and device-class feedback. Fires AFTER the user has
+// already confirmed the port is correct â€” so we don't need an actual_port
+// here, only the actual_cable_color. When the user marks the color wrong
+// and picks the actual color, we crop the detected port patch (the same
+// box the cable classifier sees) and drop it into one of the 14 class
+// folders under retraining_learning/Cable_retraining/feedback_dir/.
+// The 14 classes combine connector type + color, so we derive the folder
+// name from portInfo.cable_connector + user-picked color.
+const CABLE_CLASS_FOLDERS = new Set([
+  'LC_Aqua',
+  'RJ-45_Violet',           // model uses a dash for this one class
+  'RJ_45_Black', 'RJ_45_Blue', 'RJ_45_Brown', 'RJ_45_Green', 'RJ_45_Grey',
+  'RJ_45_Orange', 'RJ_45_Pink', 'RJ_45_Red', 'RJ_45_White', 'RJ_45_Yellow',
+  'SC_Orange', 'SC_Yellow',
+]);
+
+function cableClassFolder(connector, color) {
+  if (!color) return null;
+  const c = String(color).trim();
+
+  // Unambiguous colors â€” only exist with ONE connector in the model's
+  // 14-class space, regardless of what the connector detector reported.
+  // The user-picked color is the source of truth, so force the connector
+  // for these two. (Without this, Aqua + a misdetected RJ-45 connector
+  // would build "RJ_45_Aqua", which isn't a valid class â†’ silent skip.)
+  if (c === 'Aqua')   return 'LC_Aqua';
+  if (c === 'Violet') return 'RJ-45_Violet';
+
+  // Handle connector-prefixed colors from UI: "SC Orange" â†’ 'SC_Orange'
+  if (c === 'SC Orange')  return 'SC_Orange';
+  if (c === 'SC Yellow')  return 'SC_Yellow';
+
+  // Ambiguous colors (Orange/Yellow exist for both RJ_45 and SC; the rest
+  // are RJ_45-only) â€” rely on the detected connector to disambiguate.
+  // Normalize: 'RJ-45' / 'rj_45' / 'RJ45' all collapse to 'RJ45'.
+  const conn = String(connector || '').toUpperCase().replace(/[-_\s]+/g, '');
+  let folder = null;
+  if (conn === 'RJ45')      folder = `RJ_45_${c}`;
+  else if (conn === 'SC')   folder = `SC_${c}`;
+  else if (conn === 'LC')   folder = `LC_${c}`;
+  return CABLE_CLASS_FOLDERS.has(folder) ? folder : null;
+}
+
+app.post('/api/feedback/cable-color', async (req, res) => {
+  const { scanId, device_index, predicted_port, is_correct, actual_cable_color } = req.body || {};
+
+  if (!scanId || device_index == null || predicted_port == null || typeof is_correct !== 'boolean') {
+    return res.status(400).json({ error: 'scanId, device_index, predicted_port, is_correct are required' });
+  }
+  if (!is_correct && !actual_cable_color) {
+    return res.status(400).json({ error: 'actual_cable_color is required when is_correct is false' });
+  }
+
+  const fbAuth = softAuthPayload(req);
+  if (fbAuth?.tenantId && !tenant.tenantOwnsRack(fbAuth.tenantId, scanId)) {
+    return res.status(404).json({ error: `Scan ${scanId} not found` });
+  }
+
+  const meta = readMeta(scanId);
+  if (!meta) return res.status(404).json({ error: `Scan ${scanId} not found` });
+
+  const rackDir  = path.join(outputsDir, scanId);
+  const infoPath = path.join(rackDir, 'selected_port_info.json');
+  const fullData = fs.existsSync(infoPath) ? JSON.parse(fs.readFileSync(infoPath, 'utf8')) : {};
+  const portInfo = fullData.port_info || {};
+
+  let deviceClass = null;
+  try {
+    const mapPath = path.join(rackDir, 'device_unit_map.json');
+    if (fs.existsSync(mapPath)) {
+      const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
+      const dev = (map.devices || [])[Number(device_index) - 1];
+      deviceClass = dev?.class_name || null;
+    }
+  } catch (_) {}
+
+  // Crop the port patch and write into the per-class folder under
+  // Cable_retraining/feedback_dir/. Skip silently for is_correct=true
+  // (positive samples don't help fine-tuning a classifier).
+  let reviewSavedAs = null;
+  let classFolder = null;
+  if (!is_correct) {
+    classFolder = cableClassFolder(portInfo.cable_connector, actual_cable_color);
+    if (!classFolder) {
+      logger.warn(`[feedback/cable-color] no class folder for connector="${portInfo.cable_connector}" color="${actual_cable_color}" â€” skipping crop`);
+    } else if (Array.isArray(portInfo.location) && portInfo.location.length === 4) {
+      try {
+        const reviewBase = path.join(PROJECT_ROOT, 'retraining_learning', 'Cable_retraining', 'feedback_dir', classFolder);
+        fs.mkdirSync(reviewBase, { recursive: true });
+        const stem    = `${scanId}_dev${device_index}_p${predicted_port}_${Date.now()}`;
+        const imgDest = path.join(reviewBase, `${stem}.jpg`);
+        if (await cropBoxImage(scanId, portInfo.location, imgDest, 0.25, 6)) {
+          reviewSavedAs = path.join(classFolder, `${stem}.jpg`);
+          logger.info(`[feedback/cable-color] feedback_dir saved: ${reviewSavedAs}`);
+
+          // Also store in active learning database for immediate correction feedback
+          // on future classifications (complements retraining, doesn't interfere)
+          try {
+            const imgBuffer = fs.readFileSync(imgDest);
+            const alMeta = {
+              scanId,
+              device_index: Number(device_index),
+              predicted_port: Number(predicted_port),
+              cable_connector: portInfo.cable_connector || null,
+              source: 'ui_feedback',
+            };
+            const phash = await alManager.storeCorrection(
+              imgBuffer,
+              actual_cable_color,
+              portInfo.cable_color || null,
+              alMeta
+            );
+            if (phash) {
+              logger.info(`[AL/cable-color] stored correction: ${actual_cable_color} (hash=${phash.substring(0,8)}â€¦)`);
+            }
+          } catch (alErr) {
+            logger.warn(`[AL/cable-color] failed to store AL correction: ${alErr.message}`);
+          }
+        }
+      } catch (err) {
+        logger.error(`[feedback/cable-color] feedback_dir save failed: ${err.message}`);
+      }
+    }
+  }
+
+  const entry = {
+    timestamp: new Date().toISOString(),
+    feedback_type: 'cable_color',
+    scanId,
+    device_index: Number(device_index),
+    device_class: deviceClass,
+    predicted_port: Number(predicted_port),
+    is_correct,
+    predicted_cable_color: portInfo.cable_color || null,
+    actual_cable_color: is_correct ? null : actual_cable_color,
+    cable_connector: portInfo.cable_connector || null,
+    cable_type: portInfo.cable_type || null,
+    port_location: portInfo.location || null,
+    class_folder: classFolder,
+    review_dataset_image: reviewSavedAs,
+  };
+  const line = JSON.stringify(entry) + '\n';
+
+  try {
+    appendLineWithRotation(feedbackLogPath, line);
+    appendLineWithRotation(path.join(rackDir, 'feedback.jsonl'), line);
+  } catch (err) {
+    logger.error('cable-color feedback write failed:', err.message);
+    audit.log({ req, action: 'feedback.submit', status: 'fail', targetType: 'rack', targetId: scanId,
+                error: err.message, payload: { feedback_type: 'cable_color' } });
+    return res.status(500).json({ error: 'Failed to save feedback' });
+  }
+
+  audit.log({ req, action: 'feedback.submit', status: 'ok', targetType: 'rack', targetId: scanId,
+              payload: { feedback_type: 'cable_color', device_index: Number(device_index), is_correct } });
+  scheduleCanonicalRefresh(scanId);
+  triggerActiveLearning('cable-color-feedback');
+  // Kick the Cable_retraining pipeline if we staged a new sample. It'll
+  // no-op unless every one of the 14 class folders now has â‰¥ THRESHOLD images.
+  if (reviewSavedAs) triggerCableRetraining('cable-color-feedback');
+  res.json({ ok: true, class_folder: classFolder, review_dataset_image: reviewSavedAs });
+});
+
+// â”€â”€ Port-count feedback (main ports detected per device) â”€â”€â”€â”€â”€â”€
 // Independent of device-class and port/cable feedback. The user
 // confirms how many main ports the model detected for the selected
 // device, or supplies the actual count.
@@ -6425,7 +6916,7 @@ app.use(o11y.errorHandler);
 // must not start a second listener.
 if (require.main === module) {
   // Bind with retry-on-EADDRINUSE. The previous implementation created a fresh
-  // server inside setTimeout without re-attaching the 'error' handler — a second
+  // server inside setTimeout without re-attaching the 'error' handler â€” a second
   // EADDRINUSE then crashed the process via an unhandled 'error' event. Wrap
   // listen() so every attempt has the same handler, and retry indefinitely
   // (a stale dev process usually clears within seconds).
@@ -6474,7 +6965,7 @@ if (require.main === module) {
 
   const gracefulShutdown = (signal) => {
     logger.info({ event: 'server.shutdown', signal },
-      `${signal} received — stopping workers and HTTP server`);
+      `${signal} received â€” stopping workers and HTTP server`);
     try { require('./lib/port_poller').stop(); } catch (_) {}
     if (server) {
       try { server.close(); } catch (_) {}

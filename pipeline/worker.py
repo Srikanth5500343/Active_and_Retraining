@@ -181,6 +181,13 @@ def handle_detect_only(req):
             cn = normalize_class_name(str(names.get(int(cid), cid)))
             if cn in ("Empty", "Closed Unit", "Unidentified"):
                 continue
+            try:
+                from pipeline.device_al import get_device_correction
+                correction = get_device_correction(img[y1:y2, x1:x2], cn)
+                if correction:
+                    cn, _method = correction
+            except Exception:
+                pass
             devices.append({
                 "class_name": cn,
                 "confidence": float(score),

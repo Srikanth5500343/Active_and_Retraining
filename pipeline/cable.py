@@ -1,4 +1,4 @@
-import os
+﻿import os
 import cv2
 import torch
 import torch.nn as nn
@@ -7,7 +7,7 @@ from PIL import Image
 
 IMG_SIZE = 256
 
-# Must match sorted(os.listdir(train_dir)) — the order the model was trained with
+# Must match sorted(os.listdir(train_dir)) â€” the order the model was trained with
 FALLBACK_CABLE_CLASSES = [
     'LC_Aqua',
     'RJ-45 Violet',
@@ -133,7 +133,10 @@ def preprocess_image(img):
 
 def classify_cable(img, model, classes=None, device: str = 'cpu'):
     """Classify a cable crop. Returns (label, confidence) where confidence is
-    the softmax probability of the chosen class (0.0–1.0).
+    the softmax probability of the chosen class (0.0â€“1.0).
+
+    Applies active learning corrections based on user feedback from the UI
+    before returning the prediction.
     """
     if img is None or img.size == 0:
         return None, 0.0
@@ -156,8 +159,27 @@ def classify_cable(img, model, classes=None, device: str = 'cpu'):
         labels = FALLBACK_CABLE_CLASSES
 
     if labels is not None and idx < len(labels):
-        return labels[idx], confidence
-    return f'class_{idx}', confidence
+        predicted_label = labels[idx]
+    else:
+        predicted_label = f'class_{idx}'
+
+    # Check for active learning correction based on user feedback
+    final_label = predicted_label
+    try:
+        from pipeline.cable_al import get_correction
+        correction = get_correction(img, predicted_label)
+        if correction:
+            corrected_label, method = correction
+            # Use the learned correction instead of model prediction
+            final_label = corrected_label
+            import sys
+            print(f"[cable.classify_cable] Applied AL correction via {method}: {predicted_label} -> {corrected_label}", file=sys.stderr)
+    except Exception as e:
+        # If AL lookup fails, just use model prediction (non-blocking)
+        import sys
+        print(f"[cable.classify_cable] AL lookup error (non-blocking): {e}", file=sys.stderr)
+
+    return final_label, confidence
 
 
 def crop_box(img, box, pad=8, pad_x=None, pad_y=None):

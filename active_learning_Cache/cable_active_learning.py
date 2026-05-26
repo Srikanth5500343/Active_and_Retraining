@@ -1,4 +1,4 @@
-"""
+﻿"""
 Cable-type classification with HTML feedback UI (folder input).
 
 Input  : IMAGE_DIR (hardcoded below) -- folder of cable images.
@@ -38,6 +38,7 @@ from flask import Flask, request, redirect, url_for, render_template_string
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from active_learning_Cache import config as al_config
 from active_learning_Cache.store import Store
+from active_learning_Cache.embedder import phash, hamming, embed, cos_sim, find_correction, HAMMING_TOL, SIM_THRESH
 
 
 # ---------- config ----------
@@ -98,21 +99,73 @@ def class_to_folder(name: str) -> str:
     return name.replace(" ", "_").replace("-", "_")
 
 
-# ---------- perceptual hash ----------
-def phash(pil_img: Image.Image, size: int = HASH_SIZE) -> str:
-    g = pil_img.convert("L").resize((size, size), Image.BILINEAR)
-    arr = np.asarray(g, dtype=np.float32)
-    bits = (arr > arr.mean()).flatten()
-    return "".join("1" if b else "0" for b in bits)
+def normalize_correction_label(label: str, rec: dict) -> str:
+    """Convert server color-only corrections into this UI's class labels."""
+    if not label:
+        return label
 
+    label = str(label).strip()
+    if label in CLASS_NAMES:
+        return label
+    if "_" in label or label.startswith("RJ-45") or label.startswith("SC "):
+        candidate = label.replace("SC ", "SC_", 1)
+        return candidate if candidate in CLASS_NAMES else label
 
-def hamming(a: str, b: str) -> int:
-    return sum(c1 != c2 for c1, c2 in zip(a, b)) if len(a) == len(b) else 10**9
+    metadata = rec.get("metadata") or {}
+    connector = str(metadata.get("cable_connector") or "").upper()
+    connector = connector.replace("-", "").replace("_", "").replace(" ", "")
+
+    candidates = []
+    if label == "Aqua":
+        candidates.append("LC_Aqua")
+    elif label == "Violet":
+        candidates.extend(["RJ-45 Violet", "RJ-45_Violet"])
+    elif connector == "SC" and label in {"Orange", "Yellow"}:
+        candidates.append(f"SC_{label}")
+    elif connector == "LC":
+        candidates.append(f"LC_{label}")
+    else:
+        candidates.extend([f"RJ_45 {label}", f"RJ_45_{label}"])
+
+    for candidate in candidates:
+        if candidate in CLASS_NAMES:
+            return candidate
+    return label
 
 
 # ---------- persistence ----------
 def load_corrections() -> dict:
-    return json.loads(CORR_FILE.read_text()) if CORR_FILE.exists() else {}
+    """Load corrections from both local file and server's AL database.
+
+    This ensures corrections from production UI feedback are available
+    in the Flask AL UI, and vice versa.
+    """
+    merged = {}
+
+    # Load local Flask AL corrections
+    try:
+        if CORR_FILE.exists():
+            local = json.loads(CORR_FILE.read_text())
+            merged.update(local)
+    except Exception as e:
+        print(f"[AL] Warning: failed to load local corrections: {e}")
+
+    # Load server's AL corrections (from production UI feedback)
+    try:
+        server_al_path = REPO_ROOT / "server" / "data" / "active_learning" / "cable_corrections.json"
+        if server_al_path.exists():
+            server_al = json.loads(server_al_path.read_text())
+            for rec in server_al.values():
+                if isinstance(rec, dict):
+                    rec["label"] = normalize_correction_label(rec.get("label"), rec)
+            # Merge server corrections, giving precedence to local corrections
+            for h, rec in server_al.items():
+                if h not in merged:
+                    merged[h] = rec
+    except Exception as e:
+        print(f"[AL] Warning: failed to load server AL corrections: {e}")
+
+    return merged
 
 
 def save_corrections(c: dict) -> None:

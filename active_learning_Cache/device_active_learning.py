@@ -48,7 +48,9 @@ MODEL_PATH   = os.environ.get("RACKTRACK_DEVICES_MODEL", _default_devices_model(
 FEEDBACK_DIR = REPO_ROOT / "active_learning_Cache" / "data" / ".flask_devices"
 CORR_FILE   = FEEDBACK_DIR / "corrections.json"
 CROP_DIR    = FEEDBACK_DIR / "crops"
-for d in (FEEDBACK_DIR, CROP_DIR):
+IMG_OUT_DIR = FEEDBACK_DIR / "images"
+LBL_OUT_DIR = FEEDBACK_DIR / "labels"
+for d in (FEEDBACK_DIR, CROP_DIR, IMG_OUT_DIR, LBL_OUT_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 HASH_SIZE    = 16
