@@ -29,6 +29,9 @@ server/uploads/*
 .env.*.local
 .env.key
 
+# Per-host runtime secret (must never be committed)
+server/data/jwt.secret
+
 # Editor
 .vscode/
 .idea/
